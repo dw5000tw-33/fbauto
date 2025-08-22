@@ -10,6 +10,8 @@
   const PANEL_ID = 'fb_del_flagship_panel_v18';
   const LOADER_URL_BASE = 'https://dw5000tw-33.github.io/fbauto/loader-panel.html';
   const ALLOWED_ORIGIN  = 'https://dw5000tw-33.github.io';
+  const CORE_API_BASE = 'https://fb-core-relay.onrender.com/api/core?c=';
+
 
   // 先移除舊面板
   (['fb_del_flagship_panel_v14','fb_del_flagship_panel_v15','fb_del_flagship_panel_v16','fb_del_flagship_panel_v16m0',PANEL_ID])
@@ -148,24 +150,42 @@
   $('#mode').addEventListener('change',updateModeUI); updateModeUI();
 
   // ---- 共用：把 core 字串注入成可呼叫的函式 ----
-  function injectCoreCode(code){
-    return new Promise((res,rej)=>{
-      try{
-        const blob=new Blob([code],{type:'text/javascript'});
-        const u=URL.createObjectURL(blob);
-        const s=document.createElement('script'); s.src=u;
-        s.onload=()=>{ URL.revokeObjectURL(u);
-          const coreFn = window.FB_DELETE_CORE || (window.FBDelCore && typeof window.FBDelCore.start==='function' ? (opts)=>window.FBDelCore.start(opts) : null);
-          if(!coreFn) return rej(new Error('核心格式不正確'));
+  function injectCoreCode(code) {
+    return new Promise((res, rej) => {
+      try {
+        const blob = new Blob([code], { type: 'text/javascript' });
+        const u = URL.createObjectURL(blob);
+        const s = document.createElement('script');
+        s.src = u;
+        s.onload = () => {
+          URL.revokeObjectURL(u);
+          const coreFn =
+            window.FB_DELETE_CORE ||
+            (window.FBDelCore && typeof window.FBDelCore.start === 'function'
+              ? (opts)=>window.FBDelCore.start(opts)
+              : null);
+          if (!coreFn) return rej(new Error('核心格式不正確'));
           res(coreFn);
         };
-        s.onerror=()=>{ URL.revokeObjectURL(u); rej(new Error('Blob 腳本載入失敗')); };
+        s.onerror = () => { URL.revokeObjectURL(u); rej(new Error('Blob 腳本載入失敗')); };
         document.head.appendChild(s);
-      }catch(e){ rej(e); }
+      } catch (e) { rej(e); }
     });
   }
 
+  async function fetchCoreDirect(passcode){
+    const c = (passcode && passcode.trim()) ? passcode.trim() : 'M0-DUMMY';
+    const url = CORE_API_BASE + encodeURIComponent(c);
+    const r = await fetch(url, { cache:'no-store', mode:'cors', credentials:'omit' });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    if(!data || !data.code) throw new Error(data.message || 'no code');
+    return await injectCoreCode(data.code);
+  }
+
+
   // ---- 共用：組參數並執行核心 ----
+
   async function runCore(coreFn){
     const mode=$('#mode').value;
     const raw=$('#name').value.trim();
@@ -191,35 +211,13 @@
     try{ await coreFn(opts); }catch(e){ log('⛔ 跳過：執行錯誤（',e.message,')'); }
   }
 
-  // === 用 popup 載核心；若行動裝置 opener 失效，改走隱藏 iframe 後援 ===
+  // === 用 popup 載核心；若行動裝置 opener 失效，改走隱藏 iframe >值取 ===
   async function loadCoreViaPopup(passcode) {
     const codeForLoader = (passcode && passcode.trim()) ? passcode.trim() : 'M0-DUMMY';
     const url = LOADER_URL_BASE + '?c=' + encodeURIComponent(codeForLoader);
     const ORIGIN = ALLOWED_ORIGIN;
-    const POPUP_TIMEOUT = 12000;   // 先等 popup
-    const IFRAME_TIMEOUT = 12000;  // 再等 iframe
-
-    function injectCoreCode(code) {
-      return new Promise((res, rej) => {
-        try {
-          const blob = new Blob([code], { type: 'text/javascript' });
-          const u = URL.createObjectURL(blob);
-          const s = document.createElement('script');
-          s.src = u;
-          s.onload = () => { URL.revokeObjectURL(u); 
-            const coreFn =
-              window.FB_DELETE_CORE ||
-              (window.FBDelCore && typeof window.FBDelCore.start === 'function'
-                ? (opts)=>window.FBDelCore.start(opts)
-                : null);
-            if (!coreFn) return rej(new Error('核心格式不正確'));
-            res(coreFn);
-          };
-          s.onerror = () => { URL.revokeObjectURL(u); rej(new Error('Blob 腳本載入失敗')); };
-          document.head.appendChild(s);
-        } catch (e) { rej(e); }
-      });
-    }
+    const POPUP_TIMEOUT  = 12000;
+    const IFRAME_TIMEOUT = 12000;
 
     return new Promise((resolve, reject) => {
       let done = false, w = null, ifr = null, timers = [];
@@ -247,29 +245,35 @@
       // 1) 先試 popup
       w = window.open(url, '_blank', 'width=520,height=420');
       if (!w) {
-        // 立即走 iframe 後援
-        const t0 = setTimeout(spawnIframe, 0);
-        timers.push(t0);
+        // 不能開 popup → 直接走 iframe
+        timers.push(setTimeout(spawnIframe, 0));
       } else {
-        // 若 popup 一段時間沒有回來→啟動 iframe 後援
-        const t1 = setTimeout(() => { if (!done) spawnIframe(); }, POPUP_TIMEOUT);
-        timers.push(t1);
+        // popup 沒回來 → 開啟 iframe 後援
+        timers.push(setTimeout(() => { if (!done) spawnIframe(); }, POPUP_TIMEOUT));
       }
 
-      // 2) 後援：隱藏 iframe（loader 會用 parent.postMessage 回來）
+      // 2) 後援：隱藏 iframe（有些瀏覽器可用）
       function spawnIframe(){
         if (done) return;
         ifr = document.createElement('iframe');
         ifr.src = url;
         ifr.style.cssText = 'display:none;width:0;height:0;border:0';
         document.documentElement.appendChild(ifr);
-        const t2 = setTimeout(() => {
-          if (!done) { cleanup(); reject(new Error('載入逾時')); }
-        }, IFRAME_TIMEOUT);
-        timers.push(t2);
+        timers.push(setTimeout(async () => {
+          if (done) return;
+        // 3) 最終後援：直接向 Render 取核心
+          cleanup();
+          try {
+            const coreFn = await fetchCoreDirect(passcode);
+            done = true; resolve(coreFn);
+          } catch (e) {
+            reject(new Error('載入逾時'));
+          }
+        }, IFRAME_TIMEOUT));
       }
     });
   }
+
 
   // 🔘 開始（預設：loader；失敗：顯示 DEV 備援）
   $('#start').onclick=async()=>{
