@@ -191,25 +191,83 @@
     try{ await coreFn(opts); }catch(e){ log('⛔ 跳過：執行錯誤（',e.message,')'); }
   }
 
-  // === 用 popup 載核心（user gesture 觸發 → 手機也能開） ===
-  async function loadCoreViaPopup(passcode){
-    return new Promise((resolve, reject)=>{
-      const codeForLoader=(passcode && passcode.trim())?passcode.trim():'';
-      const url=LOADER_URL_BASE+'?c='+encodeURIComponent(codeForLoader);
-      const w=window.open(url,'_blank','width=520,height=420');
-      if(!w){ reject(new Error('無法開啟載入視窗（瀏覽器封鎖彈窗）')); return; }
-      const timer=setTimeout(()=>{ window.removeEventListener('message',onMsg); try{w.close();}catch{} reject(new Error('載入逾時')); },20000);
+  // === 用 popup 載核心；若行動裝置 opener 失效，改走隱藏 iframe 後援 ===
+  async function loadCoreViaPopup(passcode) {
+    const codeForLoader = (passcode && passcode.trim()) ? passcode.trim() : 'M0-DUMMY';
+    const url = LOADER_URL_BASE + '?c=' + encodeURIComponent(codeForLoader);
+    const ORIGIN = ALLOWED_ORIGIN;
+    const POPUP_TIMEOUT = 12000;   // 先等 popup
+    const IFRAME_TIMEOUT = 12000;  // 再等 iframe
+
+    function injectCoreCode(code) {
+      return new Promise((res, rej) => {
+        try {
+          const blob = new Blob([code], { type: 'text/javascript' });
+          const u = URL.createObjectURL(blob);
+          const s = document.createElement('script');
+          s.src = u;
+          s.onload = () => { URL.revokeObjectURL(u); 
+            const coreFn =
+              window.FB_DELETE_CORE ||
+              (window.FBDelCore && typeof window.FBDelCore.start === 'function'
+                ? (opts)=>window.FBDelCore.start(opts)
+                : null);
+            if (!coreFn) return rej(new Error('核心格式不正確'));
+            res(coreFn);
+          };
+          s.onerror = () => { URL.revokeObjectURL(u); rej(new Error('Blob 腳本載入失敗')); };
+          document.head.appendChild(s);
+        } catch (e) { rej(e); }
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      let done = false, w = null, ifr = null, timers = [];
+
+      const cleanup = () => {
+        window.removeEventListener('message', onMsg);
+        timers.forEach(t => clearTimeout(t));
+        try { w && w.close(); } catch {}
+        if (ifr && ifr.parentNode) try { ifr.parentNode.removeChild(ifr); } catch {}
+      };
 
       function onMsg(ev){
-        if(ev.origin !== ALLOWED_ORIGIN){
-          try{ console.log('[panel] ignored message from', ev.origin, 'expected', ALLOWED_ORIGIN);}catch{}
-          return;
+        if (ev.origin !== ORIGIN) return;
+        const data = ev.data || {};
+        if (data.type === 'FB_CORE_CODE') {
+          done = true; cleanup();
+          injectCoreCode(data.code).then(resolve).catch(reject);
+        } else if (data.type === 'FB_CORE_ERROR') {
+          done = true; cleanup();
+          reject(new Error(data.message || 'Loader 回報錯誤'));
         }
-        const data=ev.data||{};
-        if(data.type==='FB_CORE_CODE'){ clearTimeout(timer); window.removeEventListener('message',onMsg); try{w.close();}catch{} injectCoreCode(data.code).then(resolve).catch(reject); }
-        else if(data.type==='FB_CORE_ERROR'){ clearTimeout(timer); window.removeEventListener('message',onMsg); try{w.close();}catch{} reject(new Error(data.message||'Loader 回報錯誤')); }
       }
-      window.addEventListener('message',onMsg);
+      window.addEventListener('message', onMsg);
+
+      // 1) 先試 popup
+      w = window.open(url, '_blank', 'width=520,height=420');
+      if (!w) {
+        // 立即走 iframe 後援
+        const t0 = setTimeout(spawnIframe, 0);
+        timers.push(t0);
+      } else {
+        // 若 popup 一段時間沒有回來→啟動 iframe 後援
+        const t1 = setTimeout(() => { if (!done) spawnIframe(); }, POPUP_TIMEOUT);
+        timers.push(t1);
+      }
+
+      // 2) 後援：隱藏 iframe（loader 會用 parent.postMessage 回來）
+      function spawnIframe(){
+        if (done) return;
+        ifr = document.createElement('iframe');
+        ifr.src = url;
+        ifr.style.cssText = 'display:none;width:0;height:0;border:0';
+        document.documentElement.appendChild(ifr);
+        const t2 = setTimeout(() => {
+          if (!done) { cleanup(); reject(new Error('載入逾時')); }
+        }, IFRAME_TIMEOUT);
+        timers.push(t2);
+      }
     });
   }
 
