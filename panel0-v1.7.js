@@ -145,77 +145,90 @@
   $('#stop').onclick = ()=>{ abortFlag = true; log('🟠 已要求停止'); };
 
   // —— 面板可拖曳 + 記住位置（localStorage）——
-  (function makeDraggable(){
-    const POS_KEY = PANEL_ID + ':pos';
-    const header  = wrap.querySelector('.hdr');
-    let dragging=false, offX=0, offY=0;
+(function makeDraggable(){
+  const POS_KEY = PANEL_ID + ':pos';
+  const header  = wrap.querySelector('.hdr');
+  let dragging=false, offX=0, offY=0;
 
-    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
-    function place(x,y){ wrap.style.left=x+'px'; wrap.style.top=y+'px'; wrap.style.right='auto'; }
-    function save(){ localStorage.setItem(POS_KEY, JSON.stringify({ x: wrap.offsetLeft, y: wrap.offsetTop })); }
-    function load(){
-      try{ const p=JSON.parse(localStorage.getItem(POS_KEY));
-        if (p && typeof p.x==='number' && typeof p.y==='number'){ place(p.x,p.y); return true; }
-      }catch{} return false;
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+  function place(x,y){ wrap.style.left=x+'px'; wrap.style.top=y+'px'; wrap.style.right='auto'; }
+  function save(){ localStorage.setItem(POS_KEY, JSON.stringify({ x: wrap.offsetLeft, y: wrap.offsetTop })); }
+  function load(){
+    try{ const p=JSON.parse(localStorage.getItem(POS_KEY));
+      if (p && typeof p.x==='number' && typeof p.y==='number'){ place(p.x,p.y); return true; }
+    }catch{} return false;
+  }
+  function snapTopRight(){
+    const r = wrap.getBoundingClientRect();
+    const x = window.innerWidth - r.width - 14, y = 68;
+    place(clamp(x,8,window.innerWidth-r.width-8), clamp(y,8,window.innerHeight-r.height-8)); save();
+  }
+  if (!load()){
+    const r = wrap.getBoundingClientRect();
+    place(Math.max(8,Math.min(window.innerWidth-r.width-8,r.left)),
+          Math.max(8,Math.min(window.innerHeight-r.height-8,r.top)));
+  }
+
+  function onMove(e){
+    if (!dragging) return;
+    const x = clamp(e.clientX-offX, 8, window.innerWidth - wrap.offsetWidth - 8);
+    const y = clamp(e.clientY-offY,  8, window.innerHeight - wrap.offsetHeight - 8);
+    place(x,y);
+  }
+  function onUp(){
+    if (!dragging) return;
+    dragging=false; wrap.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    save();
+  }
+
+  // ✅ 桌機：點到最小化按鈕就「不要」進入拖曳
+  header.addEventListener('mousedown', (e)=>{
+    if (e.target && (e.target.id==='minBtn' || e.target.closest && e.target.closest('#minBtn'))) {
+      return; // 讓按鈕自己處理 click
     }
-    function snapTopRight(){
-      const r = wrap.getBoundingClientRect();
-      const x = window.innerWidth - r.width - 14, y = 68;
-      place(clamp(x,8,window.innerWidth-r.width-8), clamp(y,8,window.innerHeight-r.height-8)); save();
+    dragging=true; wrap.classList.add('dragging');
+    offX = e.clientX - wrap.offsetLeft; offY = e.clientY - wrap.offsetTop;
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+
+  // ✅ 手機：同理，若是點到最小化按鈕就不要攔截（避免吃掉 click）
+  function onTMove(ev){
+    if (!dragging) return;
+    const t=ev.touches[0];
+    const x = clamp(t.clientX-offX, 8, window.innerWidth - wrap.offsetWidth - 8);
+    const y = clamp(t.clientY-offY,  8, window.innerHeight - wrap.offsetHeight - 8);
+    place(x,y); ev.preventDefault();
+  }
+  function onTEnd(){
+    dragging=false; wrap.classList.remove('dragging');
+    window.removeEventListener('touchmove', onTMove, { passive:false });
+    window.removeEventListener('touchend', onTEnd);
+    save();
+  }
+  header.addEventListener('touchstart', (ev)=>{
+    // ⬇️ 重點：如果觸控起點在最小化按鈕上，直接放行，不要 preventDefault
+    if (ev.target && (ev.target.id==='minBtn' || (ev.target.closest && ev.target.closest('#minBtn')))) {
+      return; // 讓按鈕 click 正常發生
     }
-    if (!load()){
-      const r = wrap.getBoundingClientRect();
-      place(Math.max(8,Math.min(window.innerWidth-r.width-8,r.left)),
-            Math.max(8,Math.min(window.innerHeight-r.height-8,r.top)));
-    }
-    function onMove(e){
-      if (!dragging) return;
-      const x = clamp(e.clientX-offX, 8, window.innerWidth - wrap.offsetWidth - 8);
-      const y = clamp(e.clientY-offY, 8, window.innerHeight - wrap.offsetHeight - 8);
-      place(x,y);
-    }
-    function onUp(){
-      if (!dragging) return;
-      dragging=false; wrap.classList.remove('dragging');
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      save();
-    }
-    header.addEventListener('mousedown', (e)=>{
-      if (e.target && e.target.id==='minBtn') return;
-      dragging=true; wrap.classList.add('dragging');
-      offX = e.clientX - wrap.offsetLeft; offY = e.clientY - wrap.offsetTop;
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
-      e.preventDefault();
-    });
-    function onTMove(ev){
-      if (!dragging) return;
-      const t=ev.touches[0];
-      const x = clamp(t.clientX-offX, 8, window.innerWidth - wrap.offsetWidth - 8);
-      const y = clamp(t.clientY-offY, 8, window.innerHeight - wrap.offsetHeight - 8);
-      place(x,y); ev.preventDefault();
-    }
-    function onTEnd(){
-      dragging=false; wrap.classList.remove('dragging');
-      window.removeEventListener('touchmove', onTMove, { passive:false });
-      window.removeEventListener('touchend', onTEnd);
-      save();
-    }
-    header.addEventListener('touchstart', (ev)=>{
-      const t=ev.touches[0]; dragging=true; wrap.classList.add('dragging');
-      offX = t.clientX - wrap.offsetLeft; offY = t.clientY - wrap.offsetTop;
-      window.addEventListener('touchmove', onTMove, { passive:false });
-      window.addEventListener('touchend', onTEnd);
-      ev.preventDefault();
-    }, { passive:false });
-    header.addEventListener('dblclick', snapTopRight);
-    window.addEventListener('resize', ()=>{
-      const x = clamp(wrap.offsetLeft, 8, window.innerWidth - wrap.offsetWidth - 8);
-      const y = clamp(wrap.offsetTop,  8, window.innerHeight - wrap.offsetHeight - 8);
-      place(x,y); save();
-    });
-  })();
+    const t=ev.touches[0];
+    dragging=true; wrap.classList.add('dragging');
+    offX = t.clientX - wrap.offsetLeft; offY = t.clientY - wrap.offsetTop;
+    window.addEventListener('touchmove', onTMove, { passive:false });
+    window.addEventListener('touchend', onTEnd);
+    ev.preventDefault(); // 只有真的在拖曳時才阻止預設，避免吃掉 click
+  }, { passive:false });
+
+  header.addEventListener('dblclick', snapTopRight);
+  window.addEventListener('resize', ()=>{
+    const x = clamp(wrap.offsetLeft, 8, window.innerWidth - wrap.offsetWidth - 8);
+    const y = clamp(wrap.offsetTop,  8, window.innerHeight - wrap.offsetHeight - 8);
+    place(x,y); save();
+  });
+})();
 
   // —— 行動友善：直接 fetch 取核心 → Blob 注入 —— 
   async function injectCoreCode(code) {
