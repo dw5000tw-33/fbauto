@@ -85,10 +85,30 @@
     return null;
   }
 
-  function visibleDialog(){
-    const ds = $$('div[role="dialog"]');
-    return ds.reverse().find(d => visible(d) && d.getAttribute('aria-hidden')!=='true') || null;
+// 小工具：輪詢直到條件為真或超時
+async function waitFor(testFn, { timeout = 5000, interval = 120 } = {}) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    try {
+      const v = testFn();
+      if (v) return v;
+    } catch (_) {}
+    await delay(interval);
   }
+  return null;
+}
+
+function visibleDialog(){
+  const cands = [
+    ...$$('div[role="dialog"]'),
+    ...$$('div[aria-modal="true"]'),
+    ...$$('div[aria-label*="刪除"]'),
+    ...$$('div[aria-label*="Delete"]')
+  ];
+  const vis = cands.filter(d => visible(d) && d.getAttribute('aria-hidden') !== 'true');
+  return vis.length ? vis[vis.length - 1] : null; // 取最上層
+}
+
 
 function isMarketplaceSurveyDialog(dlg){
   if (!dlg) return false;
@@ -286,4 +306,5 @@ async function handleMarketplaceSurvey(rdelay, onLog){
   };
 
 })(window);
+
 
