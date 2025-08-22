@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>FB Core Loader</title>
+<script>
+(async () => {
+  const CORE_URL = 'https://dw5000tw-33.github.io/fbauto/deleteCore.js';
+  try {
+    const r = await fetch(CORE_URL, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const code = await r.text();
+
+    // 回傳給 opener（FB 頁面），並帶上來源限制
+    if (window.opener) {
+      // 允許的接收來源（可放 * 先求通，但建議列白名單）
+      window.opener.postMessage(
+        { type: 'FB_CORE_CODE', code, version: '1.0.1' },
+        '*'
+      );
+    }
+  } catch (err) {
+    if (window.opener) {
+      window.opener.postMessage(
+        { type: 'FB_CORE_ERROR', message: String(err) },
+        '*'
+      );
+    }
+  } finally {
+    // 自動關視窗（給一點時間讓 postMessage 飛出去）
+    setTimeout(() => window.close(), 300);
+  }
+})();
+</script>
+載入中…
