@@ -109,6 +109,37 @@ function visibleDialog(){
   return vis.length ? vis[vis.length - 1] : null; // 取最上層
 }
 
+function isGenericErrorDialog(dlg){
+  if (!dlg) return false;
+  const t = (dlg.textContent || '').trim();
+  return /錯誤|Error|我們無法存取這則貼文|內容目前無法使用|已刪除|無法載入/i.test(t);
+}
+
+async function handleGenericErrorDialog(rdelay, onLog){
+  const dlg = visibleDialog();
+  if (!isGenericErrorDialog(dlg)) return false;
+
+  let closeBtn =
+    $$('button, div[role="button"]', dlg).find(el =>
+      /(關閉|Close|OK|確定|好)/i.test((el.textContent||'') + (el.getAttribute('aria-label')||''))
+    ) || null;
+
+  if (!closeBtn) {
+    const all = $$('button, div[role="button"]').filter(visible);
+    closeBtn = [...all].reverse().find(el =>
+      /(關閉|Close|OK|確定|好)/i.test((el.textContent||'') + (el.getAttribute('aria-label')||''))
+    );
+  }
+
+  if (closeBtn){
+    try { closeBtn.scrollIntoView({behavior:'instant', block:'center'}); } catch {}
+    await rdelay(); closeBtn.click(); await rdelay();
+    logFn(onLog, 'ℹ️ 已關閉錯誤對話框，繼續執行');
+    return true;
+  }
+  return false;
+}
+
 
 function isMarketplaceSurveyDialog(dlg){
   if (!dlg) return false;
@@ -194,44 +225,63 @@ async function handleMarketplaceSurvey(rdelay, onLog){
     if (!delItem){ logFn(onLog, '⚠️ 找不到「刪除貼文/刪除商品」選項'); return false; }
     delItem.click(); await rdelay();
 
-    const ok = await clickConfirmDelete(rdelay);
-    if (!ok){ logFn(onLog, '⚠️ 找不到對話框內的「刪除/確定」按鈕'); return false; }
+ 　 const ok = await clickConfirmDelete(rdelay);
+ 　 if (!ok){ logFn(onLog, '⚠️ 找不到對話框內的「刪除/確定」按鈕'); return false; }
 
-　　// ⬇️ 這一行是重點：若 FB 跳出「是否已售出？」問卷，就自動選擇並「繼續」
-　　await handleMarketplaceSurvey(rdelay, onLog);
+　  // 👉 Marketplace 問卷（第二彈）
+　  await handleMarketplaceSurvey(rdelay, onLog);
 
-    await delay(400);
-    return true;
+　  // 👉 若跳出「無法存取 / 已刪除」等錯誤，關掉並繼續
+　  await handleGenericErrorDialog(rdelay, onLog);
+
+　  // 👉 以 DOM 驗證：卡片消失就算成功
+　  await delay(400);
+　  const stillThere = document.body.contains(card);
+　  if (!stillThere) return true;
+
+　  // 有些情況會延遲消失，再給一次緩衝
+　  await delay(800);
+　  return !document.body.contains(card);
   }
 
-  async function scanOnce(ctx){
-    const { maxToDelete, rdelay, onLog, my, cutoffDate, shouldAbort } = ctx;
-    const main = document.querySelector('[role="main"]') || document.body;
 
-    const menuBtns = $$('div[aria-label="可對此貼文採取的動作"][role="button"]').filter(btn => main.contains(btn));
-    const cards = Array.from(new Set(menuBtns.map(findCardRoot)));
-    let count = 0;
+async function scanOnce(ctx){
+  const { maxToDelete, rdelay, onLog, my, cutoffDate, shouldAbort } = ctx;
+  const main = document.querySelector('[role="main"]') || document.body;
 
-    for (const card of cards){
-      if (ABORT || shouldAbort?.() || count >= maxToDelete) break;
+  // 只取可見、在主內容中的三點選單
+  const menuBtns = $$(
+    'div[aria-label="可對此貼文採取的動作"][role="button"],' +
+    'div[role="button"][aria-label*="動作選項"],' +
+    'div[role="button"][aria-label*="可對此貼文採取的動作"]'
+  ).filter(btn => main.contains(btn) && visible(btn));
 
-      const author = getAuthor(card);
-      const mine = isMine(author, my);
+  const cards = Array.from(new Set(menuBtns.map(findCardRoot)));
+  let count = 0;
 
-      let passTime = true;
-      if (cutoffDate){
-        const when = parseWhen(card);
-        if (when) passTime = when <= cutoffDate;
-      }
+  for (const card of cards){
+    if (ABORT || shouldAbort?.() || count >= maxToDelete) break;
 
-      if (mine && passTime){
-        const ok = await deleteCard(card, rdelay, onLog);
-        if (ok){ count++; logFn(onLog, `🗑️ 已刪除：${author}（本輪 ${count}/${maxToDelete}）`); }
-      }
-      await delay(200);
+    const author = getAuthor(card);
+    const mine = isMine(author, my);
+
+    let passTime = true;
+    if (cutoffDate){
+      const when = parseWhen(card);
+      if (when) passTime = when <= cutoffDate;
     }
-    return count;
+
+    if (mine && passTime){
+      const ok = await deleteCard(card, rdelay, onLog);
+      if (ok){
+        count++;
+        logFn(onLog, `🗑️ 已刪除：${author}（本輪 ${count}/${maxToDelete}）`);
+      }
+    }
+    await delay(200);
   }
+  return count;
+}
 
   async function main(opts){
     const {
@@ -306,5 +356,6 @@ async function handleMarketplaceSurvey(rdelay, onLog){
   };
 
 })(window);
+
 
 
