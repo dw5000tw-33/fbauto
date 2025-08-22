@@ -1,39 +1,69 @@
 <!doctype html>
 <meta charset="utf-8" />
-<title>Panel Loader</title>
+<title>載入核心⋯</title>
 <style>
-  body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",Arial;margin:24px;color:#111}
-  .ok{color:#16a34a}.err{color:#dc2626}
+  body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:#0B1220;color:#E5E7EB;margin:0;display:flex;align-items:center;justify-content:center;height:100vh}
+  .card{width:min(520px,92vw);background:#0f1629;border:1px solid #1b2741;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);padding:20px}
+  h1{font-size:18px;margin:0 0 10px}
+  .log{font:13px/1.4 ui-monospace,monospace;white-space:pre-wrap;background:#0b1220;border:1px solid #192233;border-radius:10px;padding:10px;max-height:46vh;overflow:auto}
+  .ok{color:#86efac} .err{color:#fca5a5}
+  .small{opacity:.75;font-size:12px;margin-top:8px}
 </style>
-<body>
+<div class="card">
+  <h1>正在載入核心…</h1>
+  <div id="log" class="log"></div>
+  <div class="small">此視窗只用來取核心並回傳，不會保存任何資料。</div>
+</div>
 <script>
-(function(){
-  // 允許用 ?u= 自訂面板檔網址；預設抓同 repo 的 panel0-v1.7.js
-  const url = new URL(location.href);
-  const panelURL = url.searchParams.get('u')
-      || 'https://dw5000tw-33.github.io/fb-core-relay/panel0-v1.7.js?ts=' + Date.now();
-  const targetOrigin = location.origin; // 父頁檢查 ev.origin 會用到這個網域
+(async () => {
+  const API_BASE = 'https://fb-core-relay.onrender.com';   // 你的 Render 服務
+  const log = (m,cls) => {
+    const box = document.getElementById('log');
+    const line = document.createElement('div');
+    if(cls) line.className = cls;
+    line.textContent = m;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+  };
 
-  fetch(panelURL, { cache: 'no-store' })
-    .then(r => r.text())
-    .then(code => {
-      // 回傳面板原始碼給父視窗
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ type:'PANEL_CODE', code }, targetOrigin);
-        document.body.innerHTML =
-          '<p class="ok">✅ 面板已送回父頁，可以關閉這個視窗。</p>';
-      } else {
-        document.body.innerHTML =
-          '<p class="err">⚠️ 找不到父視窗，請手動返回 Facebook 頁面。</p>';
-      }
-    })
-    .catch(err => {
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ type:'PANEL_ERROR', message: String(err) }, targetOrigin);
-      }
-      document.body.innerHTML =
-        '<p class="err">❌ 載入面板失敗：' + (err && err.message ? err.message : String(err)) + '</p>';
-    });
+  function getParam(name){
+    const u = new URL(location.href);
+    return u.searchParams.get(name) || '';
+  }
+
+  const code = getParam('c') || 'M0-DUMMY';
+  const dstOrigin = '*'; // 回傳給 opener 的 origin（面板會用 ALLOWED_ORIGIN 檢查）
+
+  try {
+    log('向後端請求核心…');
+    const url = API_BASE + '/api/core' + (code ? ('?c=' + encodeURIComponent(code)) : '');
+    const r = await fetch(url, { method: 'GET' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    if (!data || !data.code) throw new Error('NO_CODE');
+
+    log('核心取得完成，回傳中…','ok');
+    // 回傳核心碼給 opener（面板）
+    if (window.opener) {
+      window.opener.postMessage({ type:'FB_CORE_CODE', code: data.code }, '*');
+      setTimeout(()=>window.close(), 400);
+    } else {
+      // 行動瀏覽器若沒有 opener，就直接注入（後備方案）
+      const blob = new Blob([data.code], {type:'text/javascript'});
+      const url = URL.createObjectURL(blob);
+      const s = document.createElement('script');
+      s.src = url;
+      s.onload = () => { URL.revokeObjectURL(url); log('已直接注入核心。','ok'); };
+      s.onerror = () => log('直接注入失敗','err');
+      document.head.appendChild(s);
+    }
+  } catch (e) {
+    log('載入失敗：' + String(e), 'err');
+    try {
+      if (window.opener) window.opener.postMessage({
+        type:'FB_CORE_ERROR', message: String(e)
+      }, dstOrigin);
+    } catch(_) {}
+  }
 })();
 </script>
-</body>
