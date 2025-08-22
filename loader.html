@@ -1,33 +1,46 @@
-<!doctype html>
-<meta charset="utf-8" />
-<title>FB Core Loader</title>
+<!doctype html><html lang="zh-Hant"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>刪文助手 · 載入中</title>
+<style>
+  body{margin:0;background:#0b1220;color:#e5e7eb;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",Arial}
+  .wrap{max-width:520px;margin:0 auto;padding:18px}
+  .card{background:#0f172a;border:1px solid #1f2937;border-radius:12px;padding:14px}
+  .row{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#4b5563}
+  .dot.ok{background:#10b981}.dot.err{background:#ef4444}
+  .hint{margin-top:10px;color:#60a5fa;font-size:12px}
+  .err{margin-top:10px;color:#fecaca;white-space:pre-wrap}
+</style>
+</head><body>
+<div class="wrap">
+  <h1>正在載入核心（Milestone 0）</h1>
+  <div class="card">
+    <div class="row"><div id="s1" class="dot"></div><div>向伺服器請求核心</div></div>
+    <div class="row"><div id="s2" class="dot"></div><div>傳回面板</div></div>
+    <div id="hint" class="hint">測試用：未啟用檢核/簽章。之後可無痛升級。</div>
+    <div id="err" class="err" style="display:none"></div>
+  </div>
+</div>
 <script>
-(async () => {
-  const CORE_URL = 'https://dw5000tw-33.github.io/fbauto/deleteCore.js';
-  try {
-    const r = await fetch(CORE_URL, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const code = await r.text();
+(async()=>{
+  const API_BASE = 'https://<你的 Render 網址>'; // ← 換成你的 Render 網址
+  const $=s=>document.querySelector(s);
+  const ok=id=>$(id).classList.add('ok');
+  const err=(m)=>{ const e=$('#err'); e.style.display='block'; e.textContent=m; };
 
-    // 回傳給 opener（FB 頁面），並帶上來源限制
-    if (window.opener) {
-      // 允許的接收來源（可放 * 先求通，但建議列白名單）
-      window.opener.postMessage(
-        { type: 'FB_CORE_CODE', code, version: '1.0.1' },
-        '*'
-      );
-    }
-  } catch (err) {
-    if (window.opener) {
-      window.opener.postMessage(
-        { type: 'FB_CORE_ERROR', message: String(err) },
-        '*'
-      );
-    }
-  } finally {
-    // 自動關視窗（給一點時間讓 postMessage 飛出去）
-    setTimeout(() => window.close(), 300);
+  try{
+    const r = await fetch(API_BASE + '/api/core', { cache:'no-store' });
+    if(!r.ok){ err('取得核心失敗：' + r.status); window.opener?.postMessage({type:'FB_CORE_ERROR',message:'CORE_FAIL_'+r.status},'*'); return; }
+    ok('#s1');
+    const { code } = await r.json();
+    if(!code){ err('伺服器未回傳 code'); window.opener?.postMessage({type:'FB_CORE_ERROR',message:'NO_CODE'},'*'); return; }
+    window.opener?.postMessage({type:'FB_CORE_CODE', code}, '*');
+    ok('#s2');
+    setTimeout(()=>{ try{ window.close(); }catch{} }, 600);
+  }catch(e){
+    err('UNEXPECTED: ' + (e?.message||e));
+    window.opener?.postMessage({type:'FB_CORE_ERROR',message:'UNEXPECTED'},'*');
   }
 })();
 </script>
-載入中…
+</body></html>
