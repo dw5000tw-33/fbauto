@@ -1,69 +1,28 @@
 <!doctype html>
-<meta charset="utf-8" />
-<title>載入核心⋯</title>
+<meta charset="utf-8">
+<title>core-loader</title>
 <style>
-  body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:#0B1220;color:#E5E7EB;margin:0;display:flex;align-items:center;justify-content:center;height:100vh}
-  .card{width:min(520px,92vw);background:#0f1629;border:1px solid #1b2741;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);padding:20px}
-  h1{font-size:18px;margin:0 0 10px}
-  .log{font:13px/1.4 ui-monospace,monospace;white-space:pre-wrap;background:#0b1220;border:1px solid #192233;border-radius:10px;padding:10px;max-height:46vh;overflow:auto}
-  .ok{color:#86efac} .err{color:#fca5a5}
-  .small{opacity:.75;font-size:12px;margin-top:8px}
+  html,body{height:100%;margin:0;background:#0b1220;color:#cbd5e1;font:14px/1.4 system-ui}
+  .box{display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px}
+  .ok{color:#10b981}.err{color:#f87171}
 </style>
-<div class="card">
-  <h1>正在載入核心…</h1>
-  <div id="log" class="log"></div>
-  <div class="small">此視窗只用來取核心並回傳，不會保存任何資料。</div>
-</div>
+<div class="box" id="box">Loading…</div>
 <script>
-(async () => {
-  const API_BASE = 'https://fb-core-relay.onrender.com';   // 你的 Render 服務
-  const log = (m,cls) => {
-    const box = document.getElementById('log');
-    const line = document.createElement('div');
-    if(cls) line.className = cls;
-    line.textContent = m;
-    box.appendChild(line);
-    box.scrollTop = box.scrollHeight;
-  };
-
-  function getParam(name){
-    const u = new URL(location.href);
-    return u.searchParams.get(name) || '';
-  }
-
-  const code = getParam('c') || 'M0-DUMMY';
-  const dstOrigin = '*'; // 回傳給 opener 的 origin（面板會用 ALLOWED_ORIGIN 檢查）
-
-  try {
-    log('向後端請求核心…');
-    const url = API_BASE + '/api/core' + (code ? ('?c=' + encodeURIComponent(code)) : '');
-    const r = await fetch(url, { method: 'GET' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
-    if (!data || !data.code) throw new Error('NO_CODE');
-
-    log('核心取得完成，回傳中…','ok');
-    // 回傳核心碼給 opener（面板）
-    if (window.opener) {
-      window.opener.postMessage({ type:'FB_CORE_CODE', code: data.code }, '*');
-      setTimeout(()=>window.close(), 400);
-    } else {
-      // 行動瀏覽器若沒有 opener，就直接注入（後備方案）
-      const blob = new Blob([data.code], {type:'text/javascript'});
-      const url = URL.createObjectURL(blob);
-      const s = document.createElement('script');
-      s.src = url;
-      s.onload = () => { URL.revokeObjectURL(url); log('已直接注入核心。','ok'); };
-      s.onerror = () => log('直接注入失敗','err');
-      document.head.appendChild(s);
-    }
-  } catch (e) {
-    log('載入失敗：' + String(e), 'err');
-    try {
-      if (window.opener) window.opener.postMessage({
-        type:'FB_CORE_ERROR', message: String(e)
-      }, dstOrigin);
-    } catch(_) {}
+(async()=>{
+  const box=document.getElementById('box');
+  const CORE_API='https://fb-core-relay.onrender.com/api/core?c=';
+  const c=new URLSearchParams(location.search).get('c')||'';
+  try{
+    const res=await fetch(CORE_API+encodeURIComponent(c),{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(!data||!data.code) throw new Error(data.message||'no code returned');
+    window.opener?.postMessage({type:'FB_CORE_CODE', code:data.code}, '*');
+    box.innerHTML='<div class="ok">OK</div><div>你可以關掉這個視窗了</div>';
+    setTimeout(()=>window.close(), 400);
+  }catch(e){
+    window.opener?.postMessage({type:'FB_CORE_ERROR', message:String(e&&e.message||e)}, '*');
+    box.innerHTML='<div class="err">ERROR</div><div>'+ (e&&e.message||e) +'</div>';
   }
 })();
 </script>
