@@ -1,28 +1,26 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>core-loader</title>
-<style>
-  html,body{height:100%;margin:0;background:#0b1220;color:#cbd5e1;font:14px/1.4 system-ui}
-  .box{display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px}
-  .ok{color:#10b981}.err{color:#f87171}
-</style>
-<div class="box" id="box">Loading…</div>
 <script>
 (async()=>{
-  const box=document.getElementById('box');
   const CORE_API='https://fb-core-relay.onrender.com/api/core?c=';
   const c=new URLSearchParams(location.search).get('c')||'';
+  const send = (payload)=>{
+    try{ window.opener && window.opener.postMessage(payload,'*'); }catch{}
+    try{ if (window.parent && window.parent!==window) window.parent.postMessage(payload,'*'); }catch{}
+  };
   try{
     const res=await fetch(CORE_API+encodeURIComponent(c),{cache:'no-store'});
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data=await res.json();
     if(!data||!data.code) throw new Error(data.message||'no code returned');
-    window.opener?.postMessage({type:'FB_CORE_CODE', code:data.code}, '*');
-    box.innerHTML='<div class="ok">OK</div><div>你可以關掉這個視窗了</div>';
-    setTimeout(()=>window.close(), 400);
+    send({type:'FB_CORE_CODE', code:data.code});
+    document.body.innerHTML='<div style="color:#10b981;padding:16px;font:14px system-ui">OK，已回傳核心，稍後會自動關閉…</div>';
+    setTimeout(()=>{ try{ window.close(); }catch{} }, 600);
   }catch(e){
-    window.opener?.postMessage({type:'FB_CORE_ERROR', message:String(e&&e.message||e)}, '*');
-    box.innerHTML='<div class="err">ERROR</div><div>'+ (e&&e.message||e) +'</div>';
+    send({type:'FB_CORE_ERROR', message:String(e&&e.message||e)});
+    document.body.innerHTML='<div style="color:#f87171;padding:16px;font:14px system-ui">ERROR：'+(e&&e.message||e)+'</div>';
   }
 })();
 </script>
+
