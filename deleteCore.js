@@ -67,6 +67,11 @@
     return !!author && (a===my || a.includes(my) || my.includes(a) || a==='你');
   }
 
+　function pressEsc(){
+　  const ev = new KeyboardEvent('keydown', {key:'Escape', code:'Escape', keyCode:27, which:27, bubbles:true});
+　  document.dispatchEvent(ev);
+　}
+
   function parseWhen(card){
     const t = $$('span[dir="auto"], a[role="link"] span', card).map(text).find(s=>/分|小時|天|週|年|·/.test(s)) || '';
     const now = new Date();
@@ -116,28 +121,64 @@ function isGenericErrorDialog(dlg){
 }
 
 async function handleGenericErrorDialog(rdelay, onLog){
-  const dlg = visibleDialog();
-  if (!isGenericErrorDialog(dlg)) return false;
+  // 1) 等錯誤對話框真的出現
+  const dlg = await waitFor(() => {
+    const d = visibleDialog();
+    if (!d) return null;
+    const t = (d.textContent || '').trim();
+    return /錯誤|Error|我們無法存取這則貼文|內容目前無法使用|已刪除|無法載入/i.test(t) ? d : null;
+  }, { timeout: 6000, interval: 120 });
 
-  let closeBtn =
-    $$('button, div[role="button"]', dlg).find(el =>
-      /(關閉|Close|OK|確定|好)/i.test((el.textContent||'') + (el.getAttribute('aria-label')||''))
-    ) || null;
+  if (!dlg) return false;
 
-  if (!closeBtn) {
-    const all = $$('button, div[role="button"]').filter(visible);
-    closeBtn = [...all].reverse().find(el =>
-      /(關閉|Close|OK|確定|好)/i.test((el.textContent||'') + (el.getAttribute('aria-label')||''))
-    );
+  // 2) 先找主按鈕：「關閉 / Close / OK / 確定 / 好」
+  const textOrAria = el => ((el.textContent||'') + ' ' + (el.getAttribute('aria-label')||'')).trim();
+  let closeBtn = $$('button, div[role="button"]', dlg).find(el =>
+    /(關閉|Close|OK|確定|好)/i.test(textOrAria(el))
+  );
+
+  // 3) 找不到就找右上角 X（常見是 div[role=button][aria-label=關閉]）
+  if (!closeBtn){
+    closeBtn = [
+      ...$$('div[role="button"][aria-label*="關閉"]', dlg.parentElement || document),
+      ...$$('div[role="button"][aria-label*="Close"]', dlg.parentElement || document)
+    ].filter(visible)[0] || null;
   }
+
+  // 4) 嘗試三種關閉策略：主按鈕 → X → Esc
+  let closed = false;
 
   if (closeBtn){
     try { closeBtn.scrollIntoView({behavior:'instant', block:'center'}); } catch {}
     await rdelay(); closeBtn.click(); await rdelay();
-    logFn(onLog, 'ℹ️ 已關閉錯誤對話框，繼續執行');
-    return true;
+    closed = await waitFor(() => !visibleDialog(), { timeout: 3000, interval: 100 });
   }
-  return false;
+
+  if (!closed){
+    // 點不到就送 Esc
+    pressEsc();
+    await rdelay();
+    closed = await waitFor(() => !visibleDialog(), { timeout: 2000, interval: 100 });
+  }
+
+  if (!closed){
+    // 最後再全頁面找一次任何可見的「關閉」按鈕
+    const all = $$('button, div[role="button"]').filter(visible);
+    const anyClose = [...all].reverse().find(el => /(關閉|Close|OK|確定|好)/i.test(textOrAria(el)));
+    if (anyClose){
+      try { anyClose.scrollIntoView({behavior:'instant', block:'center'}); } catch {}
+      await rdelay(); anyClose.click(); await rdelay();
+      closed = await waitFor(() => !visibleDialog(), { timeout: 2000, interval: 100 });
+    }
+  }
+
+  if (closed){
+    logFn(onLog, '✅ 已關閉錯誤對話框，持續執行');
+    return true;
+  } else {
+    logFn(onLog, '⚠️ 嘗試關閉錯誤對話框未成功（不阻斷，仍繼續）');
+    return false;
+  }
 }
 
 
@@ -356,6 +397,7 @@ async function scanOnce(ctx){
   };
 
 })(window);
+
 
 
 
