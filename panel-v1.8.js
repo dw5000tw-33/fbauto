@@ -2,6 +2,7 @@
    - 社團（作者名比對）／商城（關鍵字+日期）
    - 透過 popup → loader-panel.html → postMessage 注入核心
    - 檢核碼可留空（真的帶空字串）
+   - loader 失敗時自動開「DEV 模式：手動貼上核心」備援
    - 日誌精簡：開始／商城掃描…／🗑️ 已刪除／⛔ 跳過：原因／🟠 已要求停止
 ==================================================================== */
 (()=>{
@@ -22,13 +23,15 @@
   #${PANEL_ID} .min{margin-left:auto;background:#0b1220;border:1px solid #243041;color:#9ca3af;border-radius:8px;padding:4px 8px;cursor:pointer;user-select:none}
   #${PANEL_ID} .box{padding:10px 12px 12px}
   #${PANEL_ID} label{display:block;margin:8px 0 4px;color:#9fb0c3;font-size:12px}
-  #${PANEL_ID} input,#${PANEL_ID} select{width:100%;box-sizing:border-box;padding:8px;border-radius:10px;border:1px solid #374151;background:#111827;color:#E5E7EB;outline:none;user-select:text}
+  #${PANEL_ID} input,#${PANEL_ID} select, #${PANEL_ID} textarea{width:100%;box-sizing:border-box;padding:8px;border-radius:10px;border:1px solid #374151;background:#111827;color:#E5E7EB;outline:none;user-select:text}
+  #${PANEL_ID} textarea{height:140px;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
   #${PANEL_ID} .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   #${PANEL_ID} input[type="date"]{background:#fff;color:#111827;border:1px solid #374151;border-radius:10px;padding:8px}
   #${PANEL_ID} input[type="date"]::-webkit-calendar-picker-indicator{filter:none;opacity:.85}
   #${PANEL_ID} .lineRow{display:grid;grid-template-columns:1fr 100px;gap:10px;margin-top:10px;align-items:center}
   #${PANEL_ID} .lineTag{height:40px;display:flex;align-items:center;padding:0 10px;background:#0b1220;border:1px solid #243041;color:#9cc1ff;border-radius:10px}
   #${PANEL_ID} .lineBtn{height:40px;border:none;border-radius:10px;background:#2563eb;color:#fff;cursor:pointer;font-weight:700}
+  #${PANEL_ID} .hint{font-size:12px;color:#9fb0c3;margin-top:6px}
   #${PANEL_ID} .now{margin-top:6px;color:#60a5fa;font-size:12px}
   #${PANEL_ID} .btns{display:grid;grid-template-columns:1fr 1fr 100px;gap:10px;margin:12px 0 8px}
   #${PANEL_ID} .btn{border:none;border-radius:10px;padding:10px;cursor:pointer;font-weight:700}
@@ -36,6 +39,8 @@
   #${PANEL_ID} .yellow{background:#f59e0b;color:#1f2937}
   #${PANEL_ID} .dark{background:#1f2937;color:#cbd5e1}
   #${PANEL_ID} .log{height:110px;overflow:auto;background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:8px 10px;margin:8px 0 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap}
+  #${PANEL_ID} details{margin-top:8px}
+  #${PANEL_ID} summary{cursor:pointer;color:#9cc1ff}
   `;
   const st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
 
@@ -47,7 +52,8 @@
       <button class="min" id="minBtn">最小化</button>
     </div>
     <div class="box" id="bodyBox">
-      <label>檢核碼（可留空；之後正式版再開啟檢核）</label>
+
+      <label>檢核碼（可留空；目前測試用）</label>
       <input id="passcode" placeholder="可留空；目前測試用">
 
       <label>模式</label>
@@ -86,6 +92,16 @@
       </div>
 
       <div class="log" id="log"></div>
+
+      <!-- DEV 備援：Render 未部屬時使用 -->
+      <details id="devBox" style="display:none;">
+        <summary>DEV 模式：手動貼上核心（Render 未部署時）</summary>
+        <div class="hint">請將 <b>real-core.js</b> 全文貼在下面，再按「注入並開始」。只在本機執行，不會上傳。</div>
+        <textarea id="devCore" placeholder="// 貼上 real-core.js 內容…"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn dark" id="devInject">注入並開始</button>
+        </div>
+      </details>
     </div>
   `;
   document.body.appendChild(wrap);
@@ -131,63 +147,31 @@
   }
   $('#mode').addEventListener('change',updateModeUI); updateModeUI();
 
-  // === 用 popup 載核心（user gesture 觸發 → 手機也能開） ===
-  async function loadCoreViaPopup(passcode){
-    return new Promise((resolve, reject)=>{
-      // ★ 檢核碼空白：帶空字串
-      const codeForLoader=(passcode && passcode.trim())?passcode.trim():'';
-      const url=LOADER_URL_BASE+'?c='+encodeURIComponent(codeForLoader);
-      const w=window.open(url,'_blank','width=520,height=420');
-      if(!w){ reject(new Error('無法開啟載入視窗（瀏覽器封鎖彈窗）')); return; }
-      const timer=setTimeout(()=>{ window.removeEventListener('message',onMsg); try{w.close();}catch{} reject(new Error('載入逾時')); },20000);
-
-      function injectCoreCode(code){
-        return new Promise((res,rej)=>{
-          try{
-            const blob=new Blob([code],{type:'text/javascript'});
-            const u=URL.createObjectURL(blob);
-            const s=document.createElement('script'); s.src=u;
-            s.onload=()=>{ URL.revokeObjectURL(u);
-              const coreFn= window.FB_DELETE_CORE || (window.FBDelCore && typeof window.FBDelCore.start==='function' ? (opts)=>window.FBDelCore.start(opts) : null);
-              if(!coreFn) return rej(new Error('核心格式不正確')); res(coreFn);
-            };
-            s.onerror=()=>{ URL.revokeObjectURL(u); rej(new Error('Blob 腳本載入失敗')); };
-            document.head.appendChild(s);
-          }catch(e){ rej(e); }
-        });
-      }
-
-      function onMsg(ev){
-        if(ev.origin!==ALLOWED_ORIGIN) return; // 僅接受自家 Pages 回傳
-        const data=ev.data||{};
-        if(data.type==='FB_CORE_CODE'){ clearTimeout(timer); window.removeEventListener('message',onMsg); try{w.close();}catch{} injectCoreCode(data.code).then(resolve).catch(reject); }
-        else if(data.type==='FB_CORE_ERROR'){ clearTimeout(timer); window.removeEventListener('message',onMsg); try{w.close();}catch{} reject(new Error(data.message||'Loader 回報錯誤')); }
-      }
-      window.addEventListener('message',onMsg);
+  // ---- 共用：把 core 字串注入成可呼叫的函式 ----
+  function injectCoreCode(code){
+    return new Promise((res,rej)=>{
+      try{
+        const blob=new Blob([code],{type:'text/javascript'});
+        const u=URL.createObjectURL(blob);
+        const s=document.createElement('script'); s.src=u;
+        s.onload=()=>{ URL.revokeObjectURL(u);
+          const coreFn = window.FB_DELETE_CORE || (window.FBDelCore && typeof window.FBDelCore.start==='function' ? (opts)=>window.FBDelCore.start(opts) : null);
+          if(!coreFn) return rej(new Error('核心格式不正確'));
+          res(coreFn);
+        };
+        s.onerror=()=>{ URL.revokeObjectURL(u); rej(new Error('Blob 腳本載入失敗')); };
+        document.head.appendChild(s);
+      }catch(e){ rej(e); }
     });
   }
 
-  // 🔘 開始
-  $('#start').onclick=async()=>{
-    abortFlag=false;
-    const passcode=$('#passcode').value.trim();
+  // ---- 共用：組參數並執行核心 ----
+  async function runCore(coreFn){
     const mode=$('#mode').value;
     const raw=$('#name').value.trim();
+    const cutoff=$('#cutoff').value ? new Date($('#cutoff').value+'T23:59:59') : null;
     if(!raw){ alert(mode==='shop'?'請先輸入商品關鍵字':'請先輸入你的名字'); return; }
 
-    log('開始'); // 精簡日誌
-
-    // 取核心
-    let core; try{
-      core=await loadCoreViaPopup(passcode);
-    }catch(e){
-      log('⛔ 跳過：核心未載入（', e.message, ')');
-      alert('讀取核心失敗：'+e.message+'\n請允許彈出式視窗，或改用桌機再試一次。');
-      return;
-    }
-
-    // 參數
-    const cutoff=$('#cutoff').value ? new Date($('#cutoff').value+'T23:59:59') : null;
     const opts={
       mode,
       myName:(mode==='group')?raw:undefined,
@@ -197,13 +181,68 @@
       delayMin:Math.max(200, +$('#dmin').value || 1000),
       delayMax:Math.max(+$('#dmax').value || 2000, +$('#dmin').value || 1000),
       cutoff,
-      onLog: msg=>log(msg),           // 轉印核心的「簡潔」訊息
+      onLog: msg=>log(msg),   // 精簡訊息由核心輸出
       shouldAbort: ()=>abortFlag,
-      logMode:'simple',               // ★ 請核心走「簡潔版」訊息
-      consoleEcho:false               // ★ 不複寫到 Console（避免噪音）
+      logMode:'simple',
+      consoleEcho:false
     };
 
-    try{ await core(opts); }catch(e){ log('⛔ 跳過：執行錯誤（',e.message,')'); }
+    log('開始');
+    try{ await coreFn(opts); }catch(e){ log('⛔ 跳過：執行錯誤（',e.message,')'); }
+  }
+
+  // === 用 popup 載核心（user gesture 觸發 → 手機也能開） ===
+  async function loadCoreViaPopup(passcode){
+    return new Promise((resolve, reject)=>{
+      const codeForLoader=(passcode && passcode.trim())?passcode.trim():'';
+      const url=LOADER_URL_BASE+'?c='+encodeURIComponent(codeForLoader);
+      const w=window.open(url,'_blank','width=520,height=420');
+      if(!w){ reject(new Error('無法開啟載入視窗（瀏覽器封鎖彈窗）')); return; }
+      const timer=setTimeout(()=>{ window.removeEventListener('message',onMsg); try{w.close();}catch{} reject(new Error('載入逾時')); },20000);
+
+      function onMsg(ev){
+        if(ev.origin !== ALLOWED_ORIGIN){
+          try{ console.log('[panel] ignored message from', ev.origin, 'expected', ALLOWED_ORIGIN);}catch{}
+          return;
+        }
+        const data=ev.data||{};
+        if(data.type==='FB_CORE_CODE'){ clearTimeout(timer); window.removeEventListener('message',onMsg); try{w.close();}catch{} injectCoreCode(data.code).then(resolve).catch(reject); }
+        else if(data.type==='FB_CORE_ERROR'){ clearTimeout(timer); window.removeEventListener('message',onMsg); try{w.close();}catch{} reject(new Error(data.message||'Loader 回報錯誤')); }
+      }
+      window.addEventListener('message',onMsg);
+    });
+  }
+
+  // 🔘 開始（預設：loader；失敗：顯示 DEV 備援）
+  $('#start').onclick=async()=>{
+    abortFlag=false;
+    const passcode=$('#passcode').value.trim();
+
+    // 先嘗試 loader
+    try{
+      const core = await loadCoreViaPopup(passcode);
+      await runCore(core);
+      return;
+    }catch(e){
+      log('⛔ 跳過：核心未載入（', e.message, '）');
+      // 自動展開 DEV 備援
+      const box = $('#devBox');
+      box.style.display='block';
+      try{ box.open = true; }catch{}
+      $('#devCore').focus();
+    }
+  };
+
+  // DEV：手動貼上核心 → 注入並開始
+  $('#devInject').onclick = async ()=>{
+    const code = $('#devCore').value;
+    if(!code || !code.trim()){ alert('請先貼上 core 內容'); return; }
+    try{
+      const core = await injectCoreCode(code);
+      await runCore(core);
+    }catch(e){
+      log('⛔ 跳過：DEV 注入失敗（', e.message, '）');
+    }
   };
 
   log('書籤面板就緒：在 facebook.com 點書籤 → 面板出現 → 設定 → 開始');
