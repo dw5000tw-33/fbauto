@@ -90,6 +90,67 @@
     return ds.reverse().find(d => visible(d) && d.getAttribute('aria-hidden')!=='true') || null;
   }
 
+function isMarketplaceSurveyDialog(dlg){
+  if (!dlg) return false;
+  const txt = (dlg.textContent || '').trim();
+  // 常見文案：這項商品是否已售出？（或 EN 版本）
+  return /是否已售出|已售出|sold/i.test(txt);
+}
+
+async function handleMarketplaceSurvey(rdelay, onLog){
+  // 等待第二顆問卷對話框出現
+  const dlg = await waitFor(() => {
+    const d = visibleDialog();
+    return isMarketplaceSurveyDialog(d) ? d : null;
+  }, { timeout: 5000, interval: 150 });
+
+  if (!dlg) return false;
+
+  // 優先選「不便回答」；找不到就退而選「否，未售出」
+  const pickLabel = $$('label, span', dlg).find(el =>
+    /(不便回答|不方便回答|Prefer not|No,.*sold|否[,，]?\s*未售出|No\b.*sold)/i.test((el.textContent||'').trim())
+  ) || $$('label, span', dlg)[0];
+
+  if (pickLabel) {
+    // 點 label 或其內的 input[type=radio]
+    const input = pickLabel.querySelector('input[type="radio"]') || pickLabel.closest('label')?.querySelector('input[type="radio"]');
+    if (input) { input.click(); }
+    else { pickLabel.click(); }
+    await rdelay();
+    logFn(onLog, 'ℹ️ 已選擇問卷選項（不便回答/未售出）');
+  }
+
+  // 找「繼續 / Continue / 下一步」按鈕
+  let go = $$('button, div[role="button"]', dlg).find(el =>
+    /(繼續|下一步|Continue|Next)/i.test((el.textContent||'').trim()) &&
+    !/(取消|Cancel)/i.test((el.textContent||'').trim())
+  );
+
+  if (!go) {
+    // 全頁反向找一次
+    const all = $$('button, div[role="button"]').filter(visible);
+    go = [...all].reverse().find(el => /(繼續|下一步|Continue|Next)/i.test((el.textContent||'').trim()));
+  }
+
+  if (go) {
+    try { go.scrollIntoView({behavior:'instant', block:'center'}); } catch {}
+    await rdelay(); go.click(); await rdelay();
+    // 等對話框關閉；若還在就嘗試點「關閉」
+    const closed = await waitFor(() => !visibleDialog(), { timeout: 4000, interval: 150 });
+    if (!closed) {
+      const closeBtn = $$('div[role="button"],button', dlg)
+        .find(el => /(關閉|Close|×|✕)/i.test((el.getAttribute('aria-label')||'') + (el.textContent||'')));
+      if (closeBtn) { closeBtn.click(); await rdelay(); }
+    }
+    logFn(onLog, '✅ 問卷已處理並關閉');
+    return true;
+  }
+
+  logFn(onLog, '⚠️ 找不到「繼續」按鈕');
+  return false;
+}
+
+  
   async function clickConfirmDelete(rdelay){
     const box = visibleDialog() || document;
     const btn = $$('button, div[role="button"]', box)
@@ -115,6 +176,9 @@
 
     const ok = await clickConfirmDelete(rdelay);
     if (!ok){ logFn(onLog, '⚠️ 找不到對話框內的「刪除/確定」按鈕'); return false; }
+
+　　// ⬇️ 這一行是重點：若 FB 跳出「是否已售出？」問卷，就自動選擇並「繼續」
+　　await handleMarketplaceSurvey(rdelay, onLog);
 
     await delay(400);
     return true;
@@ -222,3 +286,4 @@
   };
 
 })(window);
+
