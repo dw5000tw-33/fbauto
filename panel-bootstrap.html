@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Load Panel</title>
+<style>
+  html,body{background:#0b1220;color:#cbd5e1;font:14px system-ui;margin:0}
+  .wrap{padding:20px}
+</style>
+<div class="wrap">載入面板中…</div>
+<script>
+(async()=>{
+  const PANEL_URL = 'https://dw5000tw-33.github.io/fbauto/panel-v1.8.js';
+  try{
+    const r = await fetch(PANEL_URL+'?v='+Date.now(), {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const code = await r.text();
+    if (window.opener) {
+      window.opener.postMessage({type:'PANEL_CODE', code}, '*');
+      document.querySelector('.wrap').textContent = 'OK，已回傳面板；即將自動關閉…';
+      setTimeout(()=>{ try{ window.close(); }catch{} }, 900);
+    } else {
+      document.querySelector('.wrap').textContent = '這頁需由書籤開啟（無 opener）。';
+    }
+  }catch(e){
+    document.querySelector('.wrap').textContent = '載入失敗：'+(e.message||e);
+  }
+})();
+</script>
