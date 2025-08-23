@@ -8,13 +8,15 @@
 </style>
 <div class="wrap">載入面板中…</div>
 <script>
+<script>
 (async () => {
   const $ = sel => document.querySelector(sel);
   const msg = (t) => $('.wrap').innerHTML = t;
 
   const params = new URLSearchParams(location.search);
-  const nonce = params.get('nonce') || '';  // 由書籤傳入
-  const PANEL_URL = 'https://dw5000tw-33.github.io/fbauto/panel-v1.8.js';
+  const nonce = params.get('nonce') || '';
+  const BASE = 'https://dw5000tw-33.github.io/fbauto/';
+  const versions = ['panel-v1.8.js', 'panel-v1.7.js']; // 依序嘗試
 
   if (!window.opener) {
     msg('這頁需由書籤開啟（無 <code>opener</code>）。');
@@ -25,35 +27,30 @@
     return;
   }
 
-  try {
-    window.opener.postMessage({ type: 'READY', nonce }, '*');
-  } catch (e) {
-    msg('無法與 opener 溝通：' + (e.message || e));
+  window.opener.postMessage({ type: 'READY', nonce }, '*');
+
+  let code = null, verTried = null;
+  for (let ver of versions) {
+    try {
+      verTried = ver;
+      msg('嘗試載入版本：<code>' + ver + '</code> ...');
+      const r = await fetch(BASE + ver + '?v=' + Date.now(), { cache:'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      code = await r.text();
+      break; // 成功就跳出迴圈
+    } catch (e) {
+      console.warn('載入失敗：', ver, e);
+    }
+  }
+
+  if (!code) {
+    msg('所有版本載入失敗，請聯絡管理者。');
     return;
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
-
-  try {
-    const r = await fetch(PANEL_URL + '?v=' + Date.now(), {
-      cache: 'no-store',
-      signal: controller.signal
-    });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const code = await r.text();
-
-    // 把完整程式回傳給 opener
-    window.opener.postMessage({ type: 'PANEL_CODE', nonce, code }, '*');
-
-    msg('OK，已回傳面板；即將自動關閉…');
-    setTimeout(() => { try { window.close(); } catch {} }, 900);
-  } catch (e) {
-    const why = (e.name === 'AbortError') ? '連線逾時' : (e.message || e);
-    msg('載入失敗：' + why + '<br>請檢查：<br>1) 檔案是否存在 <code>' +
-      PANEL_URL + '</code><br>2) GitHub Pages 是否已部署完成<br>3) 檔名/路徑大小寫是否正確');
-  } finally {
-    clearTimeout(timer);
-  }
+  // 回傳給 opener
+  window.opener.postMessage({ type: 'PANEL_CODE', nonce, code }, '*');
+  msg('OK，已回傳 <code>' + verTried + '</code>；即將自動關閉…');
+  setTimeout(() => { try { window.close(); } catch {} }, 900);
 })();
 </script>
