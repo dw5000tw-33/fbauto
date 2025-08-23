@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="zh-Hant">
 <head>
@@ -60,8 +61,11 @@
     ol{padding-left:20px}
     footer{margin:28px 0;color:#9aa7b7;font-size:13px}
 
-    /* FAQ 英文字改黃 */
+    /* FAQ 英文字改黃縮排 */
     .faq-en{color:var(--yellow);letter-spacing:.5px}
+    .sub{ display:block; margin-top:4px; margin-left:1.25em; }
+    .sub::before{ content:"➜ "; color:#FACC15; }
+
   </style>
 </head>
 <body>
@@ -108,10 +112,10 @@
 
     <div class="card" style="margin-top:18px">
       <h3 style="margin:0 0 8px">使用</h3>
-        <p style="margin:8px 0">開啟任一網站：<span class="faq-en">臉書</span>→ 點書籤「開啟面板」 → 面板視窗會跳出並完成注入腳本。</p>
+        <b><p style="margin:8px 0">開啟任一網站：<span class="faq-en">臉書</span>→ 點書籤「開啟面板」 → 面板視窗會跳出並完成注入腳本。</p></b>
         <ul style="margin:8px 0; padding-left:20px">
-        <li>此版本使用 <code>Blob</code> 注入（相容 Facebook CSP）。</li>
-        <li>已加入 <code>nonce</code> 安全握手（只能由bookmarklet觸發）。</li>
+        <span class="sub">此版本使用 <code>Blob</code> 注入（相容 Facebook CSP）。</span>
+        <span class="sub">已加入 <code>nonce</code> 安全握手（只能由bookmarklet觸發）。</span>
       </ul>
     </div>
 
@@ -119,17 +123,17 @@
       <h3 style="margin:0 0 8px">常見問題 <span class="faq-en">FAQ</span></h3>
       <ul style="margin:8px 0; padding-left:20px; line-height:1.6">
         <b>Q1：點書籤沒反應？</b><br>
-        <span class="faq-en"> ➜ </span>檢查<span class="faq-en">是否「阻擋彈出式視窗」，允許</span>後再點一次。<br>
+            <span class="sub"> 檢查<span class="faq-en">是否「阻擋彈出式視窗」，允許</span>後再點一次。<br></span>
         <b>Q2：為什麼 Facebook 可以跑，其他網站卻不行？</b> <br>
-         <span class="faq-en"> ➜ </span>有些網站設有嚴格的 <code>CSP</code> 會阻止注入；<span class="faq-en">可先重新整理(F5)再試</span>，或換在支援的網站使用。<br>
+            <span class="sub"> 有些網站設有嚴格的 <code>CSP</code> 會阻止注入；<span class="faq-en">可先重新整理(F5)再試</span>，或換在支援的網站使用。<br></span>
         <b>Q3：手機上能用嗎？</b><br>
-        <span class="faq-en"> ➜ </span>多數行動瀏覽器不支援 <code>javascript:</code> 書籤；<span class="faq-en">請改用桌機</span>。FB App 內建瀏覽器也不支援。<br></span>
+            <span class="sub"> 多數行動瀏覽器不支援 <code>javascript:</code> 書籤；<span class="faq-en">請改用桌機</span>。FB App 內建瀏覽器也不支援。<br></span>
         <b>Q4：按了之後頁面暫停？</b> <br>
-        <span class="faq-en">➜ </span>正常現象，代表 DevTools 已打開；按 <span class="faq-en"><b>F8</b></span> 或 <span class="faq-en">DevTools 的「▶」繼續。<br></span>
+            <span class="sub"> 正常現象，代表 DevTools 已打開；按 <span class="faq-en"><b>F8</b></span> 或 <span class="faq-en">DevTools 的「▶」繼續。<br></span></span>
         <b>Q5：要怎麼更新？</b><br>
-        <span class="faq-en">➜ 書籤不用重加</span>；會抓最新面板版本。異常，可清快取或告知管理者。<br>
+            <span class="sub"> <span class="faq-en">書籤不用重加</span>；會抓最新面板版本。異常，可清快取或告知管理者。<br></span>
         <b>Q6：安全嗎？</b><br>
-        <span class="faq-en">➜ 書籤不含程式</span>；就算有人直接開檔，也需通過檢核碼才會運作。<br></span>
+            <span class="sub"> <span class="faq-en">書籤不含程式</span>；就算有人直接開檔，也需通過檢核碼才會運作。<br></span>
       </ul>
     </div>
 
