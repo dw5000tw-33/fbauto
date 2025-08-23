@@ -1,0 +1,64 @@
+
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>33 一鍵面板書籤 · 超精簡版</title>
+  <style>
+    :root { --bg:#0b1020; --card:#111827; --text:#e5e7eb; --muted:#94a3b8; --primary:#22d3ee; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:linear-gradient(180deg,#080c19,#0b1020); color:var(--text);
+            font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans TC",sans-serif; }
+    .wrap { max-width:880px; margin:48px auto; padding:0 16px; }
+    h1 { font-size:clamp(22px,3.6vw,36px); margin:0 0 8px; letter-spacing:.3px; }
+    p.lead { color:var(--muted); margin:0 0 24px; }
+    .card { background:rgba(17,24,39,.75); border:1px solid #1f2937; border-radius:16px; padding:18px; }
+    .cta { display:inline-flex; align-items:center; gap:10px; padding:14px 18px; border-radius:14px; 
+            background:linear-gradient(180deg,#1f2937,#0c1222); border:1px solid #1f2937; color:#fff; 
+            text-decoration:none; font-size:18px; box-shadow:0 8px 22px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06); }
+    .cta:hover { border-color:#334155; transform: translateY(-1px); transition: all .18s ease; }
+    .emoji { font-size:22px; }
+    code { background:#0b1222; border:1px solid #111827; padding:2px 6px; border-radius:6px; font-size:90%; }
+    ol { padding-left:20px; }
+    footer { margin:28px 0; color:#9aa7b7; font-size:13px; }
+    .only-one { display:flex; align-items:center; gap:14px; }
+    .hint { color:#9aa7b7; font-size:13px; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>一鍵面板書籤（33 專用．精簡）</h1>
+    <p class="lead">把下面這<strong>唯一的一顆</strong>按鈕拖到瀏覽器的書籤列。日後在任何頁面只要點它，就會開啟你的面板程式。</p>
+
+    <div class="card">
+      <div class="only-one">
+        <a class="cta" href="javascript:(()=>{const ORI='https://dw5000tw-33.github.io';function inject(code){try{const b=new Blob([code],{type:'text/javascript'});const u=URL.createObjectURL(b);const s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s);}catch(e){alert('注入失敗: '+(e.message||e));}};let w;function onMsg(ev){if(ev.origin!==ORI)return;const d=ev.data||{};if(d.type==='PANEL_CODE'){window.removeEventListener('message',onMsg);inject(d.code);try{w&&w.close();}catch{}}}window.addEventListener('message',onMsg,{once:true});w=window.open(ORI+'/fbauto/panel-bootstrap.html?ts=%27+Date.now(),%27_blank%27,%27width=480,height=320%27);if(!w) alert(%27請允許彈出式視窗%27);})();"><span class="emoji">🧹</span><span>開啟面板（33 版）</span></a>
+        <div>
+          <div>拖曳到書籤列 → 成功後書籤名可改成你喜歡的符號（建議：<code>🧹</code> 或 <code>33</code>）。</div>
+          <div class="hint">若被瀏覽器阻擋彈出視窗，請允許彈出（第一次需要）。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3 style="margin:0 0 8px">超快兩步安裝</h3>
+      <ol style="margin:8px 0">
+        <li>顯示書籤列：<b>Ctrl+Shift+B</b>（Chrome / Edge / Brave）。</li>
+        <li>把上方「開啟面板（33 版）」按鈕拖到書籤列即可。</li>
+      </ol>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3 style="margin:0 0 8px">使用</h3>
+      <p style="margin:8px 0">開啟任一網站 → 點書籤「開啟面板（33 版）」 → 你的面板視窗會跳出並注入腳本。</p>
+      <ul style="margin:8px 0; padding-left:20px">
+        <li>遇到嚴格頁面或 CSP 限制，可能無法注入；可嘗試在內容頁重新整理後再點一次。</li>
+        <li>若看不到視窗，檢查是否被「阻擋彈出式視窗」。</li>
+      </ul>
+    </div>
+
+    <footer>Made for 33 · 單顆書籤，輕鬆上陣 🐍</footer>
+  </div>
+</body>
+</html>
