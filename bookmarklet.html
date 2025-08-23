@@ -45,12 +45,23 @@
 <body>
   <div class="wrap">
 
-    <!-- 標題 + 右上小圖（無邊框） -->
-    <div class="headerbar">
-      <h1>一鍵面板書籤（33 愛分享）</h1>
-      <!-- TODO: 把 src 換成你的 PNG 實際網址 -->
-      <img class="brand-badge" src="https://dw5000tw-33.github.io/fbauto/your-badge.png" alt="33 小圖">
-    </div>
+  <div class="headerbar">
+    <h1>一鍵面板書籤（33 愛分享）</h1>
+
+    <!-- 官方帳號（新分頁開啟） -->
+    <a class="brand-link"
+       href="https://line.me/R/ti/p/@307momvl"
+       target="_blank" rel="noopener noreferrer"
+       aria-label="加入 33 的 LINE 官方帳號（新分頁開啟）">
+      <img class="brand-badge"
+           src="https://dw5000tw-33.github.io/fbauto/your-badge.png"
+           alt="@307momvl 官方 LINE 募集好友">
+    </a>
+  </div>
+  <!-- 或者你想留個純文字連結就放在這裡（不要放在 <a> 標籤裡面）： 
+  <p class="hint"><a href="https://page.line.me/307momvl" target="_blank" rel="noopener">官方帳號（新分頁開啟）</a></p>
+  -->
+
 
     <p class="lead">把下面這<strong>藍色面板</strong>按鈕直接拖到瀏覽器的書籤列。以後在任何頁面點書籤，就會開啟面板。</p>
 
@@ -68,15 +79,15 @@
     <div class="card" style="margin-top:18px">
       <h3 style="margin:0 0 8px">超快兩步安裝</h3>
       <ol style="margin:8px 0">
-        <li>顯示書籤列：<b>Ctrl+Shift+B</b>（Chrome / Edge / Brave）。</li>
-        <li>把上方「開啟面板(33版)」按鈕拖到書籤列即可。</li>
+        <li>顯示書籤列：<span class="faq-en"><b>Ctrl+Shift+B</b></span>（Chrome / Edge / Brave）。</li>
+        <li>把上方「開啟面板(33版)」按鈕<span class="faq-en">拖到書籤列</span>即可。</li>
       </ol>
     </div>
 
     <div class="card" style="margin-top:18px">
       <h3 style="margin:0 0 8px">使用</h3>
-      <p style="margin:8px 0">開啟任一網站 → 點書籤「開啟面板」 → 面板視窗會跳出並完成注入腳本。</p>
-      <ul style="margin:8px 0; padding-left:20px">
+        <p style="margin:8px 0">開啟任一網站：<span class="faq-en">臉書</span>→ 點書籤「開啟面板」 → 面板視窗會跳出並完成注入腳本。</p>
+        <ul style="margin:8px 0; padding-left:20px">
         <li>此版本使用 <code>Blob</code> 注入（相容 Facebook CSP）。</li>
         <li>已加入 <code>nonce</code> 安全握手（只能由bookmarklet觸發）。</li>
       </ul>
