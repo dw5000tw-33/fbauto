@@ -16,7 +16,6 @@
   const nonce = params.get('nonce') || '';  // 由書籤傳入
   const PANEL_URL = 'https://dw5000tw-33.github.io/fbauto/panel-v1.8.js';
 
-  // 必須由書籤開啟，且要帶 nonce
   if (!window.opener) {
     msg('這頁需由書籤開啟（無 <code>opener</code>）。');
     return;
@@ -26,7 +25,6 @@
     return;
   }
 
-  // 先向 opener 回報 READY（帶 nonce），讓對方可做雙向驗證（可選）
   try {
     window.opener.postMessage({ type: 'READY', nonce }, '*');
   } catch (e) {
@@ -34,9 +32,8 @@
     return;
   }
 
-  // 取面板核心：加逾時 + 不使用快取
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000); // 10 秒逾時
+  const timer = setTimeout(() => controller.abort(), 10000);
 
   try {
     const r = await fetch(PANEL_URL + '?v=' + Date.now(), {
@@ -46,7 +43,7 @@
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const code = await r.text();
 
-    // 回傳給 opener（帶 nonce），僅供握手成功的一方使用
+    // 把完整程式回傳給 opener
     window.opener.postMessage({ type: 'PANEL_CODE', nonce, code }, '*');
 
     msg('OK，已回傳面板；即將自動關閉…');
