@@ -8,25 +8,39 @@
     :root{
       --bg:#0b1020; --card:#111827; --text:#e5e7eb; --muted:#94a3b8; --primary:#22d3ee;
       --fb:#1877F2; --yellow:#FACC15;
+      --logo-nudge-desktop: 18px;  /* 桌機下移量：改 8~14px 看手感 */
+      --logo-nudge-mobile: 6px;    /* 手機下移量：改 4~10px */
+
     }
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(180deg,#080c19,#0b1020);color:var(--text);
          font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans TC",sans-serif}
     .wrap{max-width:880px;margin:48px auto;padding:0 16px}
 
-    /* 標題 + 右側小圖（無邊框） */
-    .headerbar{ display:flex; justify-content:space-between; align-items:baseline; gap:16px; }
-    h1{font-size:clamp(22px,3.6vw,36px);margin:0 0 8px;letter-spacing:.3px}
+    /* 標題列：改成置中對齊，視覺更自然 */
+    .headerbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;    /* 原本 baseline -> center */
+      gap:16px;
+    }
+
     .brand-badge{
-      width:clamp(72px, 20vw, 120px);  /* 手機縮小、桌機最多120px */
+      width:clamp(72px, 20vw, 120px);
       height:auto;
       border:0; background:transparent; box-shadow:none;
-      transform: translateY(60px);
+      transform: translateY(var(--logo-nudge-desktop));
       cursor:pointer;
+      
     }
+
     @media (max-width:520px){
-      .brand-badge{ display:block; transform: translateY(60px); }
+      .brand-badge{
+        transform: translateY(var(--logo-nudge-mobile));
+      }
     }
+
+
 
     p.lead{color:var(--muted);margin:0 0 24px}
     .card{background:rgba(17,24,39,.75);border:1px solid #1f2937;border-radius:16px;padding:18px}
