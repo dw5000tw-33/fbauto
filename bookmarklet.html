@@ -1,10 +1,9 @@
-
 <!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>33 一鍵面板書籤 · 超精簡版</title>
+  <title>33 一鍵面板書籤 · FB 相容版</title>
   <style>
     :root { --bg:#0b1020; --card:#111827; --text:#e5e7eb; --muted:#94a3b8; --primary:#22d3ee; }
     * { box-sizing: border-box; }
@@ -14,8 +13,8 @@
     h1 { font-size:clamp(22px,3.6vw,36px); margin:0 0 8px; letter-spacing:.3px; }
     p.lead { color:var(--muted); margin:0 0 24px; }
     .card { background:rgba(17,24,39,.75); border:1px solid #1f2937; border-radius:16px; padding:18px; }
-    .cta { display:inline-flex; align-items:center; gap:10px; padding:14px 18px; border-radius:14px; 
-            background:linear-gradient(180deg,#1f2937,#0c1222); border:1px solid #1f2937; color:#fff; 
+    .cta { display:inline-flex; align-items:center; gap:10px; padding:14px 18px; border-radius:14px;
+            background:linear-gradient(180deg,#1f2937,#0c1222); border:1px solid #1f2937; color:#fff;
             text-decoration:none; font-size:18px; box-shadow:0 8px 22px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06); }
     .cta:hover { border-color:#334155; transform: translateY(-1px); transition: all .18s ease; }
     .emoji { font-size:22px; }
@@ -28,15 +27,15 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>一鍵面板書籤（33 專用．精簡）</h1>
-    <p class="lead">把下面這<strong>唯一的一顆</strong>按鈕拖到瀏覽器的書籤列。日後在任何頁面只要點它，就會開啟你的面板程式。</p>
+    <h1>一鍵面板書籤（33 愛分享）</h1>
+    <p class="lead">把下面這<strong>唯一的一顆</strong>按鈕拖到瀏覽器的書籤列。以後在任何頁面點它，就會開啟面板。</p>
 
     <div class="card">
       <div class="only-one">
-        <a class="cta" href="javascript:(()=>{const ORI='https://dw5000tw-33.github.io';function inject(code){try{const b=new Blob([code],{type:'text/javascript'});const u=URL.createObjectURL(b);const s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s);}catch(e){alert('注入失敗: '+(e.message||e));}};let w;function onMsg(ev){if(ev.origin!==ORI)return;const d=ev.data||{};if(d.type==='PANEL_CODE'){window.removeEventListener('message',onMsg);inject(d.code);try{w&&w.close();}catch{}}}window.addEventListener('message',onMsg,{once:true});w=window.open(ORI+'/fbauto/panel-bootstrap.html?ts=%27+Date.now(),%27_blank%27,%27width=480,height=320%27);if(!w) alert(%27請允許彈出式視窗%27);})();"><span class="emoji">🧹</span><span>開啟面板（33 版）</span></a>
+        <a class="cta" href="javascript:(()=>{const ORI='https://dw5000tw-33.github.io';const nonce=Math.random().toString(36).slice(2)+Date.now();let w;function inject(code){try{const b=new Blob([code],{type:'text/javascript'});const u=URL.createObjectURL(b);const s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s);}catch(e){alert('注入失敗: '+(e.message||e));}}function onMsg(ev){if(ev.origin!==ORI||ev.source!==w)return;const d=ev.data||{};if(d.type==='READY'&&d.nonce===nonce){ev.source.postMessage({type:'GIMME_CODE',nonce},ORI);}else if(d.type==='PANEL_CODE'&&d.nonce===nonce&&typeof d.code==='string'){window.removeEventListener('message',onMsg);inject(d.code);try{w&&w.close();}catch{}}}window.addEventListener('message',onMsg);const url=ORI+'/fbauto/panel-bootstrap.html?nonce='+encodeURIComponent(nonce);w=window.open(url,'_blank','width=480,height=320');if(!w)alert('請允許彈出式視窗');})();"><span class="emoji">🧹</span><span>開啟面板（33 版）</span></a>
         <div>
           <div>拖曳到書籤列 → 成功後書籤名可改成你喜歡的符號（建議：<code>🧹</code> 或 <code>33</code>）。</div>
-          <div class="hint">若被瀏覽器阻擋彈出視窗，請允許彈出（第一次需要）。</div>
+          <div class="hint">第一次若被瀏覽器阻擋彈出視窗，請按允許。</div>
         </div>
       </div>
     </div>
@@ -51,14 +50,14 @@
 
     <div class="card" style="margin-top:18px">
       <h3 style="margin:0 0 8px">使用</h3>
-      <p style="margin:8px 0">開啟任一網站 → 點書籤「開啟面板（33 版）」 → 你的面板視窗會跳出並注入腳本。</p>
+      <p style="margin:8px 0">開啟任一網站 → 點書籤「開啟面板（33 版）」 → 面板視窗會跳出並完成握手後注入腳本。</p>
       <ul style="margin:8px 0; padding-left:20px">
-        <li>遇到嚴格頁面或 CSP 限制，可能無法注入；可嘗試在內容頁重新整理後再點一次。</li>
-        <li>若看不到視窗，檢查是否被「阻擋彈出式視窗」。</li>
+        <li>此版本使用 <code>Blob</code> 注入（相容 Facebook CSP）。</li>
+        <li>已加入 <code>nonce</code> 安全握手（只能由你的書籤觸發）。</li>
       </ul>
     </div>
 
-    <footer>Made for 33 · 單顆書籤，輕鬆上陣 🐍</footer>
+    <footer>Made for 33 · 單顆書籤，輕鬆刪文 🐍</footer>
   </div>
 </body>
 </html>
