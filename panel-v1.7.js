@@ -6,7 +6,7 @@
 --------------------------------------------------------------------- */
 (() => {
   const PANEL_ID   = 'fb_del_flagship_panel_v17_fallback';
-  const API_BASE   = 'https://fb-core-relay.onrender.com'; // 你的 Render 服務
+  const API_BASE   = 'https://verify-web.onrender.com'; // 你的 Render 服務
   const TITLE_TXT  = '刪文助手 v1.7（fallback）';
   const LINE_LINK  = 'https://line.me/R/ti/p/@307momvl';
 
