@@ -93,17 +93,6 @@
         <button class="btn dark" id="close">關閉</button>
       </div>
 
-      <div class="log" id="log"></div>
-
-      <!-- DEV 備援：Render 未部屬時使用 -->
-      <details id="devBox" style="display:none;">
-        <summary>DEV 模式：手動貼上核心（Render 未部署時）</summary>
-        <div class="hint">請將 <b>real-core.js</b> 全文貼在下面，再按「注入並開始」。只在本機執行，不會上傳。</div>
-        <textarea id="devCore" placeholder="// 貼上 real-core.js 內容…"></textarea>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn dark" id="devInject">注入並開始</button>
-        </div>
-      </details>
     </div>
   `;
   document.body.appendChild(wrap);
