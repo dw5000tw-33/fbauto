@@ -2,7 +2,7 @@
    - 社團（作者名比對）／商城（關鍵字+日期）
    - 透過 popup → loader-panel.html → postMessage 注入核心
    - 檢核碼可留空（真的帶空字串）
-   - loader 失敗時自動開「DEV 模式：手動貼上核心」備援
+   - 隱藏 DEV 模式：平常不顯示；僅當輸入檢核碼 DEV 時才開啟
    - 日誌精簡：開始／商城掃描…／🗑️ 已刪除／⛔ 跳過：原因／🟠 已要求停止
 ==================================================================== */
 (()=>{
@@ -11,7 +11,6 @@
   const LOADER_URL_BASE = 'https://dw5000tw-33.github.io/fbauto/loader-panel.html';
   const ALLOWED_ORIGIN  = 'https://dw5000tw-33.github.io';
   const CORE_API_BASE = 'https://verify-web.onrender.com/api/core?c=';
-
 
   // 先移除舊面板
   (['fb_del_flagship_panel_v14','fb_del_flagship_panel_v15','fb_del_flagship_panel_v16','fb_del_flagship_panel_v16m0',PANEL_ID])
@@ -93,6 +92,17 @@
         <button class="btn dark" id="close">關閉</button>
       </div>
 
+      <div class="log" id="log"></div>
+
+      <!-- DEV 備援：預設隱藏；只有 DEBUG 才顯示 -->
+      <details id="devBox" style="display:none;">
+        <summary>DEV 模式：手動貼上核心（Render 未部署時）</summary>
+        <div class="hint">請將 <b>real-core.js</b> 全文貼在下面，再按「注入並開始」。只在本機執行，不會上傳。</div>
+        <textarea id="devCore" placeholder="// 貼上 real-core.js 內容…"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn dark" id="devInject">注入並開始</button>
+        </div>
+      </details>
     </div>
   `;
   document.body.appendChild(wrap);
@@ -105,6 +115,18 @@
   const pad=n=>String(n).padStart(2,'0');
   function tick(){ const d=new Date(); $('#nowTime').textContent=`現在時間：${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
   tick(); const clock=setInterval(tick,1000);
+
+  // === DEBUG（隱藏 DEV） ===
+  let DEBUG = false;
+  function setDebug(on){
+    DEBUG = !!on;
+    try { localStorage.setItem('FBDEL_DEBUG', DEBUG ? '1':'0'); } catch {}
+    const box = document.getElementById('devBox');
+    if (box) box.style.display = DEBUG ? 'block' : 'none';
+    try { log('🔧 DEBUG =', DEBUG ? 'ON' : 'OFF'); } catch{}
+  }
+  // 初始依 localStorage 恢復
+  try { if (localStorage.getItem('FBDEL_DEBUG')==='1') setDebug(true); } catch{}
 
   // 最小化 / 關閉 / 開 LINE
   $('#minBtn').onclick=()=>{ const b=$('#bodyBox'); const hide=b.style.display!=='none'; b.style.display=hide?'none':'block'; $('#minBtn').textContent=hide?'展開':'最小化'; };
@@ -172,9 +194,7 @@
     return await injectCoreCode(data.code);
   }
 
-
   // ---- 共用：組參數並執行核心 ----
-
   async function runCore(coreFn){
     const mode=$('#mode').value;
     const raw=$('#name').value.trim();
@@ -263,11 +283,16 @@
     });
   }
 
-
-  // 🔘 開始（預設：loader；失敗：顯示 DEV 備援）
+  // 🔘 開始（預設：loader；失敗：如 DEBUG 開啟才顯示 DEV 備援）
   $('#start').onclick=async()=>{
     abortFlag=false;
     const passcode=$('#passcode').value.trim();
+
+    // 若輸入 DEV，直接開啟 DEBUG（顯示 DEV 區塊）
+    if (/^dev$/i.test(passcode)) {
+      setDebug(true);
+      log('🔧 已開啟 DEV 模式');
+    }
 
     // 先嘗試 loader
     try{
@@ -276,15 +301,19 @@
       return;
     }catch(e){
       log('⛔ 跳過：核心未載入（', e.message, '）');
-      // 自動展開 DEV 備援
-      const box = $('#devBox');
-      box.style.display='block';
-      try{ box.open = true; }catch{}
-      $('#devCore').focus();
+      if (DEBUG){
+        const box = $('#devBox');
+        box.style.display='block';
+        try{ box.open = true; }catch{}
+        $('#devCore').focus();
+        log('🔧 DEBUG 開啟：已顯示 DEV 備援區塊');
+      } else {
+        log('ℹ️ 提示：若需手動貼核心，請在檢核碼輸入 DEV 後按「開始」');
+      }
     }
   };
 
-  // DEV：手動貼上核心 → 注入並開始
+  // DEV：手動貼上核心 → 注入並開始（僅在 DEBUG 顯示）
   $('#devInject').onclick = async ()=>{
     const code = $('#devCore').value;
     if(!code || !code.trim()){ alert('請先貼上 core 內容'); return; }
