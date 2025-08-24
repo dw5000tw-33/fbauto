@@ -19,8 +19,8 @@
   const ts    = params.get('ts') || Date.now();
 
   const BASE = 'https://dw5000tw-33.github.io/fbauto/';
-  // 依序嘗試：先新→再舊（沒有 v1.7 也沒關係，會自動跳過）
-  const versions = ['panel-v1.8.js', 'panel-v1.7.js'];
+  // 依序嘗試：先新→再舊（沒有 v1.8 也沒關係，會自動跳過）
+  const versions = ['panel-v1.9.js', 'panel-v1.8.js'];
 
   // 基本檢查
   if (!window.opener) { msg('這頁需由書籤開啟（無 <code>opener</code>）。'); return; }
