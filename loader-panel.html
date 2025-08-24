@@ -3,24 +3,24 @@
 <title>core-loader</title>
 <script>
 (async()=>{
-  const CORE_API='https://fb-core-relay.onrender.com/api/core?c=';
-  const c=new URLSearchParams(location.search).get('c')||'';
+  const CORE_URL = 'https://verify-web.onrender.com/real-core.js';
   const send = (payload)=>{
     try{ window.opener && window.opener.postMessage(payload,'*'); }catch{}
     try{ if (window.parent && window.parent!==window) window.parent.postMessage(payload,'*'); }catch{}
   };
   try{
-    const res=await fetch(CORE_API+encodeURIComponent(c),{cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    if(!data||!data.code) throw new Error(data.message||'no code returned');
-    send({type:'FB_CORE_CODE', code:data.code});
-    document.body.innerHTML='<div style="color:#10b981;padding:16px;font:14px system-ui">OK，已回傳核心，稍後會自動關閉…</div>';
+    const res = await fetch(CORE_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const code = await res.text();              // <-- 讀文字
+    if (!code) throw new Error('empty core');
+    send({ type:'FB_CORE_CODE', code });        // <-- 一樣送出 code 給面板
+    document.body.innerHTML =
+      '<div style="color:#10b981;padding:16px;font:14px system-ui">OK，已回傳核心，稍後會自動關閉…</div>';
     setTimeout(()=>{ try{ window.close(); }catch{} }, 600);
   }catch(e){
-    send({type:'FB_CORE_ERROR', message:String(e&&e.message||e)});
-    document.body.innerHTML='<div style="color:#f87171;padding:16px;font:14px system-ui">ERROR：'+(e&&e.message||e)+'</div>';
+    send({ type:'FB_CORE_ERROR', message:String(e && e.message || e) });
+    document.body.innerHTML =
+      '<div style="color:#f87171;padding:16px;font:14px system-ui">ERROR：'+(e&&e.message||e)+'</div>';
   }
 })();
 </script>
-
