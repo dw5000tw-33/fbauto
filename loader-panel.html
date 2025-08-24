@@ -3,24 +3,50 @@
 <title>core-loader</title>
 <script>
 (async()=>{
-  const CORE_URL = 'https://verify-web.onrender.com/real-core.js';
+  const CORE_API='https://verify-web.onrender.com/api/core?c=';
+  const HEALTH  ='https://verify-web.onrender.com/api/verify/health';
+
+  const c=new URLSearchParams(location.search).get('c')||'';
+
   const send = (payload)=>{
     try{ window.opener && window.opener.postMessage(payload,'*'); }catch{}
     try{ if (window.parent && window.parent!==window) window.parent.postMessage(payload,'*'); }catch{}
   };
+
+  async function fetchWithTimeout(url, ms){
+    const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(), ms);
+    try{ return await fetch(url,{cache:'no-store',signal:ctl.signal}); }
+    finally{ clearTimeout(t); }
+  }
+
   try{
-    const res = await fetch(CORE_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    const code = await res.text();              // <-- 讀文字
-    if (!code) throw new Error('empty core');
-    send({ type:'FB_CORE_CODE', code });        // <-- 一樣送出 code 給面板
-    document.body.innerHTML =
-      '<div style="color:#10b981;padding:16px;font:14px system-ui">OK，已回傳核心，稍後會自動關閉…</div>';
+    // 先 ping health（喚醒），不管結果，馬上進入重試取核心
+    try{ await fetchWithTimeout(HEALTH, 8000); }catch{}
+
+    let data=null, lastErr=null;
+    for (let i=0;i<5;i++){             // 最多重試 5 次
+      try{
+        // 每次都給足夠時間（60 秒），因為冷啟動真的可能久
+        const res = await fetchWithTimeout(CORE_API+encodeURIComponent(c), 60000);
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        data = await res.json();
+        if (data && data.code) break;
+        lastErr = new Error('no code returned');
+      }catch(e){
+        lastErr = e;
+        // 退避 1s, 2s, 3s, 4s...
+        await new Promise(r=>setTimeout(r, 1000*(i+1)));
+      }
+    }
+    if(!data || !data.code) throw lastErr || new Error('no code');
+
+    send({type:'FB_CORE_CODE', code:data.code});
+    document.body.innerHTML='<div style="color:#10b981;padding:16px;font:14px system-ui">OK，已回傳核心，稍後會自動關閉…</div>';
     setTimeout(()=>{ try{ window.close(); }catch{} }, 600);
   }catch(e){
-    send({ type:'FB_CORE_ERROR', message:String(e && e.message || e) });
-    document.body.innerHTML =
-      '<div style="color:#f87171;padding:16px;font:14px system-ui">ERROR：'+(e&&e.message||e)+'</div>';
+    send({type:'FB_CORE_ERROR', message:String(e&&e.message||e)});
+    document.body.innerHTML='<div style="color:#f87171;padding:16px;font:14px system-ui">ERROR：'+(e&&e.message||e)+'</div>';
   }
 })();
 </script>
+
