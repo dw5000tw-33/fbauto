@@ -10,7 +10,7 @@
   const PANEL_ID = 'fb_del_flagship_panel_v18';
   const LOADER_URL_BASE = 'https://dw5000tw-33.github.io/fbauto/loader-panel.html';
   const ALLOWED_ORIGIN  = 'https://dw5000tw-33.github.io';
-  const CORE_API_BASE = 'https://fb-core-relay.onrender.com/api/core?c=';
+  const CORE_API_BASE = 'https://verify-web.onrender.com/api/core?c=';
 
 
   // 先移除舊面板
