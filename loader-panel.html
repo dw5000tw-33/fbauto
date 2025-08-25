@@ -1,10 +1,12 @@
 <!doctype html>
-<meta charset="utf-8">
+<meta charset="utf-8" />
 <title>core-loader</title>
 <script>
 (async()=>{
-  const CORE_API='https://verify-web.onrender.com/api/core?c=';
-  const HEALTH  ='https://verify-web.onrender.com/api/verify/health';
+  const BASE    = 'https://verify-web.onrender.com';
+  const CORE_JS = BASE + '/api/core';           // 純 JS（無碼可用於 M0）
+  const CORE_API= BASE + '/api/core?c=';        // JSON：{ code }（有 passcode 時）
+  const HEALTH  = BASE + '/api/verify/health';
 
   const c=new URLSearchParams(location.search).get('c')||'';
 
@@ -20,27 +22,23 @@
   }
 
   try{
-    // 先 ping health（喚醒），不管結果，馬上進入重試取核心
-    try{ await fetchWithTimeout(HEALTH, 8000); }catch{}
+    // ping（喚醒）
+    try{ await fetchWithTimeout(HEALTH, 5000); }catch{}
 
-    let data=null, lastErr=null;
-    for (let i=0;i<5;i++){             // 最多重試 5 次
-      try{
-        // 每次都給足夠時間（60 秒），因為冷啟動真的可能久
-        const res = await fetchWithTimeout(CORE_API+encodeURIComponent(c), 60000);
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        data = await res.json();
-        if (data && data.code) break;
-        lastErr = new Error('no code returned');
-      }catch(e){
-        lastErr = e;
-        // 退避 1s, 2s, 3s, 4s...
-        await new Promise(r=>setTimeout(r, 1000*(i+1)));
-      }
+    // 有檢核碼 → 走 JSON 端點；沒檢核碼 → 直接取 JS
+    if (c) {
+      const r = await fetchWithTimeout(CORE_API+encodeURIComponent(c), 60000);
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      if (!j || !j.code) throw new Error('no code returned');
+      send({type:'FB_CORE_CODE', code:j.code});
+    } else {
+      const r = await fetchWithTimeout(CORE_JS, 60000);
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const code = await r.text();
+      send({type:'FB_CORE_CODE', code});
     }
-    if(!data || !data.code) throw lastErr || new Error('no code');
 
-    send({type:'FB_CORE_CODE', code:data.code});
     document.body.innerHTML='<div style="color:#10b981;padding:16px;font:14px system-ui">OK，已回傳核心，稍後會自動關閉…</div>';
     setTimeout(()=>{ try{ window.close(); }catch{} }, 600);
   }catch(e){
@@ -49,4 +47,3 @@
   }
 })();
 </script>
-
