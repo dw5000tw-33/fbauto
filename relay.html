@@ -1,0 +1,54 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>FBDel Relay</title>
+<script>
+(async () => {
+  const INVITE_URL  = '/auth/mintInvite';
+  const CONFIRM_URL = '/api/verify/confirm';
+  const CORE_URL    = '/api/core?c=';
+
+  // 取 passcode：#code=xxx 或直接 prompt 一次
+  const params = new URLSearchParams(location.hash.slice(1));
+  let code = params.get('code') || '';
+  if (!code) code = prompt('請貼上檢核碼：');
+
+  if (!code) {
+    opener?.postMessage({ type: 'fbdel-error', error: 'missing_code' }, '*');
+    return window.close();
+  }
+
+  try {
+    // 1) invite
+    const invR = await fetch(INVITE_URL, { method:'POST' });
+    const inv = await invR.json();
+
+    // 2) confirm
+    const body = {
+      code: code.trim(),
+      version: params.get('v') || 'v1.9',
+      referrer: params.get('ref') || document.referrer || location.origin,
+      idempotencyKey: crypto.randomUUID ? crypto.randomUUID() : (Date.now()+Math.random()),
+      userAgent: navigator.userAgent
+    };
+    const vR = await fetch(CONFIRM_URL, {
+      method:'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+inv.invite },
+      body: JSON.stringify(body)
+    });
+    const vj = await vR.json();
+    if (!vj || !vj.ok || !vj.token) throw new Error(vj.error || vj.message || 'confirm_failed');
+
+    // 3) core
+    const cR = await fetch(CORE_URL + encodeURIComponent(vj.token), { cache:'no-store' });
+    const cj = await cR.json();
+    if (!cj || !cj.code) throw new Error(cj.error || 'no_core');
+
+    // 回傳給 opener（FB 頁面）
+    opener?.postMessage({ type: 'fbdel-core', code: cj.code }, '*');
+  } catch (e) {
+    opener?.postMessage({ type: 'fbdel-error', error: String(e && e.message || e) }, '*');
+  } finally {
+    setTimeout(()=>window.close(), 50);
+  }
+})();
+</script>
