@@ -2,7 +2,7 @@
    - 先直連 Render 取核心；失敗（多半 CSP）自動改用 popup 取 code
    - 支援「社團(group)」與「商城(shop)」兩模式
    - 面板可拖曳、記住位置；雙擊標題回右上角
-   - 正式上線要強制檢核碼：把 passcode 改成必填＆後端驗證 /api/verify
+   - M0：檢核碼可留空（直連 /api/core）；若走 popup，請搭配下方的 loader-panel（微調版）
 --------------------------------------------------------------------- */
 (() => {
   const PANEL_ID   = 'fb_del_flagship_panel_v17_fallback';
@@ -10,7 +10,8 @@
   const TITLE_TXT  = '刪文助手 v1.7（fallback）';
   const LINE_LINK  = 'https://line.me/R/ti/p/@307momvl';
 
-  // 你自己的 Loader（會 postMessage 把 code 傳回來）
+  // 你的 Loader（會 postMessage 把 code 傳回來）
+  // ★ 若你沿用舊 loader-panel.html：請改成本回覆下方的「微調版」以支援 passcode 留空。
   const LOADER_URL_BASE = 'https://dw5000tw-33.github.io/fbauto/loader-panel.html';
   const ALLOWED_ORIGIN  = 'https://dw5000tw-33.github.io';
 
@@ -137,6 +138,10 @@
   $('#close').onclick = () => { try{clearInterval(clock);}catch{} wrap.remove(); };
   $('#openLine').onclick = () => window.open(LINE_LINK, '_blank');
 
+  // 停止旗標
+  let abortFlag = false;
+  $('#stop').onclick = ()=>{ abortFlag = true; log('🟠 已要求停止'); };
+
   // 預填名字（可刪）
   try{
     const guess=Array.from(document.querySelectorAll('a[aria-label$="的動態時報"], a[aria-label*="profile"], a[role="link"] span.html-span'))
@@ -144,11 +149,166 @@
     if (guess) $('#name').value=guess;
   }catch{}
 
-  // 停止旗標
-  let abortFlag = false;
-  $('#stop').onclick = ()=>{ abortFlag = true; log('🟠 已要求停止'); };
+  // ====== 通用：把核心字串注入頁面 ======
+  async function injectCoreCode(code) {
+    return new Promise((res, rej) => {
+      try {
+        const blob = new Blob([code], { type: 'text/javascript' });
+        const url = URL.createObjectURL(blob);
+        const s = document.createElement('script');
+        s.src = url;
+        s.onload = () => {
+          URL.revokeObjectURL(url);
+          const coreFn =
+            window.FB_DELETE_CORE ||
+            (window.FBDelCore && typeof window.FBDelCore.start === 'function'
+              ? (opts)=>window.FBDelCore.start(opts)
+              : null);
+          if (!coreFn) return rej(new Error('核心格式不正確（沒找到 FB_DELETE_CORE）'));
+          res(coreFn);
+        };
+        s.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Blob 腳本載入失敗（可能 CSP）')); };
+        document.head.appendChild(s);
+      } catch (e) { rej(e); }
+    });
+  }
 
-  // —— 面板可拖曳 + 記住位置（localStorage）——
+  // ====== 方案A：直連（Render）======
+  // 兼容兩種回應：
+  // - 純 JS（Content-Type: application/javascript）
+  // - JSON：{ code: "..." }
+  async function loadCoreDirect(passcode, logFn) {
+    const ac = new AbortController();
+    const tid = setTimeout(()=>ac.abort(), 15000);
+    const fetchText = async (u) => {
+      const r = await fetch(u, { signal: ac.signal, credentials:'omit', cache:'no-store' });
+      const ct = r.headers.get('content-type') || '';
+      const txt = await r.text();
+      if (!r.ok) throw new Error(`HTTP ${r.status} — ${txt.slice(0,200)}`);
+      if (/json/i.test(ct)) {
+        let j=null; try{ j=JSON.parse(txt); }catch{}
+        if (!j || !j.code) throw new Error('JSON 內無 code');
+        return j.code;
+      }
+      return txt; // 當成 JS
+    };
+    try{
+      let codeText;
+      if (passcode) {
+        // 若你有舊版 /api/verify?code=... 端點，可在這裡換成它
+        // 預設仍嘗試 /api/core?c=... （若後端支援）
+        codeText = await fetchText(`${API_BASE}/api/core?c=${encodeURIComponent(passcode)}`);
+      } else {
+        // M0：允許無碼直連純 JS
+        codeText = await fetchText(`${API_BASE}/api/core`);
+      }
+      clearTimeout(tid);
+      return await injectCoreCode(codeText);
+    } catch (err) {
+      clearTimeout(tid);
+      if (logFn) try{ logFn('ℹ️ 直連失敗：' + (err?.message||String(err))); }catch{}
+      throw err;
+    }
+  }
+
+  // ====== 方案B：popup（繞過 CSP）======
+  async function loadCoreViaPopup(passcode) {
+    return new Promise((resolve, reject) => {
+      const url = LOADER_URL_BASE + '?c=' + encodeURIComponent(passcode || '');
+      const w = window.open(url, '_blank', 'width=480,height=260');
+      if (!w) { reject(new Error('無法開啟載入視窗（瀏覽器封鎖彈窗）')); return; }
+
+      const timeout = setTimeout(() => {
+        window.removeEventListener('message', onMsg);
+        try { w.close(); } catch {}
+        reject(new Error('載入逾時（popup）'));
+      }, 20000);
+
+      async function onMsg(ev) {
+        if (ev.origin !== ALLOWED_ORIGIN) return;
+        const data = ev.data || {};
+        if (data.type === 'FB_CORE_CODE') {
+          clearTimeout(timeout);
+          window.removeEventListener('message', onMsg);
+          try { w.close(); } catch {}
+          try {
+            const coreFn = await injectCoreCode(data.code);
+            resolve(coreFn);
+          } catch (err) { reject(err); }
+        } else if (data.type === 'FB_CORE_ERROR') {
+          clearTimeout(timeout);
+          window.removeEventListener('message', onMsg);
+          try { w.close(); } catch {}
+          reject(new Error(data.message || 'Loader 回報錯誤'));
+        }
+      }
+      window.addEventListener('message', onMsg);
+    });
+  }
+
+  // ====== 聰明載入：先直連，失敗就 popup ======
+  async function loadCoreSmart(passcode, logFn) {
+    try { return await loadCoreDirect(passcode, logFn); }
+    catch (e) {
+      try { logFn && logFn('🔁 fallback：改用 popup 取核心（繞過 CSP）'); } catch {}
+      return await loadCoreViaPopup(passcode);
+    }
+  }
+
+  // —— 模式切換：動態調整提示 —— 
+  function updateModeUI(){
+    const m = $('#mode').value;
+    if (m === 'shop'){
+      $('#nameLabel').textContent = '商品關鍵字（可多個：逗號 / 空白 / 換行 分隔）';
+      $('#name').placeholder = '例：潭子 好市多 三房';
+    } else {
+      $('#nameLabel').textContent = '你的名字';
+      $('#name').placeholder = '與貼文顯示一致的名稱';
+    }
+  }
+  $('#mode').addEventListener('change', updateModeUI);
+  updateModeUI();
+
+  // —— 開始 —— 
+  $('#start').onclick = async () => {
+    abortFlag=false;
+
+    const passcode = ($('#passcode')?.value||'').trim(); // M0 可留空
+    const mode = $('#mode').value;
+    const raw  = ($('#name')?.value||'').trim();
+
+    const shopKeywords = (mode==='shop')
+      ? raw.split(/[\s,，]+/).map(s=>s.trim()).filter(Boolean)
+      : undefined;
+
+    try {
+      log('🚀 讀取核心…');
+      const core = await loadCoreSmart(passcode, m=>log(m));
+      log('✅ 核心載入完成');
+
+      const opts = {
+        mode,
+        name:   (mode==='group') ? raw : '_',
+        myName: (mode==='group') ? raw : '_',
+        shopKeywords,
+        maxDelete: Math.max(1, +$('#limit').value || 10),
+        maxScrollRounds: Math.max(1, +$('#scrolls').value || 3),
+        delayMin: Math.max(200, +$('#dmin').value || 1000),
+        delayMax: Math.max(+$('#dmax').value || 2000, +$('#dmin').value || 1000),
+        cutoff: $('#cutoff').value ? new Date($('#cutoff').value + 'T23:59:59') : null,
+        onLog: msg => log(msg),
+        shouldAbort: () => abortFlag
+      };
+
+      await (window.FB_DELETE_CORE ? window.FB_DELETE_CORE(opts)
+            : (window.FBDelCore?.start ? window.FBDelCore.start(opts)
+            : Promise.reject(new Error('核心未就緒'))));
+    } catch (e) {
+      log('❌ 讀取或執行核心失敗：' + (e?.message || String(e)));
+    }
+  };
+
+  // —— 面板可拖曳 + 記住位置 —— 
   (function makeDraggable(){
     const POS_KEY = PANEL_ID + ':pos';
     const header  = wrap.querySelector('.hdr');
@@ -227,155 +387,5 @@
     });
   })();
 
-  // ====== 通用：把核心字串注入頁面 ======
-  async function injectCoreCode(code) {
-    return new Promise((res, rej) => {
-      try {
-        const blob = new Blob([code], { type: 'text/javascript' });
-        const url = URL.createObjectURL(blob);
-        const s = document.createElement('script');
-        s.src = url;
-        s.onload = () => {
-          URL.revokeObjectURL(url);
-          const coreFn =
-            window.FB_DELETE_CORE ||
-            (window.FBDelCore && typeof window.FBDelCore.start === 'function'
-              ? (opts)=>window.FBDelCore.start(opts)
-              : null);
-          if (!coreFn) return rej(new Error('核心格式不正確（沒找到 FB_DELETE_CORE）'));
-          res(coreFn);
-        };
-        s.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Blob 腳本載入失敗（可能 CSP）')); };
-        document.head.appendChild(s);
-      } catch (e) { rej(e); }
-    });
-  }
-
-  // ====== 方案A：直連（Render）======
-  async function loadCoreDirect(passcode, logFn) {
-    const ac = new AbortController();
-    const tid = setTimeout(()=>ac.abort(), 15000);
-    const json = async (u)=>{
-      const r = await fetch(u, { signal: ac.signal, credentials:'omit' });
-      const t = await r.text(); let j=null; try{ j=JSON.parse(t); }catch{}
-      if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText} — ${t.slice(0,200)}`);
-      if (!j || typeof j!=='object') throw new Error(`非 JSON 回應：${t.slice(0,200)}`);
-      return j;
-    };
-    try{
-      let data;
-      if (passcode) {
-        data = await json(`${API_BASE}/api/verify?code=${encodeURIComponent(passcode)}`);
-      } else {
-        data = await json(`${API_BASE}/api/core`);
-      }
-      if (!data.code) throw new Error('回應內無 code');
-      if (data.license) window.__FB_LICENSE__ = data.license;
-      clearTimeout(tid);
-      return await injectCoreCode(data.code);
-    } catch (err) {
-      clearTimeout(tid);
-      if (logFn) try{ logFn('ℹ️ 直連失敗：' + (err?.message||String(err))); }catch{}
-      throw err;
-    }
-  }
-
-  // ====== 方案B：popup（繞過 CSP）======
-  async function loadCoreViaPopup(passcode) {
-    return new Promise((resolve, reject) => {
-      const url = LOADER_URL_BASE + '?c=' + encodeURIComponent(passcode || '');
-      const w = window.open(url, '_blank', 'width=480,height=260');
-      if (!w) { reject(new Error('無法開啟載入視窗（瀏覽器封鎖彈窗）')); return; }
-
-      const timeout = setTimeout(() => {
-        window.removeEventListener('message', onMsg);
-        try { w.close(); } catch {}
-        reject(new Error('載入逾時（popup）'));
-      }, 15000);
-
-      async function onMsg(ev) {
-        if (ev.origin !== ALLOWED_ORIGIN) return;
-        const data = ev.data || {};
-        if (data.type === 'FB_CORE_CODE') {
-          clearTimeout(timeout);
-          window.removeEventListener('message', onMsg);
-          try { w.close(); } catch {}
-          try {
-            const coreFn = await injectCoreCode(data.code);
-            if (data.license) window.__FB_LICENSE__ = data.license;
-            resolve(coreFn);
-          } catch (err) { reject(err); }
-        } else if (data.type === 'FB_CORE_ERROR') {
-          clearTimeout(timeout);
-          window.removeEventListener('message', onMsg);
-          try { w.close(); } catch {}
-          reject(new Error(data.message || 'Loader 回報錯誤'));
-        }
-      }
-      window.addEventListener('message', onMsg);
-    });
-  }
-
-  // ====== 聰明載入：先直連，失敗就 popup ======
-  async function loadCoreSmart(passcode, logFn) {
-    try { return await loadCoreDirect(passcode, logFn); }
-    catch (e) {
-      try { logFn && logFn('🔁 fallback：改用 popup 取核心（繞過 CSP）'); } catch {}
-      return await loadCoreViaPopup(passcode);
-    }
-  }
-
-  // —— 模式切換：動態調整提示 —— 
-  function updateModeUI(){
-    const m = $('#mode').value;
-    if (m === 'shop'){
-      $('#nameLabel').textContent = '商品關鍵字（可多個：逗號 / 空白 / 換行 分隔）';
-      $('#name').placeholder = '例：潭子 好市多 三房';
-    } else {
-      $('#nameLabel').textContent = '你的名字';
-      $('#name').placeholder = '與貼文顯示一致的名稱';
-    }
-  }
-  $('#mode').addEventListener('change', updateModeUI);
-  updateModeUI();
-
-  // —— 開始 —— 
-  $('#start').onclick = async () => {
-    abortFlag=false;
-
-    const passcode = ($('#passcode')?.value||'').trim(); // 回退版可留空；正式版請改成必填
-    const mode = $('#mode').value;
-    const raw  = ($('#name')?.value||'').trim();
-
-    const shopKeywords = (mode==='shop')
-      ? raw.split(/[\s,，]+/).map(s=>s.trim()).filter(Boolean)
-      : undefined;
-
-    try {
-      log('🚀 讀取核心…');
-      const core = await loadCoreSmart(passcode, m=>log(m));
-      log('✅ 核心載入完成');
-
-      const opts = {
-        mode,
-        // 兼容舊核心：group 填 name / myName；shop 填一個保留字元
-        name:   (mode==='group') ? raw : '_',
-        myName: (mode==='group') ? raw : '_',
-        shopKeywords,
-        maxDelete: Math.max(1, +$('#limit').value || 10),
-        maxScrollRounds: Math.max(1, +$('#scrolls').value || 3),
-        delayMin: Math.max(200, +$('#dmin').value || 1000),
-        delayMax: Math.max(+$('#dmax').value || 2000, +$('#dmin').value || 1000),
-        cutoff: $('#cutoff').value ? new Date($('#cutoff').value + 'T23:59:59') : null,
-        onLog: msg => log(msg),
-        shouldAbort: () => abortFlag
-      };
-
-      await core(opts);
-    } catch (e) {
-      log('❌ 讀取或執行核心失敗：' + (e?.message || String(e)));
-    }
-  };
-
-  log('🧰 回退版面板就緒：先直連，失敗自動 popup；核心在伺服器端，檔案本身不含核心。');
+  log('🧰 v1.7 回退面板就緒：先直連，失敗自動 popup；核心在伺服器端，檔案本身不含核心。');
 })();
