@@ -10,62 +10,78 @@
 <div class="wrap">載入面板中…</div>
 <script>
 (async () => {
-  const $ = sel => document.querySelector(sel);
-  const msg = (t) => $('.wrap').innerHTML = t;
+  const $ = s => document.querySelector(s);
+  const msg = t => $('.wrap').innerHTML = t;
 
-  const ORI = 'https://dw5000tw-33.github.io';     // ★ 固定 origin
+  // ★ 只允許這個來源互傳（安全）
+  const ORI  = 'https://dw5000tw-33.github.io';
   const BASE = ORI + '/fbauto/';
 
   // 讀參數
-  const params = new URLSearchParams(location.search);
-  const nonce = params.get('nonce') || '';
-  const ts    = params.get('ts') || Date.now();
+  const sp = new URLSearchParams(location.search);
+  const nonce = sp.get('nonce') || '';
+  const ts    = sp.get('ts') || Date.now();
 
-  // ★ 先新→再舊，加入 v1.9
-  const versions = ['panel-v1.9.js', 'panel-v1.8.js', 'panel-v1.7.js'];
+  // ★ 自動抓最新版：先 1.9 → 再 1.8 → 再 1.7（不存在就自動跳過）
+  const candidates = [
+    'panel-v1.9.js',
+    'panel-v1.8.js',
+    'panel-v1.7.js'
+  ];
 
   if (!window.opener) { msg('這頁需由書籤開啟（無 <code>opener</code>）。'); return; }
   if (!nonce) { msg('缺少 <code>nonce</code>，拒絕回傳面板。'); return; }
 
-  // 回報 READY（鎖定 origin）
+  // 通知 opener：我準備好了（鎖定 origin）
   try { window.opener.postMessage({ type:'READY', nonce }, ORI); }
   catch (e) { msg('無法與 opener 溝通：' + (e.message || e)); return; }
 
-  async function fetchWithTimeout(url, ms=10000) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), ms);
+  // 有逾時的 fetch（避免掛住）
+  async function tryFetch(url, ms=12000) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), ms);
     try {
-      return await fetch(url, { cache:'no-store', signal: controller.signal, headers:{'Cache-Control':'no-cache'} });
+      const r = await fetch(url, {
+        cache:'no-store',
+        signal: ctl.signal,
+        headers:{ 'Cache-Control':'no-cache' }
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.text();
     } finally { clearTimeout(t); }
   }
 
-  let code = null, usedVersion = null;
+  let code=null, used=null, lastErr=null;
 
-  for (const ver of versions) {
-    const url = `${BASE}${ver}?v=${ts}`;
-    msg(`嘗試載入版本：<code>${ver}</code> …<div class="hint">URL：<code>${url}</code></div>`);
+  for (const name of candidates) {
+    const url = `${BASE}${name}?v=${ts}`;
+    msg(`嘗試載入：<code>${name}</code><div class="hint">URL：<code>${url}</code></div>`);
     try {
-      const r = await fetchWithTimeout(url, 10000);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      code = await r.text();
-      usedVersion = ver;
+      code = await tryFetch(url);
+      used = name;
       break;
     } catch (e) {
-      console.warn('[bootstrap] 載入失敗：', ver, e);
-      msg(`載入 <code>${ver}</code> 失敗：<code>${(e && e.message) ? e.message : e}</code><br>嘗試下一個版本…`);
-      await new Promise(res => setTimeout(res, 300));
+      lastErr = e;
+      console.warn('[bootstrap] 載入失敗：', name, e);
+      msg(`載入 <code>${name}</code> 失敗：<code>${(e && e.message) || e}</code><br>改試下一個…`);
+      await new Promise(r => setTimeout(r, 250));
     }
   }
 
   if (!code) {
-    msg('所有可用版本皆載入失敗。<br>請檢查：<br>- 檔案是否存在於 <code>' + BASE + '</code><br>- GitHub Pages 是否已部署完成<br>- 檔名/路徑大小寫是否正確');
+    // 全部失敗：給 opener 一個錯誤（讓書籤那邊 alert 出來）
+    try { window.opener.postMessage({ type:'PANEL_CODE', nonce, error: (lastErr && lastErr.message) || 'no panel found' }, ORI); } catch {}
+    msg('所有可用版本皆失敗。請檢查檔案是否存在於：<code>'+BASE+'</code>');
     return;
   }
 
-  // 回傳給 opener（鎖定 origin）
-  window.opener.postMessage({ type:'PANEL_CODE', nonce, code }, ORI);
-
-  msg('OK，已回傳 <code>' + usedVersion + '</code>；即將自動關閉…');
-  setTimeout(() => { try { window.close(); } catch {} }, 900);
+  // 成功：把面板程式回傳給 opener（鎖定 origin）
+  try {
+    window.opener.postMessage({ type:'PANEL_CODE', nonce, code }, ORI);
+    msg('OK，已回傳 <code>'+used+'</code>；即將自動關閉…');
+    setTimeout(()=>{ try{ window.close(); }catch{} }, 900);
+  } catch (e) {
+    msg('無法回傳面板：' + (e.message || e));
+  }
 })();
 </script>
