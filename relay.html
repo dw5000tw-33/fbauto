@@ -1,13 +1,9 @@
-<!doctype html>
-<meta charset="utf-8" />
-<title>FBDel Relay</title>
 <script>
 (async () => {
-  const INVITE_URL  = '/auth/mintInvite';
   const CONFIRM_URL = '/api/verify/confirm';
   const CORE_URL    = '/api/core?c=';
 
-  // 取 passcode：#code=xxx 或直接 prompt 一次
+  // 取 passcode：#code=xxx 或 prompt
   const params = new URLSearchParams(location.hash.slice(1));
   let code = params.get('code') || '';
   if (!code) code = prompt('請貼上檢核碼：');
@@ -18,37 +14,44 @@
   }
 
   try {
-    // 1) invite
-    const invR = await fetch(INVITE_URL, { method:'POST' });
+    // ✅ VIP888 直通：不走 invite/confirm，直接去拿核心（符合 loader-panel 的 JSON 結構）
+    if (code.trim() === 'VIP888') {
+      const r = await fetch(CORE_URL + encodeURIComponent('VIP888'), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      if (!j || !j.code) throw new Error('no_core');
+      opener?.postMessage({ type: 'fbdel-core', code: j.code, dev: true }, '*'); // dev: true → 允許顯示 DEV 區塊（可選）
+      return setTimeout(() => window.close(), 50);
+    }
+
+    // ⬇️ 其餘檢核碼：保留你既有流程（如未來走 Notion）
+    const invR = await fetch('/auth/mintInvite', { method: 'POST' });
     const inv = await invR.json();
 
-    // 2) confirm
     const body = {
       code: code.trim(),
       version: params.get('v') || 'v1.9',
       referrer: params.get('ref') || document.referrer || location.origin,
-      idempotencyKey: crypto.randomUUID ? crypto.randomUUID() : (Date.now()+Math.random()),
+      idempotencyKey: crypto.randomUUID ? crypto.randomUUID() : (Date.now() + Math.random()),
       userAgent: navigator.userAgent
     };
     const vR = await fetch(CONFIRM_URL, {
-      method:'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+inv.invite },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + inv.invite },
       body: JSON.stringify(body)
     });
     const vj = await vR.json();
     if (!vj || !vj.ok || !vj.token) throw new Error(vj.error || vj.message || 'confirm_failed');
 
-    // 3) core
-    const cR = await fetch(CORE_URL + encodeURIComponent(vj.token), { cache:'no-store' });
+    const cR = await fetch(CORE_URL + encodeURIComponent(vj.token), { cache: 'no-store' });
     const cj = await cR.json();
     if (!cj || !cj.code) throw new Error(cj.error || 'no_core');
 
-    // 回傳給 opener（FB 頁面）
-    opener?.postMessage({ type: 'fbdel-core', code: cj.code }, '*');
+    opener?.postMessage({ type: 'fbdel-core', code: cj.code, dev: !!vj.dev }, '*');
   } catch (e) {
     opener?.postMessage({ type: 'fbdel-error', error: String(e && e.message || e) }, '*');
   } finally {
-    setTimeout(()=>window.close(), 50);
+    setTimeout(() => window.close(), 50);
   }
 })();
 </script>
