@@ -13,7 +13,7 @@
   const $ = s => document.querySelector(s);
   const msg = t => $('.wrap').innerHTML = t;
 
-  // ★ 只允許這個來源互傳（安全）
+  // 你的 Pages 網域（給 fetch 用；不是 postMessage 的 target）
   const ORI  = 'https://dw5000tw-33.github.io';
   const BASE = ORI + '/fbauto/';
 
@@ -22,37 +22,28 @@
   const nonce = sp.get('nonce') || '';
   const ts    = sp.get('ts') || Date.now();
 
-  // ★ 自動抓最新版：先 1.9 → 再 1.8 → 再 1.7（不存在就自動跳過）
-  const candidates = [
-    'panel-v1.9.js',
-    'panel-v1.8.js',
-    'panel-v1.7.js'
-  ];
+  // 自動抓最新版：先 1.9 → 再 1.8 → 再 1.7
+  const candidates = ['panel-v1.9.js','panel-v1.8.js','panel-v1.7.js'];
 
   if (!window.opener) { msg('這頁需由書籤開啟（無 <code>opener</code>）。'); return; }
   if (!nonce) { msg('缺少 <code>nonce</code>，拒絕回傳面板。'); return; }
 
-  // 通知 opener：我準備好了（鎖定 origin）
-  try { window.opener.postMessage({ type:'READY', nonce }, ORI); }
+  // 通知 opener：我準備好了
+  // ★ 這裡 targetOrigin 必須用 '*'，因為 opener 在 facebook.com（未知 origin）
+  try { window.opener.postMessage({ type:'READY', nonce }, '*'); }
   catch (e) { msg('無法與 opener 溝通：' + (e.message || e)); return; }
 
-  // 有逾時的 fetch（避免掛住）
   async function tryFetch(url, ms=12000) {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), ms);
     try {
-      const r = await fetch(url, {
-        cache:'no-store',
-        signal: ctl.signal,
-        headers:{ 'Cache-Control':'no-cache' }
-      });
+      const r = await fetch(url, { cache:'no-store', signal: ctl.signal, headers:{ 'Cache-Control':'no-cache' } });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return await r.text();
     } finally { clearTimeout(t); }
   }
 
   let code=null, used=null, lastErr=null;
-
   for (const name of candidates) {
     const url = `${BASE}${name}?v=${ts}`;
     msg(`嘗試載入：<code>${name}</code><div class="hint">URL：<code>${url}</code></div>`);
@@ -62,22 +53,21 @@
       break;
     } catch (e) {
       lastErr = e;
-      console.warn('[bootstrap] 載入失敗：', name, e);
       msg(`載入 <code>${name}</code> 失敗：<code>${(e && e.message) || e}</code><br>改試下一個…`);
       await new Promise(r => setTimeout(r, 250));
     }
   }
 
   if (!code) {
-    // 全部失敗：給 opener 一個錯誤（讓書籤那邊 alert 出來）
-    try { window.opener.postMessage({ type:'PANEL_CODE', nonce, error: (lastErr && lastErr.message) || 'no panel found' }, ORI); } catch {}
+    // 失敗：回錯誤給 opener（用 '*'，讓 opener 自己檢查 ev.origin）
+    try { window.opener.postMessage({ type:'PANEL_CODE', nonce, error: (lastErr && lastErr.message) || 'no panel found' }, '*'); } catch {}
     msg('所有可用版本皆失敗。請檢查檔案是否存在於：<code>'+BASE+'</code>');
     return;
   }
 
-  // 成功：把面板程式回傳給 opener（鎖定 origin）
+  // 成功：把面板程式回傳給 opener（targetOrigin='*'）
   try {
-    window.opener.postMessage({ type:'PANEL_CODE', nonce, code }, ORI);
+    window.opener.postMessage({ type:'PANEL_CODE', nonce, code }, '*');
     msg('OK，已回傳 <code>'+used+'</code>；即將自動關閉…');
     setTimeout(()=>{ try{ window.close(); }catch{} }, 900);
   } catch (e) {
