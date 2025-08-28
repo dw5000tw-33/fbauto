@@ -45,7 +45,7 @@ const wrap=document.createElement('div');wrap.id=PANEL_ID;wrap.innerHTML=`
       <button class="btnPrimary" id="verifyBtn">檢核碼認證</button>
       <div class="statusBox"><span id="verifyStateTxt" class="s-bad">未驗證</span></div>
     </div>
-    <div class="hint" id="hintTxt">就緒：按下檢核碼認證鈕完成驗證</div>
+    <div class="hint" id="hintTxt">按下檢核碼認證鈕完成驗證</div>
 
     <label>模式</label>
     <select id="mode"><option value="group">社團貼文</option><option value="shop">商城貼文</option></select>
@@ -107,5 +107,5 @@ async function runCore(coreFn){const mode=$('#mode').value;const raw=$('#name').
 $('#start').onclick=async()=>{abortFlag=false;try{if(!verify.verified){alert('請先完成「檢核碼認證」再按開始');$('#verifyBtn').focus();return;}const core=await fetchCoreAfterVerified();if(typeof core==='function')await runCore(core);}catch(e){if(String(e&&e.message)==='relay_switch')return;log('⛔ 跳過：取核心/執行失敗（',e.message,'）');}};
 $('#devInject').onclick=async()=>{const code=$('#devCore').value;if(!code||!code.trim()){alert('請先貼上 core 內容');return;}try{const core=await injectCoreCode(code);await runCore(core);}catch(e){log('⛔ 跳過：DEV 注入失敗（',e.message,'）');}};
 
-log('面板 v1.9 就緒：左鍵做驗證 → 右框看狀態（紅/綠）→ 按開始（CSP 會自動啟動 Relay）');
+log('面板 v1.9 就緒：驗證成功後請重新啟動書籤 → 右框看狀態（紅/綠）→ 按開始');
 })();
