@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>33 一鍵面板書籤 · FB 刪文相容版</title>
+  <title>33 一鍵書籤 ·FB相容版</title>
   <style>
     :root{
       --bg:#0b1020; --card:#111827; --text:#e5e7eb; --muted:#94a3b8; --primary:#22d3ee;
@@ -39,20 +39,20 @@
   <div class="wrap">
 
     <div class="headerbar">
-      <h1>一鍵面板書籤（33 愛分享）</h1>
+      <h1>一鍵面版書籤（33 愛分享）</h1>
       <a class="brand-link" href="https://line.me/R/ti/p/@307momvl" target="_blank" rel="noopener noreferrer"
          aria-label="加入 33 的 LINE 官方帳號（新分頁開啟）">
         <img class="brand-badge" src="https://dw5000tw-33.github.io/fbauto/your-badge.png" alt="@307momvl 官方 LINE 募集好友">
       </a>
     </div>
 
-    <p class="lead">把下面這<strong>藍色面板</strong>按鈕直接拖到瀏覽器的書籤列。以後在任何頁面點書籤，就會開啟面板。</p>
+    <p class="lead">把下面這<strong>藍色面版</strong>按鈕直接拖到瀏覽器的書籤列。以後在任何頁面點書籤，就會開啟面板。</p>
 
     <div class="card">
       <div class="only-one">
         <!-- 書籤連結：href 由 JS 動態注入；原始碼不直接露出 javascript: -->
         <a id="bookmarklet" class="cta" href="#" title="拖曳我到書籤列">
-          <span class="emoji">🧹</span><span class="cloak">）版）3３（面板 啟開</span>
+          <span class="emoji">🧹</span><span class="cloak">面版 啟開</span>
         </a>
         <div>
           <div>拖曳到書籤列 → 成功後可右鍵重新命名（建議：<code>🧹</code> 或 <code>33掃地</code>）。</div>
@@ -65,7 +65,7 @@
       <h3 style="margin:0 0 8px">超快兩步安裝</h3>
       <ol style="margin:8px 0">
         <li>顯示書籤列：<span class="faq-en"><b>Ctrl+Shift+B</b></span>（Chrome / Edge / Brave）。</li>
-        <li>把上方「開啟面板(33版)」按鈕<span class="faq-en">拖到書籤列</span>即可。</li>
+        <li>把上方「開啟面版」按鈕<span class="faq-en">拖到書籤列</span>即可。</li>
       </ol>
     </div>
 
@@ -75,6 +75,23 @@
       <ul style="margin:8px 0; padding-left:20px">
         <span class="sub">此版本使用 <code>Blob</code> 注入（相容 Facebook CSP）。</span>
         <span class="sub">已加入 <code>nonce</code> 安全握手（只能由書籤啟動）。</span>
+      </ul>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <h3 style="margin:0 0 8px">常見問題 <span class="faq-en">FAQ</span></h3>
+      <ul style="margin:8px 0; padding-left:20px; line-height:1.6">
+        <b>Q1：點書籤沒反應？</b><br>
+            <span class="sub"> 檢查<span class="faq-en">是否「阻擋彈出式視窗」，允許</span>後再點一次。<br></span>
+        <b>Q2：為什麼 Facebook 可以跑，其他網站卻不行？</b> <br>
+            <span class="sub"> 有些網站設有嚴格的 <code>CSP</code> 會阻止注入；<span class="faq-en">可先重新整理(F5)再試</span>，或換在支援的網站使用。<br></span>
+        <b>Q3：手機上能用嗎？</b><br>
+            <span class="sub"> 多數行動瀏覽器不支援 <code>javascript:</code> 書籤；<span class="faq-en">請改用桌機</span>。FB App 內建瀏覽器也不支援。<br></span>
+        <b>Q4：按了之後頁面暫停？</b> <br>
+            <span class="sub"> 正常現象，代表 DevTools 已打開；按 <span class="faq-en"><b>F8</b></span> 或 <span class="faq-en">DevTools 的「▶」繼續。<br></span></span>
+        <b>Q5：要怎麼更新？</b><br>
+            <span class="sub"> <span class="faq-en">書籤不用重加</span>；會抓最新面板版本。異常，可清快取或告知管理者。<br></span>
+        <b>Q6：安全嗎？</b><br>
+            <span class="sub"> <span class="faq-en">書籤不含程式</span>；就算有人直接開檔，也需通過檢核碼才會運作。<br></span>
       </ul>
     </div>
 
