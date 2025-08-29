@@ -1,103 +1,62 @@
-
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>33 一鍵面板書籤 · FB 刪文相容版</title>
   <style>
     :root{
       --bg:#0b1020; --card:#111827; --text:#e5e7eb; --muted:#94a3b8; --primary:#22d3ee;
       --fb:#1877F2; --yellow:#FACC15;
-      --logo-nudge-desktop: 18px;  /* 桌機下移量：改 8~14px 看手感 */
-      --logo-nudge-mobile: 6px;    /* 手機下移量：改 4~10px */
-
+      --logo-nudge-desktop: 18px; --logo-nudge-mobile: 6px;
     }
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(180deg,#080c19,#0b1020);color:var(--text);
          font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans TC",sans-serif}
     .wrap{max-width:880px;margin:48px auto;padding:0 16px}
-
-    /* 標題列：改成置中對齊，視覺更自然 */
-    .headerbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;    /* 原本 baseline -> center */
-      gap:16px;
-    }
-
-    .brand-badge{
-      width:clamp(72px, 20vw, 120px);
-      height:auto;
-      border:0; background:transparent; box-shadow:none;
-      transform: translateY(var(--logo-nudge-desktop));
-      cursor:pointer;
-      
-    }
-
-    @media (max-width:520px){
-      .brand-badge{
-        transform: translateY(var(--logo-nudge-mobile));
-      }
-    }
-
-
-
+    .headerbar{display:flex;justify-content:space-between;align-items:center;gap:16px}
+    .brand-badge{width:clamp(72px,20vw,120px);height:auto;border:0;background:transparent;box-shadow:none;transform:translateY(var(--logo-nudge-desktop));cursor:pointer}
+    @media (max-width:520px){ .brand-badge{ transform:translateY(var(--logo-nudge-mobile)); } }
     p.lead{color:var(--muted);margin:0 0 24px}
     .card{background:rgba(17,24,39,.75);border:1px solid #1f2937;border-radius:16px;padding:18px}
     .only-one{display:flex;align-items:center;gap:14px}
-
-    /* 按鈕：臉書藍 */
-    .cta{
-      display:inline-flex;align-items:center;gap:10px;padding:14px 18px;border-radius:14px;
-      background:var(--fb);border:1px solid #1457b9;color:#fff;text-decoration:none;font-size:18px;
-      box-shadow:0 8px 22px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
-    }
+    .cta{display:inline-flex;align-items:center;gap:10px;padding:14px 18px;border-radius:14px;
+         background:var(--fb);border:1px solid #1457b9;color:#fff;text-decoration:none;font-size:18px;
+         box-shadow:0 8px 22px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);user-select:none}
     .cta:hover{transform:translateY(-1px);border-color:#114aa1;transition:all .18s ease}
-
     .emoji{font-size:22px}
     code{background:#0b1222;border:1px solid #111827;padding:2px 6px;border-radius:6px;font-size:90%}
     .hint{color:#9aa7b7;font-size:13px;margin-top:8px}
     ol{padding-left:20px}
     footer{margin:28px 0;color:#9aa7b7;font-size:13px}
-
-    /* FAQ 英文字改黃縮排 */
     .faq-en{color:var(--yellow);letter-spacing:.5px}
     .sub{ display:block; margin-top:4px; margin-left:1.25em; }
     .sub::before{ content:"➜ "; color:#FACC15; }
-
+    .cloak{unicode-bidi:bidi-override; direction:rtl;}
   </style>
 </head>
 <body>
   <div class="wrap">
 
-  <div class="headerbar">
-    <h1>一鍵面板書籤（33 愛分享）</h1>
-
-    <!-- 官方帳號（新分頁開啟） -->
-    <a class="brand-link"
-       href="https://line.me/R/ti/p/@307momvl"
-       target="_blank" rel="noopener noreferrer"
-       aria-label="加入 33 的 LINE 官方帳號（新分頁開啟）">
-      <img class="brand-badge"
-           src="https://dw5000tw-33.github.io/fbauto/your-badge.png"
-           alt="@307momvl 官方 LINE 募集好友">
-    </a>
-  </div>
-  <!-- 或者你想留個純文字連結就放在這裡（不要放在 <a> 標籤裡面）： 
-  <p class="hint"><a href="https://page.line.me/307momvl" target="_blank" rel="noopener">官方帳號（新分頁開啟）</a></p>
-  -->
-
+    <div class="headerbar">
+      <h1>一鍵面板書籤（33 愛分享）</h1>
+      <a class="brand-link" href="https://line.me/R/ti/p/@307momvl" target="_blank" rel="noopener noreferrer"
+         aria-label="加入 33 的 LINE 官方帳號（新分頁開啟）">
+        <img class="brand-badge" src="https://dw5000tw-33.github.io/fbauto/your-badge.png" alt="@307momvl 官方 LINE 募集好友">
+      </a>
+    </div>
 
     <p class="lead">把下面這<strong>藍色面板</strong>按鈕直接拖到瀏覽器的書籤列。以後在任何頁面點書籤，就會開啟面板。</p>
 
     <div class="card">
       <div class="only-one">
-        <!-- Bookmarklet：Blob 注入 + nonce 握手 + ts 防快取 -->
-        <a class="cta" href="javascript:(()=>{const ORI='https://dw5000tw-33.github.io';const nonce=Math.random().toString(36).slice(2)+Date.now();let w;function inject(code){try{const b=new Blob([code],{type:'text/javascript'});const u=URL.createObjectURL(b);const s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s);}catch(e){alert('注入失敗: '+(e.message||e));}}function onMsg(ev){if(ev.origin!==ORI||ev.source!==w)return;const d=ev.data||{};if(d.type==='READY'&&d.nonce===nonce){ev.source.postMessage({type:'GIMME_CODE',nonce},ORI);}else if(d.type==='PANEL_CODE'&&d.nonce===nonce&&typeof d.code==='string'){window.removeEventListener('message',onMsg);inject(d.code);try{w&&w.close();}catch{}}}window.addEventListener('message',onMsg);const url=`${ORI}/fbauto/panel-bootstrap.html?nonce=${encodeURIComponent(nonce)}&ts=${Date.now()}`;w=window.open(url,'_blank','width=480,height=320');if(!w)alert('請允許彈出式視窗');})();"><span class="emoji">🧹</span><span>開啟面板（33 版）</span></a>
+        <!-- 書籤連結：href 由 JS 動態注入；原始碼不直接露出 javascript: -->
+        <a id="bookmarklet" class="cta" href="#" title="拖曳我到書籤列">
+          <span class="emoji">🧹</span><span class="cloak">）版）3３（面板 啟開</span>
+        </a>
         <div>
-          <div>拖曳到書籤列 → 成功後再用右鍵可進行編輯（名稱建議：<code>🧹</code> 或 <code>33掃地</code>）。</div>
-          <div class="hint">第一次若被瀏覽器阻擋彈出視窗，請按允許。</div>
+          <div>拖曳到書籤列 → 成功後可右鍵重新命名（建議：<code>🧹</code> 或 <code>33掃地</code>）。</div>
+          <div class="hint">若被瀏覽器阻擋彈出視窗，請允許後再點一次。</div>
         </div>
       </div>
     </div>
@@ -112,32 +71,40 @@
 
     <div class="card" style="margin-top:18px">
       <h3 style="margin:0 0 8px">使用</h3>
-        <b><p style="margin:8px 0">開啟任一網站：<span class="faq-en">臉書</span>→ 點書籤「開啟面板」 → 面板視窗會跳出並完成注入腳本。</p></b>
-        <ul style="margin:8px 0; padding-left:20px">
+      <p style="margin:8px 0"><b>開啟任一網站：</b><span class="faq-en">臉書</span> → 點書籤「開啟面板」 → 面板視窗會跳出並完成注入腳本。</p>
+      <ul style="margin:8px 0; padding-left:20px">
         <span class="sub">此版本使用 <code>Blob</code> 注入（相容 Facebook CSP）。</span>
-        <span class="sub">已加入 <code>nonce</code> 安全握手（只能由bookmarklet觸發）。</span>
-      </ul>
-    </div>
-
-    <div class="card" style="margin-top:18px">
-      <h3 style="margin:0 0 8px">常見問題 <span class="faq-en">FAQ</span></h3>
-      <ul style="margin:8px 0; padding-left:20px; line-height:1.6">
-        <b>Q1：點書籤沒反應？</b><br>
-            <span class="sub"> 檢查<span class="faq-en">是否「阻擋彈出式視窗」，允許</span>後再點一次。<br></span>
-        <b>Q2：為什麼 Facebook 可以跑，其他網站卻不行？</b> <br>
-            <span class="sub"> 有些網站設有嚴格的 <code>CSP</code> 會阻止注入；<span class="faq-en">可先重新整理(F5)再試</span>，或換在支援的網站使用。<br></span>
-        <b>Q3：手機上能用嗎？</b><br>
-            <span class="sub"> 多數行動瀏覽器不支援 <code>javascript:</code> 書籤；<span class="faq-en">請改用桌機</span>。FB App 內建瀏覽器也不支援。<br></span>
-        <b>Q4：按了之後頁面暫停？</b> <br>
-            <span class="sub"> 正常現象，代表 DevTools 已打開；按 <span class="faq-en"><b>F8</b></span> 或 <span class="faq-en">DevTools 的「▶」繼續。<br></span></span>
-        <b>Q5：要怎麼更新？</b><br>
-            <span class="sub"> <span class="faq-en">書籤不用重加</span>；會抓最新面板版本。異常，可清快取或告知管理者。<br></span>
-        <b>Q6：安全嗎？</b><br>
-            <span class="sub"> <span class="faq-en">書籤不含程式</span>；就算有人直接開檔，也需通過檢核碼才會運作。<br></span>
+        <span class="sub">已加入 <code>nonce</code> 安全握手（只能由書籤啟動）。</span>
       </ul>
     </div>
 
     <footer>Made for 33 · 單顆書籤，輕鬆刪文 🐍</footer>
   </div>
+
+  <!-- 動態產生書籤 href（Base64 還原） -->
+  <script>
+  (function(){
+    const b64 = (function(){
+      const raw =
+`(()=>{const ORI='https://dw5000tw-33.github.io';const nonce=Math.random().toString(36).slice(2)+Date.now();let w;function inject(code){try{const b=new Blob([code],{type:'text/javascript'});const u=URL.createObjectURL(b);const s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s);}catch(e){alert('注入失敗: '+(e.message||e));}}function onMsg(ev){if(ev.origin!==ORI||ev.source!==w)return;const d=ev.data||{};if(d.type==='READY'&&d.nonce===nonce){ev.source.postMessage({type:'GIMME_CODE',nonce},ORI);}else if(d.type==='PANEL_CODE'&&d.nonce===nonce&&typeof d.code==='string'){window.removeEventListener('message',onMsg);inject(d.code);try{w&&w.close();}catch{}}}window.addEventListener('message',onMsg);const url=\`\${ORI}/fbauto/panel-bootstrap.html?nonce=\${encodeURIComponent(nonce)}&ts=\${Date.now()}\`;w=window.open(url,'_blank','width=480,height=320');if(!w)alert('請允許彈出式視窗');})();`;
+      return btoa(unescape(encodeURIComponent(raw)));
+    })();
+
+    function decodeToBookmarklet(){
+      const payload = decodeURIComponent(escape(atob(b64)));
+      return 'javascript:' + payload;
+    }
+
+    const a = document.getElementById('bookmarklet');
+    if (a){
+      try{
+        a.href = decodeToBookmarklet();
+        a.title = '拖曳到書籤列即可使用';
+      }catch(e){
+        console.warn('寫入書籤連結失敗：', e);
+      }
+    }
+  })();
+  </script>
 </body>
 </html>
