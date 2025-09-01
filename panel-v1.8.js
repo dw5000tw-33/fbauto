@@ -326,7 +326,7 @@
     const codeForLoader=(passcode&&passcode.trim())?passcode.trim():'M0-DUMMY';
     const url=LOADER_URL_BASE+'?c='+encodeURIComponent(codeForLoader);
     const ORIGIN=ALLOWED_ORIGIN;
-    const POPUP_TIMEOUT=12000, IFRAME_TIMEOUT=12000;
+    const POPUP_TIMEOUT=45000, IFRAME_TIMEOUT=45000;
 
     return new Promise((resolve,reject)=>{
       let done=false, w=null, ifr=null, timers=[];
@@ -337,7 +337,11 @@
         if(ifr&&ifr.parentNode) try{ ifr.parentNode.removeChild(ifr);}catch{}
       };
       function onMsg(ev){
-        if(ev.origin!==ORIGIN) return;
+        // 允許你的 GitHub Pages 網域（含子路徑）
+        const okOrigin =
+          ev.origin === ORIGIN ||
+          /^https:\/\/[a-z0-9-]+\.github\.io$/i.test(new URL(ev.origin).host);
+        if(!okOrigin) return;
         const data=ev.data||{};
         if(data.type==='FB_CORE_CODE'){
           done=true; cleanup();
