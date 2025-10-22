@@ -97,7 +97,7 @@
     const DEFAULT_API =
       (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
         ? 'http://localhost:3322'
-        : 'https://<YOUR_RENDER_HOST>.onrender.com'; // ← 換成你的 Render 網域
+        : 'https://cbs-agent.onrender.com'; // ← 換成你的 Render 網域
     const BASE_URL = API_FROM_QS || DEFAULT_API;
     const API_KEY  = qs.get('key') || localStorage.getItem('ENTRUST_API_KEY') || '';
 
