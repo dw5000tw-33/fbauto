@@ -1,1 +1,157 @@
-123
+
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>委託查詢 v2.0</title>
+  <style>
+    :root{--blue:#0f5cff;--ink:#0f2757;--bd:#e5eefb;--bg:#f9fbff}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Noto Sans TC',sans-serif;background:#fff;color:var(--ink)}
+    #entrust-panel{position:fixed;top:20px;left:20px;width:320px;background:#fff;border:1px solid var(--bd);border-radius:14px;box-shadow:0 10px 30px rgba(3,40,120,.12);z-index:999999}
+    .panel-header{display:flex;justify-content:space-between;align-items:center;background:var(--blue);color:#fff;padding:10px 12px;border-radius:14px 14px 0 0}
+    .panel-title{font-weight:700}
+    .panel-actions button{margin-left:6px;background:rgba(255,255,255,.18);border:0;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer}
+    .panel-actions button:hover{background:rgba(255,255,255,.28)}
+    .panel-body{padding:12px}
+    .field{margin-bottom:12px}
+    .field label{display:block;font-size:12px;opacity:.8;margin-bottom:6px}
+    .field input,.field select{width:100%;padding:9px 10px;border:1px solid #cfe0ff;border-radius:10px;background:var(--bg);outline:none}
+    .field input:focus,.field select:focus{border-color:var(--blue);background:#fff}
+    .inline{display:flex;gap:8px;align-items:center}
+    .switch{position:relative;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+    .switch input{display:none}
+    .slider{width:40px;height:22px;background:#cfe0ff;border-radius:999px;position:relative;transition:.2s}
+    .slider::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+    .switch input:checked + .slider{background:var(--blue)}
+    .switch input:checked + .slider::after{transform:translateX(18px)}
+    .switch-text{font-size:12px}
+    .meta{font-size:12px;opacity:.8;margin:6px 0 10px}
+    .actions{display:flex;gap:8px}
+    .actions .primary{background:var(--blue);color:#fff;border:0;border-radius:10px;padding:9px 12px;cursor:pointer}
+    .actions .warn{background:#ffb020;color:#fff;border:0;border-radius:10px;padding:9px 12px;cursor:pointer}
+    .actions .ghost{background:#eef4ff;color:var(--ink);border:0;border-radius:10px;padding:9px 12px;cursor:pointer}
+    .status{margin-top:12px;border:1px solid var(--bd);border-radius:10px;background:#fcfdff}
+    .status-title{font-size:12px;opacity:.8;padding:8px;border-bottom:1px solid var(--bd)}
+    .log{margin:0;max-height:200px;overflow:auto;padding:8px;font-size:12px;line-height:1.4;white-space:pre-wrap}
+    .min .panel-body{display:none}
+    .min{width:auto}
+  </style>
+</head>
+<body>
+  <div id="entrust-panel">
+    <div class="panel-header">
+      <span class="panel-title">委託查詢 v2.0</span>
+      <div class="panel-actions">
+        <button id="btn-min">最小化</button>
+        <button id="btn-close">關閉</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="field">
+        <label>檢核碼（可留空；測試）</label>
+        <div class="inline">
+          <input id="verify" type="text" placeholder="可留空" />
+          <label class="switch">
+            <input id="isLineOfficial" type="checkbox"/><span class="slider"></span>
+            <span class="switch-text">LINE 官方</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>模式</label>
+        <select id="mode">
+          <option value="exact">精準比對</option>
+          <option value="fuzzy">模糊比對</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>地址</label>
+        <input id="addr" type="text" placeholder="例：台中市西屯區○○路123號"/>
+      </div>
+
+      <div class="meta">現在時間：<span id="nowText">--:--:--</span></div>
+
+      <div class="actions">
+        <button id="btn-start" class="primary">啟動測試</button>
+        <button id="btn-stop" class="warn">停止</button>
+        <button id="btn-hide" class="ghost">關閉</button>
+      </div>
+
+      <div class="status">
+        <div class="status-title">狀態 / 比對進度</div>
+        <pre id="log" class="log"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const BASE_URL = 'http://localhost:3322'; // 之後換成雲端函式即可
+
+    // 時鐘
+    (function tick(){
+      const d = new Date(), p = n => String(n).padStart(2,'0');
+      $('#nowText').textContent = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+      setTimeout(tick, 1000);
+    })();
+
+    const logEl = $('#log');
+    const log = (m)=>{ logEl.textContent += m.endsWith('\n')? m : (m+'\n'); logEl.scrollTop = logEl.scrollHeight; };
+
+    // 視窗控制
+    $('#btn-min').onclick = ()=> $('#entrust-panel').classList.toggle('min');
+    $('#btn-close').onclick = $('#btn-hide').onclick = ()=> $('#entrust-panel').remove();
+
+    // 啟動 / 停止
+    let controller = null;
+
+    $('#btn-start').onclick = async () => {
+      if (controller) { log('[前端] 測試已在進行中…'); return; }
+      const address = $('#addr').value.trim();
+      if (!address){ log('[前端] 請輸入地址'); return; }
+
+      controller = new AbortController();
+      log(`[前端] 送出地址：${address}`);
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/run-combo`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            address,
+            verify: $('#verify').value.trim(),
+            mode: $('#mode').value,
+            lineOfficial: $('#isLineOfficial').checked
+          }),
+          signal: controller.signal
+        });
+
+        if (!res.ok){ log(`[前端] 伺服器回應 ${res.status}`); controller=null; return; }
+
+        const reader = res.body.getReader(), dec = new TextDecoder('utf-8');
+        while(true){
+          const {value, done} = await reader.read();
+          if (done) break;
+          log(dec.decode(value));
+        }
+        log('[前端] 完成。');
+      }catch(err){
+        log(`[前端] 無法連線：${err.message}（請確認你本機 3322 服務已啟動）`);
+      }finally{
+        controller = null;
+      }
+    };
+
+    $('#btn-stop').onclick = async () => {
+      if (!controller){ log('[前端] 沒有進行中的測試'); return; }
+      controller.abort();
+      controller = null;
+      fetch(`${BASE_URL}/api/abort`, {method:'POST'}).catch(()=>{});
+      log('[前端] 已請求停止。');
+    };
+  </script>
+</body>
+</html>
