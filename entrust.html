@@ -5,207 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CBS Agent 控制台</title>
 <style>
-  /* ========= THEME: 想改配色只調這裡 ========= */
   :root{
-    --bg:#f8f7f4;           /* 乳白底 */
-    --panel:#ffffff;        /* 卡片白 */
-    --muted:#6b7280;        /* 次要字 */
-    --text:#0a1a3f;         /* 深海藍文字 */
-    --primary:#1d4ed8;      /* 希臘海藍 */
-    --primary-ink:#ffffff;  /* 主色上的白字 */
-    --danger:#000000;       /* 錯誤 */
-    --ok:#059669;           /* 成功 */
-    --border:#dce3f0;       /* 淡藍灰邊框 */
-    --code:#f1f5f9;         /* 日誌/代碼：淺霧藍灰（亮） */
+    --bg:#f7f7f5;
+    --panel:#ffffff;
+    --muted:#6b7280;
+    --text:#0a1a3f;
+    --primary:#1e3a8a; /* 主色：深藍 */
+    --border:#e5e7eb;
+    --code:#f3f4f6;
+    /* 按鈕語意色，對齊你的截圖 */
+    --start:#10b981;      /* 開始：綠 */
+    --start-ink:#ffffff;
+    --info-bg:#e0e7ff;    /* Combo：淡藍 */
+    --info-ink:#1e293b;
+    --stop-bg:#f3f4f6;    /* 僅 BigFun：淺灰 */
+    --stop-ink:#111827;
+    --close-bg:#111827;   /* 中止：深色 */
+    --close-ink:#ffffff;
   }
-
-  @media (prefers-color-scheme: light){
-    /* 保持亮系，不要覆蓋成深色 */
-    :root{ --bg:#f6f7fb; --panel:#ffffff; --text:#0a1a3f; --muted:#6b7280; --border:#e5e7eb; --code:#eef2f7; }
-  }
-
   *{ box-sizing:border-box }
   body{
-    margin:0;
-    font:14px/1.6 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;
-    background:var(--bg);
-    color:var(--text);
+    margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif;
   }
-  .wrap{ max-width:960px; margin:32px auto; padding:0 16px; }
-  h1{ font-size:22px; margin:0 0 16px; letter-spacing:.5px }
+  .wrap{ max-width:720px; margin:18px auto 28px; padding:0 12px; }
+  .hdr{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  .hdr h2{ margin:0; font-size:18px; font-weight:800 }
+  .hdr .tools{ display:flex; gap:8px; align-items:center }
+  .btn-pill{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid #bcd0ff; color:#1e3a8a; background:#fff; font-weight:700; }
+  .btn-min{ padding:6px 10px; border-radius:10px; background:#eef2ff; color:#1e3a8a; border:1px solid #dbeafe; font-weight:700; cursor:pointer }
 
-  /* 卡片：更輕的陰影 */
-  .card{
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:18px;
-    box-shadow:0 4px 16px rgba(2,6,23,.08);
+  .card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:0 4px 12px rgba(2,6,23,.06); margin-bottom:12px; }
+  label{ display:block; margin:4px 0 6px; font-weight:700; font-size:13px; }
+  input{
+    width:62%; padding:10px 12px; background:#fafafa; color:var(--text);
+    border:1px solid var(--border); border-radius:10px; outline:none; transition:.2s ease;
   }
+  input:focus{ border-color:#93c5fd; box-shadow:0 0 0 3px #dbeafe }
 
-  .row{ display:flex; gap:12px; flex-wrap:wrap }
-  .col{ flex:1 1 260px }
-  label{ display:block; font-weight:600; color:var(--muted); margin-bottom:6px }
+  .btn-row{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; margin-top:10px; }
+  button{ appearance:none; border:none; border-radius:12px; padding:10px 12px; font-weight:800; cursor:pointer; transition:.2s ease; }
+  .btn-start{ background:var(--start); color:var(--start-ink); }
+  .btn-start:hover{ filter:brightness(.95) }
+  .btn-info{ background:var(--info-bg); color:var(--info-ink); border:1px solid #c7d2fe; }
+  .btn-info:hover{ background:#cfe0ff }
+  .btn-stop{ background:var(--stop-bg); color:var(--stop-ink); border:1px solid var(--border); }
+  .btn-stop:hover{ background:#e9ecef }
+  .btn-close{ background:var(--close-bg); color:var(--close-ink); }
+  .btn-close:hover{ filter:brightness(1.05) }
 
-  /* 輸入元件：亮底 */
-  input,select,textarea{
-    width:100%;
-    padding:10px 12px;
-    background:#f9fafb;            /* 由原本深色 #0b1326 改為亮底 */
-    color:var(--text);
-    border:1px solid var(--border);
-    border-radius:10px;
-    outline:none;
-    transition:.2s ease;
-  }
-  input::placeholder{ color:#6b728088 }
-  textarea{
-    min-height:220px;
-    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    background:var(--code);        /* 使用亮色代碼底 */
-  }
-  input:focus,select:focus,textarea:focus{
-    border-color:var(--primary);
-    box-shadow:0 0 0 2px rgba(29,78,216,.15);
-  }
+  .pair{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+  .pair input{ flex:1 1 360px; }
+  .pair small{ color:var(--muted) }
 
-  .btns{ display:flex; gap:10px; flex-wrap:wrap }
+  .log{ white-space:pre-wrap; overflow:auto; background:var(--code); border:1px solid var(--border); border-radius:10px; padding:12px; min-height:420px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px }
 
-  /* 主要按鈕：藍 */
-  button{
-    appearance:none;
-    border:none;
-    border-radius:10px;
-    padding:10px 14px;
-    font-weight:700;
-    cursor:pointer;
-    background:var(--primary);
-    color:var(--primary-ink);
-    box-shadow:0 6px 18px rgba(29,78,216,.20); /* 由青色改為主藍 */
-    transition:.2s ease;
-  }
-  button:hover{ background:#2563eb }
-  button:active{ transform:translateY(1px) }
-  button:disabled{ background:#cbd5e1; color:#475569; box-shadow:none }
-
-  /* 次要按鈕：亮系邊框，不再用深底 */
-  button.secondary{
-    background:#eef2ff;             /* 淡靛紫亮底 */
-    color:#1e293b;
-    border:1px solid var(--border);
-    box-shadow:none;
-  }
-  button.secondary:hover{ background:#e0e7ff }
-
-  button.danger{ background:var(--danger); color:#fff }
-
-  small.help{ color:var(--muted); display:block; margin-top:6px }
-
-  /* 狀態 Pill：亮底 */
-  .pill{
-    display:inline-flex; align-items:center; gap:6px;
-    padding:4px 10px;
-    border-radius:999px;
-    border:1px solid var(--border);
-    background:#f3f6ff;             /* 由深底改為亮底 */
-    color:#475569;
-    font-size:12px;
-  }
-
-  .mt{ margin-top:12px }
-  .mb{ margin-bottom:12px }
-
-  /* 日誌面板：亮、可讀 */
-  .log{
-    width:100%;
-    min-height:300px;
-    white-space:pre-wrap;
-    overflow:auto;
-    background:var(--code);
-    border:1px solid var(--border);
-    border-radius:10px;
-    padding:10px 12px;
-  }
-
-  .split{ display:grid; grid-template-columns:1.3fr .7fr; gap:16px }
-  @media (max-width:900px){ .split{ grid-template-columns:1fr } }
-
-  a{ color:var(--primary); text-decoration:none }
+  /* 最小化狀態 */
+  body.mini .card:not(.cfg){ display:none }
+  body.mini .hdr h2{ opacity:.9 }
 </style>
-
 </head>
 <body>
   <div class="wrap">
-    <h1>🏠 CBS Agent 控制台</h1>
-
-    <div class="card mb">
-      <div class="row">
-        <div class="col">
-          <label>API Base（Render / 內網端點）</label>
-          <input id="api" placeholder="例如 https://cbs-agent-docker.onrender.com" />
-          <small class="help">會自動存到 localStorage。若有反代，填你的子網域（例如 <code>https://api.company.com</code>）。</small>
-        </div>
-        <div class="col">
-          <label>X-API-KEY（如有設定）</label>
-          <input id="key" placeholder="可留白" />
-          <small class="help">若後端有開 <code>API_KEY</code>，前端請在此填入。</small>
-        </div>
-      </div>
-      <div class="btns mt">
-        <button id="save">💾 儲存連線設定</button>
-        <button class="secondary" id="ping">🔎 健康檢查 /health</button>
+    <div class="hdr">
+      <h2>🏠 CBS Agent 控制台</h2>
+      <div class="tools">
+        <a class="btn-pill" href="https://line.me/R/ti/p/@your-line" target="_blank" rel="noopener">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#1e3a8a"><path d="M19.729 4.271C18.144 2.686 15.808 2 12.999 2h-.002C6.925 2 3 5.612 3 10.197c0 2.535 1.12 4.781 2.978 6.313.154.126.247.314.25.514l.028 1.6a.75.75 0 0 0 1.202.6l1.779-1.336a.75.75 0 0 1 .449-.15h3.099c6.074 0 9.999-3.612 9.999-8.197 0-2.09-.686-4.144-2.055-5.57z"/></svg>
+          LINE官方
+        </a>
+        <button class="btn-min" id="min">最小化</button>
       </div>
     </div>
 
-    <div class="split">
-      <div class="card">
-        <label>完整地址</label>
-        <input id="addr" placeholder="例：台中市南屯區大墩南路356號" />
-        <div class="row mt">
-          <div class="col">
-            <label>模式</label>
-            <select id="mode">
-              <option value="exact">exact</option>
-              <option value="fuzzy">fuzzy</option>
-            </select>
-          </div>
-          <div class="col">
-            <label>BigFun 驗證</label>
-            <select id="verify">
-              <option value="">自動</option>
-              <option value="true">強制驗證</option>
-              <option value="false">跳過驗證</option>
-            </select>
-          </div>
-        </div>
-        <div class="btns mt">
-          <button id="echo">🧪 Echo 測試</button>
-          <button id="runCombo">🚀 執行 Combo（CBS + BigFun）</button>
-          <button id="runBigfun" class="secondary">🏗️ 僅 BigFun</button>
-          <button id="abort" class="danger">⛔ 中止</button>
-        </div>
-        <small class="help mt">提示：Render 後端若開啟串流，這裡會即時顯示日誌。</small>
+    <div class="card cfg">
+      <div class="pair">
+        <label style="min-width:72px">API Base</label>
+        <input id="api" placeholder="例如 https://cbs-agent-docker.onrender.com" />
       </div>
-
-      <div class="card">
-        <div class="row">
-          <span class="pill">狀態：<span id="status">idle</span></span>
-          <span class="pill">API：<span id="apiShow">—</span></span>
-        </div>
-        <label class="mt">日誌輸出</label>
-        <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示串流日誌..."></textarea>
+      <div class="pair" style="margin-top:6px">
+        <label style="min-width:72px">X-API-KEY</label>
+        <input id="key" placeholder="可留白" />
+      </div>
+      <div class="btn-row" style="grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:10px">
+        <button class="btn-stop" id="save">💾 儲存</button>
+        <button class="btn-info" id="ping">🔎 健康檢查</button>
       </div>
     </div>
 
-    <div class="card mt">
-      <b>說明</b>
-      <ol>
-        <li>先在上方設定 API Base（你的 Render/內網 API），儲存。</li>
-        <li>按「健康檢查」應回 <code>OK</code>。</li>
-        <li>輸入完整地址；先點 Echo 應回傳同一地址。</li>
-        <li>點「僅 BigFun」或「Combo」觀察日誌輸出。</li>
-      </ol>
-      <small class="help">如果看到 CORS 錯誤，請確認後端已開 <code>cors({origin:true})</code> 並使用 HTTPS。</small>
+    <div class="card">
+      <label>查詢地址</label>
+      <input id="addr" placeholder="例：台中市南屯區大墩南路356號" />
+      <div class="btn-row">
+        <button class="btn-start"   id="echo">Echo 測試</button>
+        <button class="btn-info"    id="runCombo">執行 Combo</button>
+        <button class="btn-stop"    id="runBigfun">僅 BigFun</button>
+        <button class="btn-close"   id="abort">中止</button>
+      </div>
+      <label style="margin-top:10px">日誌輸出</label>
+      <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示串流日誌..."></textarea>
     </div>
   </div>
 
@@ -218,14 +116,11 @@
       set key(v){ localStorage.setItem('key', v || '') },
     };
 
-    function showConn(){
-      $('api').value = state.api; $('key').value = state.key; $('apiShow').textContent = state.api || '—';
-    }
-    showConn();
+    // UI load
+    (function init(){ $('api').value = state.api; $('key').value = state.key; })();
 
-    function setStatus(s){ $('status').textContent = s }
     function appendLog(txt){ const ta=$('log'); ta.value += txt; ta.scrollTop = ta.scrollHeight }
-    function clearLog(){ $('log').value=''}
+    function clearLog(){ $('log').value='' }
 
     async function doFetch(path, opts={}){
       const base = state.api?.trim();
@@ -237,51 +132,56 @@
       return res;
     }
 
-    $('save').onclick = ()=>{ state.api = $('api').value; state.key = $('key').value; showConn(); setStatus('saved') };
+    $('save').onclick = ()=>{ state.api = $('api').value; state.key = $('key').value; appendLog('已儲存設定
+'); };
     $('ping').onclick  = async()=>{
-      clearLog(); setStatus('checking');
-      const base = state.api?.trim(); if(!base) return appendLog('尚未設定 API Base');
-      try{ const r = await fetch(base.replace(/\/$/, '') + '/health'); appendLog(await r.text()); setStatus('ok') }
-      catch(err){ appendLog('health 失敗：'+err.message); setStatus('error') }
+      clearLog(); appendLog('檢查健康狀態...
+');
+      try{ const r = await fetch((state.api||'').replace(/\/$/, '') + '/health'); appendLog(await r.text()); }
+      catch(err){ appendLog('health 失敗：'+err.message+'
+'); }
     };
 
     $('echo').onclick = async()=>{
-      clearLog(); setStatus('echo…');
+      clearLog(); appendLog('Echo 測試中...
+');
       try{
         const res = await doFetch('/api/echo-address', { body: JSON.stringify({ address:$('addr').value }) });
         appendLog(JSON.stringify(await res.json(), null, 2));
-        setStatus('ok');
-      }catch(err){ appendLog(err.message); setStatus('error') }
+      }catch(err){ appendLog(err.message+'
+'); }
     };
 
     $('runBigfun').onclick = async()=>{
-      clearLog(); setStatus('running');
+      clearLog(); appendLog('執行 BigFun...
+');
       try{
         const res = await doFetch('/api/run-bigfun', { body: JSON.stringify({ address:$('addr').value, show:'0' }) });
         const reader = res.body.getReader(); const dec = new TextDecoder();
         while(true){ const {done, value} = await reader.read(); if(done) break; appendLog(dec.decode(value)) }
-        setStatus('done');
-      }catch(err){ appendLog(err.message); setStatus('error') }
+      }catch(err){ appendLog(err.message+'
+'); }
     };
 
     $('runCombo').onclick = async()=>{
-      clearLog(); setStatus('running');
+      clearLog(); appendLog('執行 Combo...
+');
       try{
-        const res = await doFetch('/api/run-combo', { body: JSON.stringify({
-          address: $('addr').value,
-          mode: $('mode').value,
-          verify: $('verify').value,
-          lineOfficial: false
-        })});
+        const res = await doFetch('/api/run-combo', { body: JSON.stringify({ address: $('addr').value, mode: 'exact', verify: '', lineOfficial: false }) });
         const reader = res.body.getReader(); const dec = new TextDecoder();
         while(true){ const {done, value} = await reader.read(); if(done) break; appendLog(dec.decode(value)) }
-        setStatus('done');
-      }catch(err){ appendLog(err.message); setStatus('error') }
+      }catch(err){ appendLog(err.message+'
+'); }
     };
 
     $('abort').onclick = async()=>{
-      try{ const res = await doFetch('/api/abort', { body: JSON.stringify({}) }); appendLog('\n' + (await res.text())) }catch(err){ appendLog(err.message) }
+      try{ const res = await doFetch('/api/abort', { body: JSON.stringify({}) }); appendLog('
+' + (await res.text())) }catch(err){ appendLog(err.message+'
+') }
     };
+
+    // 最小化
+    $('min').onclick = ()=>{ document.body.classList.toggle('mini'); $('min').textContent = document.body.classList.contains('mini') ? '還原' : '最小化'; };
   </script>
 </body>
 </html>
