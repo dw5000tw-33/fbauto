@@ -58,7 +58,15 @@
   .pair{ display:flex; align-items:center; gap:10px; flex-wrap:nowrap }
   .pair label{ min-width:72px; white-space:nowrap; }
   .input-wrap{ position:relative; display:flex; align-items:center; }
-  .savebox{ position:absolute; right:10px; top:50%; transform:translateY(-50%); width:18px; height:18px; border:2px solid #9ca3af; border-radius:4px; background:#fff; display:inline-block; vertical-align:middle; }
+  /* 只有這裡改了：把儲存方框往左、貼近輸入框，並且水平落在「未知」徽章的上方區域 */
+  .savebox{
+    position:absolute;
+    right:calc(38% + 0px); /* 38% = 剩餘寬度 (100% - 輸入框 62%)，放在右側區塊的最左緣，剛好在徽章上方 */
+    top:50%;
+    transform:translateY(-50%);
+    width:18px; height:18px; border:2px solid #9ca3af; border-radius:4px; background:#fff;
+    display:inline-block; vertical-align:middle; z-index:1;
+  }
   .savebox.on{ border-color:#16a34a; background:#16a34a; box-shadow:inset 0 0 0 2px #fff }
   .badge{ display:inline-flex; align-items:center; justify-content:center; height:20px; padding:0 8px; border-radius:999px; font-weight:700; font-size:12px; line-height:1; }
   .ok{ background:#ecfdf5; color:var(--ok); border:1px solid #bbf7d0 }
