@@ -58,10 +58,9 @@
   .pair{ display:flex; align-items:center; gap:10px; flex-wrap:nowrap }
   .pair label{ min-width:72px; white-space:nowrap; }
   .input-wrap{ position:relative; display:flex; align-items:center; }
-  /* 只有這裡改了：把儲存方框往左、貼近輸入框，並且水平落在「未知」徽章的上方區域 */
   .savebox{
     position:absolute;
-    right:calc(21% + 2px); /* 38% = 剩餘寬度 (100% - 輸入框 62%)，放在右側區塊的最左緣，剛好在徽章上方 */
+    right:calc(21% + 2px);
     top:50%;
     transform:translateY(-50%);
     width:18px; height:18px; border:2px solid #9ca3af; border-radius:4px; background:#fff;
@@ -148,67 +147,128 @@
       el.className = 'badge ' + (kind||'muted');
       el.textContent = text;
     }
-    function appendLog(txt){ const ta=$('log'); ta.value += txt; ta.scrollTop = ta.scrollHeight }
+    function appendLog(txt){ const ta=$('log'); ta.value += txt + (txt.endsWith('\n')?'':'\n'); ta.scrollTop = ta.scrollHeight }
     function clearLog(){ $('log').value='' }
 
-    async function doFetch(path, opts={}){
-      const base = state.api?.trim();
-      if(!base) throw new Error('尚未設定 API Base');
-      const headers = {'Content-Type':'application/json'};
-      const k = state.key?.trim(); if(k) headers['x-api-key']=k;
-      const res = await fetch(base.replace(/\/$/, '') + path, { method:'POST', headers, ...opts });
-      if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      return res;
+    const fmtBase = () => (state.api || '').replace(/\/$/, '');
+    const stdHeaders = () => {
+      const h = { 'Content-Type': 'application/json' };
+      const k = (state.key || '').trim();
+      if (k) h['X-API-KEY'] = k;
+      return h;
+    };
+
+    async function fetchJSON(url, opts={}){
+      const res = await fetch(url, opts);
+      const text = await res.text();
+      let data = text;
+      try { data = JSON.parse(text) } catch {}
+      return { ok: res.ok, status: res.status, data };
     }
 
+    // 健康檢查
+    $('ping').onclick = async()=>{
+      clearLog(); appendLog('檢查健康狀態...');
+      badge($('healthStat'), 'muted', '檢查中');
+      try{
+        const r = await fetch(fmtBase() + '/health');
+        const t = await r.text(); appendLog(t || r.status);
+        badge($('healthStat'), 'ok', 'OK');
+      }catch(err){
+        appendLog('health 失敗：' + (err.message || err));
+        badge($('healthStat'), 'bad', '失敗');
+      }
+    };
+
+    // Echo 測試（同步）
+    $('echo').onclick = async()=>{
+      clearLog(); appendLog('Echo 測試...');
+      try{
+        const r = await fetchJSON(fmtBase() + '/api/echo-address', {
+          method: 'POST',
+          headers: stdHeaders(),
+          body: JSON.stringify({ address: $('addr').value, mode: state.mode })
+        });
+        appendLog('['+r.status+'] ' + (typeof r.data==='string' ? r.data : JSON.stringify(r.data, null, 2)));
+      }catch(err){ appendLog('echo error: ' + (err.message || err)); }
+    };
+
+    // 非同步任務（兼容：若後端直接回 200 結果也能處理）
+    let stopFlag = false;
+    const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+
+    async function startJob(kind, payload){
+      stopFlag = false;
+      const base = fmtBase();
+
+      const r = await fetchJSON(base + '/api/' + kind, {
+        method: 'POST',
+        headers: stdHeaders(),
+        body: JSON.stringify(payload || {})
+      });
+
+      // A) 我們的新後端：202 + {jobId}
+      if (r.status === 202 && r.data && r.data.jobId) {
+        const jobId = r.data.jobId;
+        appendLog(`已建立任務 ${kind}，jobId=${jobId}，開始輪詢...`);
+        while (!stopFlag) {
+          await sleep(1500);
+          const s = await fetchJSON(base + '/api/jobs/' + jobId, { headers: stdHeaders() });
+          if (!s.ok) { appendLog(`查詢失敗 [${s.status}]`); break; }
+          if (s.data.status === 'pending') { appendLog('處理中...'); continue; }
+          if (s.data.status === 'done')   { appendLog('✅ 完成：' + JSON.stringify(s.data.result, null, 2)); return; }
+          if (s.data.status === 'error')  { appendLog('❌ 失敗：' + s.data.error); return; }
+          appendLog('未知狀態：' + JSON.stringify(s.data));
+        }
+        if (stopFlag) appendLog('⏹ 已中止輪詢');
+        return;
+      }
+
+      // B) 舊後端：直接回 200 結果
+      appendLog('['+r.status+'] ' + (typeof r.data==='string' ? r.data : JSON.stringify(r.data, null, 2)));
+    }
+
+    $('runCombo').onclick = async()=>{
+      clearLog(); appendLog('執行 Combo...');
+      try{
+        await startJob('run-combo', {
+          address: $('addr').value,
+          mode: state.mode,
+          verify: '',
+          lineOfficial: false
+        });
+      }catch(err){ appendLog('combo error: ' + (err.message || err)); }
+    };
+
+    $('runBigfun').onclick = async()=>{
+      clearLog(); appendLog('執行 BigFun...');
+      try{
+        await startJob('run-bigfun', {
+          address: $('addr').value,
+          show: '0'
+        });
+      }catch(err){ appendLog('bigfun error: ' + (err.message || err)); }
+    };
+
+    $('abort').onclick = async()=>{
+      stopFlag = true;
+      appendLog('⏹ 嘗試中止（若後端支援 /api/abort 會一併通知）');
+      try{
+        const r = await fetch(fmtBase() + '/api/abort', {
+          method: 'POST',
+          headers: stdHeaders(),
+          body: JSON.stringify({})
+        });
+        appendLog('abort: ' + (await r.text()));
+      }catch(e){ /* 後端沒提供也沒關係 */ }
+    };
+
+    // 儲存
     $('save').onclick = ()=>{
       state.api  = $('api').value;
       state.key  = $('key').value;
       state.mode = $('mode').value;
       $('saveBox').classList.add('on');
-    };
-
-    $('ping').onclick = async()=>{
-      clearLog(); appendLog('檢查健康狀態...\n');
-      badge($('healthStat'), 'muted', '檢查中');
-      try{
-        const r = await fetch((state.api||'').replace(/\/$/, '') + '/health');
-        const t = await r.text(); appendLog(t);
-        badge($('healthStat'), 'ok', 'OK');
-      }catch(err){
-        appendLog('health 失敗：'+err.message+'\n');
-        badge($('healthStat'), 'bad', '失敗');
-      }
-    };
-
-    $('echo').onclick = async()=>{
-      clearLog(); appendLog('Echo 測試中...\n');
-      try{
-        const res = await doFetch('/api/echo-address', { body: JSON.stringify({ address:$('addr').value }) });
-        appendLog(JSON.stringify(await res.json(), null, 2));
-      }catch(err){ appendLog(err.message+'\n'); }
-    };
-
-    $('runBigfun').onclick = async()=>{
-      clearLog(); appendLog('執行 BigFun...\n');
-      try{
-        const res = await doFetch('/api/run-bigfun', { body: JSON.stringify({ address:$('addr').value, show:'0' }) });
-        const reader = res.body.getReader(); const dec = new TextDecoder();
-        while(true){ const {done, value} = await reader.read(); if(done) break; appendLog(dec.decode(value)) }
-      }catch(err){ appendLog(err.message+'\n'); }
-    };
-
-    $('runCombo').onclick = async()=>{
-      clearLog(); appendLog('執行 Combo...\n');
-      try{
-        const res = await doFetch('/api/run-combo', { body: JSON.stringify({ address: $('addr').value, mode: state.mode, verify: '', lineOfficial: false }) });
-        const reader = res.body.getReader(); const dec = new TextDecoder();
-        while(true){ const {done, value} = await reader.read(); if(done) break; appendLog(dec.decode(value)) }
-      }catch(err){ appendLog(err.message+'\n'); }
-    };
-
-    $('abort').onclick = async()=>{
-      try{ const res = await doFetch('/api/abort', { body: JSON.stringify({}) }); appendLog('\n' + (await res.text())) }catch(err){ appendLog(err.message+'\n') }
     };
   </script>
 </body>
