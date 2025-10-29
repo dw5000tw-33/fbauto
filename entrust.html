@@ -4,100 +4,33 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CBS Agent 控制台</title>
-<style>
-  :root{
-    --bg:#f7f7f5;
-    --panel:#ffffff;
-    --muted:#6b7280;
-    --text:#0a1a3f;
-    --primary:#1e3a8a;
-    --border:#e5e7eb;
-    --code:#f3f4f6;
-    --start:#1e3a8a;
-    --start-ink:#ffffff;
-    --info-bg:#e0e7ff;
-    --info-ink:#1e293b;
-    --stop-bg:#f3f4f6;
-    --stop-ink:#111827;
-    --close-bg:#111827;
-    --close-ink:#ffffff;
-    --ok:#16a34a;
-    --bad:#dc2626;
-  }
-  *{ box-sizing:border-box }
-  body{
-    margin:0; background:var(--bg); color:var(--text);
-    font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif;
-  }
-  .wrap{ max-width:760px; margin:18px auto 28px; padding:0 12px; }
-  .hdr{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
-  .hdr h2{ margin:0; font-size:18px; font-weight:800 }
-  .hdr .tools{ display:flex; gap:10px; align-items:center }
-  .btn-pill{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid #bcd0ff; color:#1e3a8a; background:#fff; font-weight:700; text-decoration:none }
-  audio{ height:28px }
-
-  .card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; box-shadow:0 4px 12px rgba(2,6,23,.06); margin-bottom:12px; }
-  label{ display:block; margin:4px 0 6px; font-weight:700; font-size:13px; }
-  input, select{
-    width:62%; padding:10px 12px; background:#fafafa; color:var(--text);
-    border:1px solid var(--border); border-radius:10px; outline:none; transition:.2s ease;
-  }
-  input:focus, select:focus{ border-color:#93c5fd; box-shadow:0 0 0 3px #dbeafe }
-
-  .btn-row{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; margin-top:10px; }
-  button{ appearance:none; border:none; border-radius:12px; padding:10px 12px; font-weight:800; cursor:pointer; transition:.2s ease; }
-  .btn-start{ background:var(--start); color:var(--start-ink); }
-  .btn-start:hover{ filter:brightness(.95) }
-  .btn-info{ background:var(--info-bg); color:var(--info-ink); border:1px solid #c7d2fe; }
-  .btn-info:hover{ background:#cfe0ff }
-  .btn-stop{ background:var(--stop-bg); color:var(--stop-ink); border:1px solid var(--border); }
-  .btn-stop:hover{ background:#e9ecef }
-  .btn-close{ background:var(--close-bg); color:var(--close-ink); }
-  .btn-close:hover{ filter:brightness(1.05) }
-
-  .pair{ display:flex; align-items:center; gap:10px; flex-wrap:nowrap }
-  .pair label{ min-width:72px; white-space:nowrap; }
-  .input-wrap{ position:relative; display:flex; align-items:center; }
-  .savebox{
-    position:absolute;
-    right:calc(21% + 2px);
-    top:50%;
-    transform:translateY(-50%);
-    width:18px; height:18px; border:2px solid #9ca3af; border-radius:4px; background:#fff;
-    display:inline-block; vertical-align:middle; z-index:1;
-  }
-  .savebox.on{ border-color:#16a34a; background:#16a34a; box-shadow:inset 0 0 0 2px #fff }
-  .badge{ display:inline-flex; align-items:center; justify-content:center; height:20px; padding:0 8px; border-radius:999px; font-weight:700; font-size:12px; line-height:1; }
-  .ok{ background:#ecfdf5; color:var(--ok); border:1px solid #bbf7d0 }
-  .bad{ background:#fef2f2; color:var(--bad); border:1px solid #fecaca }
-  .muted{ background:#eef2ff; color:#475569; border:1px solid #e2e8f0 }
-  .log{ white-space:pre-wrap; overflow:auto; background:var(--code); border:1px solid var(--border); border-radius:10px; padding:12px; min-height:460px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px }
-</style>
+  <style>
+    body{margin:0;background:#f7f7f5;color:#0a1a3f;font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
+    .wrap{max-width:760px;margin:18px auto 28px;padding:0 12px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;box-shadow:0 4px 12px rgba(2,6,23,.06);margin-bottom:12px}
+    label{display:block;margin:4px 0 6px;font-weight:700;font-size:13px}
+    input,select{width:62%;padding:10px 12px;background:#fafafa;border:1px solid #e5e7eb;border-radius:10px;outline:none}
+    .btn-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+    button{appearance:none;border:none;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer}
+    .btn-start{background:#1e3a8a;color:#fff}.btn-info{background:#e0e7ff;color:#1e293b;border:1px solid #c7d2fe}
+    .btn-stop{background:#f3f4f6;color:#111827;border:1px solid #e5e7eb}.btn-close{background:#111827;color:#fff}
+    .badge{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 8px;border-radius:999px;font-weight:700;font-size:12px;line-height:1}
+    .ok{background:#ecfdf5;color:#16a34a;border:1px solid #bbf7d0}.bad{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}.muted{background:#eef2ff;color:#475569;border:1px solid #e2e8f0}
+    .log{white-space:pre-wrap;overflow:auto;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:10px;padding:12px;min-height:420px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="hdr">
-      <h2>🏠 CBS Agent 控制台</h2>
-      <div class="tools">
-        <a class="btn-pill" href="https://line.me/R/ti/p/@your-line" target="_blank" rel="noopener">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#1e3a8a"><path d="M19.729 4.271C18.144 2.686 15.808 2 12.999 2h-.002C6.925 2 3 5.612 3 10.197c0 2.535 1.12 4.781 2.978 6.313.154.126.247.314.25.514l.028 1.6a.75.75 0 0 0 1.202.6l1.779-1.336a.75.75 0 0 1 .449-.15h3.099c6.074 0 9.999-3.612 9.999-8.197 0-2.09-.686-4.144-2.055-5.57z"/></svg>
-          LINE官方
-        </a>
-        <audio id="bgm" controls src="https://dw5000tw-33.github.io/fbauto/the-truth-194426.mp3"></audio>
-      </div>
-    </div>
-
-    <div class="card cfg">
-      <div class="pair input-wrap">
+    <div class="card">
+      <div class="pair">
         <label>API Base</label>
         <input id="api" placeholder="例如 https://cbs-agent-docker.onrender.com" />
-        <span id="saveBox" class="savebox" title="儲存狀態"></span>
       </div>
       <div class="pair" style="margin-top:6px">
         <label>X-API-KEY</label>
         <input id="key" placeholder="可留白" />
       </div>
-      <div class="pair" style="margin-top:6px; align-items:center">
+      <div class="pair" style="margin-top:6px;display:flex;align-items:center;gap:8px">
         <label>模式</label>
         <select id="mode">
           <option value="exact">exact（精準）</option>
@@ -105,7 +38,7 @@
         </select>
         <span id="healthStat" class="badge muted">未知</span>
       </div>
-      <div class="pair" style="margin-top:10px; gap:8px">
+      <div class="pair" style="margin-top:10px;gap:8px;display:flex">
         <button class="btn-stop" id="save">💾 儲存</button>
         <button class="btn-info" id="ping">🔎 健康檢查</button>
       </div>
@@ -114,7 +47,7 @@
     <div class="card">
       <div class="pair">
         <label>查詢地址</label>
-        <input id="addr" placeholder="例：台中市南屯區大墩南路356號" style="flex:1" />
+        <input id="addr" placeholder="例：台中市南屯區大墩南路356號" style="width:100%" />
       </div>
       <div class="btn-row">
         <button class="btn-start" id="echo">Echo 測試</button>
@@ -123,153 +56,149 @@
         <button class="btn-close" id="abort">中止</button>
       </div>
       <label style="margin-top:10px">日誌輸出</label>
-      <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示串流日誌..."></textarea>
+      <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示日誌..."></textarea>
     </div>
   </div>
 
-  <script>
-    const $ = (id)=>document.getElementById(id);
-    const state = {
-      get api(){ return localStorage.getItem('api') || '' },
-      set api(v){ localStorage.setItem('api', v || '') },
-      get key(){ return localStorage.getItem('key') || '' },
-      set key(v){ localStorage.setItem('key', v || '') },
-      get mode(){ return localStorage.getItem('mode') || 'exact' },
-      set mode(v){ localStorage.setItem('mode', v || 'exact') },
-    };
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const qs = new URLSearchParams(location.search);
 
-    (function init(){
-      $('api').value = state.api; $('key').value = state.key; $('mode').value = state.mode;
-      $('saveBox').classList.remove('on');
-    })();
+  const state = {
+    get api(){ return localStorage.getItem('api') || '' },
+    set api(v){ localStorage.setItem('api', v || '') },
+    get key(){ return localStorage.getItem('key') || '' },
+    set key(v){ localStorage.setItem('key', v || '') },
+    get mode(){ return localStorage.getItem('mode') || 'exact' },
+    set mode(v){ localStorage.setItem('mode', v || 'exact') },
+  };
 
-    function badge(el, kind, text){
-      el.className = 'badge ' + (kind||'muted');
-      el.textContent = text;
-    }
-    function appendLog(txt){ const ta=$('log'); ta.value += txt + (txt.endsWith('\n')?'':'\n'); ta.scrollTop = ta.scrollHeight }
-    function clearLog(){ $('log').value='' }
+  function appendLog(t){ const ta=$('log'); ta.value += t; ta.scrollTop = ta.scrollHeight }
+  function clearLog(){ $('log').value='' }
+  function badge(el, kind, text){ el.className = 'badge ' + (kind||'muted'); el.textContent = text }
 
-    const fmtBase = () => (state.api || '').replace(/\/$/, '');
-    const stdHeaders = () => {
-      const h = { 'Content-Type': 'application/json' };
-      const k = (state.key || '').trim();
-      if (k) h['X-API-KEY'] = k;
-      return h;
-    };
+  // 讀 URL 參數（覆蓋本地）
+  const urlApi = qs.get('api'); if (urlApi) state.api = urlApi;
+  const urlKey = qs.get('key'); if (urlKey) state.key = urlKey;
 
-    async function fetchJSON(url, opts={}){
-      const res = await fetch(url, opts);
-      const text = await res.text();
-      let data = text;
-      try { data = JSON.parse(text) } catch {}
-      return { ok: res.ok, status: res.status, data };
-    }
+  // 初始化 UI
+  $('api').value = state.api; $('key').value = state.key; $('mode').value = state.mode;
 
-    // 健康檢查
-    $('ping').onclick = async()=>{
-      clearLog(); appendLog('檢查健康狀態...');
-      badge($('healthStat'), 'muted', '檢查中');
-      try{
-        const r = await fetch(fmtBase() + '/health');
-        const t = await r.text(); appendLog(t || r.status);
-        badge($('healthStat'), 'ok', 'OK');
-      }catch(err){
-        appendLog('health 失敗：' + (err.message || err));
-        badge($('healthStat'), 'bad', '失敗');
+  // 若沒有 api，嘗試向 Render /config 讀取
+  (async function hydrateFromRender(){
+    if (state.api) return;
+    try{
+      // 這個路徑就是 Render 專案公開域名
+      const renderBase = 'https://cbs-agent-docker.onrender.com';
+      const r = await fetch(renderBase + '/config', { cache: 'no-store' });
+      const cfg = await r.json();
+      if (cfg?.apiBase) {
+        state.api = cfg.apiBase;
+        $('api').value = state.api;
+        console.log('[config] apiBase from Render:', cfg.apiBase);
       }
-    };
+    }catch(e){
+      console.warn('[config] 讀取 Render /config 失敗：', e?.message || e);
+    }
+  })();
 
-    // Echo 測試（同步）
-    $('echo').onclick = async()=>{
-      clearLog(); appendLog('Echo 測試...');
-      try{
-        const r = await fetchJSON(fmtBase() + '/api/echo-address', {
-          method: 'POST',
-          headers: stdHeaders(),
-          body: JSON.stringify({ address: $('addr').value, mode: state.mode })
-        });
-        appendLog('['+r.status+'] ' + (typeof r.data==='string' ? r.data : JSON.stringify(r.data, null, 2)));
-      }catch(err){ appendLog('echo error: ' + (err.message || err)); }
-    };
+  function headers(){
+    const h = { 'Content-Type':'application/json' };
+    const k = (state.key || $('key').value || '').trim();
+    if (k) h['x-api-key'] = k;
+    return h;
+  }
 
-    // 非同步任務（兼容：若後端直接回 200 結果也能處理）
-    let stopFlag = false;
-    const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+  async function doFetch(path, opts={}){
+    const base = (state.api || $('api').value || '').trim().replace(/\/$/, '');
+    if (!base) throw new Error('尚未設定 API Base');
+    const res = await fetch(base + path, { ...opts, headers: { ...(opts.headers||{}), ...headers() } });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res;
+  }
 
-    async function startJob(kind, payload){
-      stopFlag = false;
-      const base = fmtBase();
+  $('save').onclick = ()=>{
+    state.api  = $('api').value;
+    state.key  = $('key').value;
+    state.mode = $('mode').value;
+    appendLog('[saved] 設定已儲存\n');
+  };
 
-      const r = await fetchJSON(base + '/api/' + kind, {
-        method: 'POST',
-        headers: stdHeaders(),
-        body: JSON.stringify(payload || {})
+  $('ping').onclick = async()=>{
+    clearLog(); appendLog('檢查健康狀態...\n');
+    badge($('healthStat'), 'muted', '檢查中');
+    try{
+      const r = await doFetch('/health', { method:'GET' });
+      const t = await r.text();
+      appendLog(t + '\n'); badge($('healthStat'), 'ok', 'OK');
+    }catch(e){
+      appendLog('health 失敗：' + e.message + '\n'); badge($('healthStat'), 'bad', '失敗');
+    }
+  };
+
+  $('echo').onclick = async()=>{
+    clearLog(); appendLog('Echo 測試中...\n');
+    try{
+      const res = await doFetch('/api/echo-address', {
+        method:'POST', body: JSON.stringify({ address: $('addr').value })
       });
+      appendLog(JSON.stringify(await res.json(), null, 2) + '\n');
+    }catch(e){ appendLog(e.message+'\n'); }
+  };
 
-      // A) 我們的新後端：202 + {jobId}
-      if (r.status === 202 && r.data && r.data.jobId) {
-        const jobId = r.data.jobId;
-        appendLog(`已建立任務 ${kind}，jobId=${jobId}，開始輪詢...`);
-        while (!stopFlag) {
-          await sleep(1500);
-          const s = await fetchJSON(base + '/api/jobs/' + jobId, { headers: stdHeaders() });
-          if (!s.ok) { appendLog(`查詢失敗 [${s.status}]`); break; }
-          if (s.data.status === 'pending') { appendLog('處理中...'); continue; }
-          if (s.data.status === 'done')   { appendLog('✅ 完成：' + JSON.stringify(s.data.result, null, 2)); return; }
-          if (s.data.status === 'error')  { appendLog('❌ 失敗：' + s.data.error); return; }
-          appendLog('未知狀態：' + JSON.stringify(s.data));
-        }
-        if (stopFlag) appendLog('⏹ 已中止輪詢');
-        return;
+  // 建立 job 並輪詢
+  async function startJob(kind, payload){
+    const res = await doFetch('/api/' + kind, { method:'POST', body: JSON.stringify(payload||{}) });
+    const j = await res.json();
+    if (!j?.jobId) throw new Error('job 建立失敗');
+    appendLog(`[job] ${j.jobId} 建立，開始輪詢...\n`);
+    // 輪詢
+    while(true){
+      await new Promise(r=>setTimeout(r, 1500));
+      const s = await doFetch('/api/jobs/' + j.jobId, { method:'GET' }).then(r=>r.json());
+      if (s.status === 'pending'){
+        appendLog('.');
+        continue;
       }
-
-      // B) 舊後端：直接回 200 結果
-      appendLog('['+r.status+'] ' + (typeof r.data==='string' ? r.data : JSON.stringify(r.data, null, 2)));
+      appendLog('\n');
+      if (s.status === 'done'){
+        if (s.result?.raw) appendLog(String(s.result.raw) + '\n');
+        else appendLog(JSON.stringify(s.result, null, 2) + '\n');
+      } else {
+        appendLog('[error] ' + (s.error || 'unknown') + '\n');
+      }
+      break;
     }
+  }
 
-    $('runCombo').onclick = async()=>{
-      clearLog(); appendLog('執行 Combo...');
-      try{
-        await startJob('run-combo', {
-          address: $('addr').value,
-          mode: state.mode,
-          verify: '',
-          lineOfficial: false
-        });
-      }catch(err){ appendLog('combo error: ' + (err.message || err)); }
-    };
+  $('runBigfun').onclick = async()=>{
+    clearLog(); appendLog('執行 BigFun...\n');
+    try{
+      await startJob('run-bigfun', { address: $('addr').value, show:'0' });
+    }catch(e){ appendLog(e.message+'\n'); }
+  };
 
-    $('runBigfun').onclick = async()=>{
-      clearLog(); appendLog('執行 BigFun...');
-      try{
-        await startJob('run-bigfun', {
-          address: $('addr').value,
-          show: '0'
-        });
-      }catch(err){ appendLog('bigfun error: ' + (err.message || err)); }
-    };
+  $('runCombo').onclick = async()=>{
+    clearLog(); appendLog('執行 Combo...\n');
+    try{
+      await startJob('run-combo', {
+        address: $('addr').value,
+        mode: $('mode').value,
+        verify: '',
+        lineOfficial: false
+      });
+    }catch(e){ appendLog(e.message+'\n'); }
+  };
 
-    $('abort').onclick = async()=>{
-      stopFlag = true;
-      appendLog('⏹ 嘗試中止（若後端支援 /api/abort 會一併通知）');
-      try{
-        const r = await fetch(fmtBase() + '/api/abort', {
-          method: 'POST',
-          headers: stdHeaders(),
-          body: JSON.stringify({})
-        });
-        appendLog('abort: ' + (await r.text()));
-      }catch(e){ /* 後端沒提供也沒關係 */ }
-    };
-
-    // 儲存
-    $('save').onclick = ()=>{
-      state.api  = $('api').value;
-      state.key  = $('key').value;
-      state.mode = $('mode').value;
-      $('saveBox').classList.add('on');
-    };
-  </script>
+  $('abort').onclick = async()=>{
+    // 若你的桌機有 /api/abort，就會立即轉發；沒有就略過
+    try{
+      const r = await doFetch('/api/abort', { method:'POST', body: JSON.stringify({}) });
+      appendLog((await r.text()) + '\n');
+    }catch(e){ appendLog(e.message+'\n'); }
+  };
+})();
+</script>
 </body>
 </html>
