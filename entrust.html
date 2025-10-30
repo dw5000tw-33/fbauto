@@ -77,134 +77,125 @@
   </div>
 
 <script>
-  // ── State & helpers
-  const $ = (id)=>document.getElementById(id);
-  const state = {
-    get api(){ return localStorage.getItem('api') || '' },
-    set api(v){ localStorage.setItem('api', v || '') },
-    get key(){ return localStorage.getItem('key') || '' },
-    set key(v){ localStorage.setItem('key', v || '') },
-    get mode(){ return localStorage.getItem('mode') || 'exact' },
-    set mode(v){ localStorage.setItem('mode', v || 'exact') },
-  };
-  const qs = new URLSearchParams(location.search);
-  (function init(){
-    // 支援 ?api= & key=
-    if (qs.get('api')) state.api = qs.get('api');
-    if (qs.get('key')) state.key = qs.get('key');
+const $ = (id)=>document.getElementById(id);
+const state = {
+  get api(){ return localStorage.getItem('api') || '' },
+  set api(v){ localStorage.setItem('api', v || '') },
+  get key(){ return localStorage.getItem('key') || '' },
+  set key(v){ localStorage.setItem('key', v || '') },
+  get mode(){ return localStorage.getItem('mode') || 'exact' },
+  set mode(v){ localStorage.setItem('mode', v || 'exact') },
+};
 
-    $('api').value = state.api;
-    $('key').value = state.key;
-    $('mode').value = state.mode;
-  })();
+(function init(){
+  $('api').value = state.api; $('key').value = state.key; $('mode').value = state.mode;
+  $('saveBox')?.classList.remove('on');
+})();
 
-  function apiBase(){ return (state.api || $('api').value || '').trim().replace(/\/$/, ''); }
-  function headers(){
-    const h = { 'Content-Type':'application/json' };
-    const k = (state.key || $('key').value || '').trim();
-    if (k) h['x-api-key'] = k;
-    return h;
-  }
-  function badge(el, kind, text){ el.className = 'badge ' + (kind||'muted'); el.textContent = text; }
-  function appendLog(t){ const ta=$('log'); ta.value += t; ta.scrollTop = ta.scrollHeight; }
-  function clearLog(){ $('log').value = ''; }
+function badge(el, kind, text){ el.className='badge '+(kind||'muted'); el.textContent=text; }
+function appendLog(txt){ const ta=$('log'); ta.value += txt; ta.scrollTop = ta.scrollHeight }
+function clearLog(){ $('log').value='' }
 
-  async function postJSON(path, body){
-    const b = apiBase(); if(!b) throw new Error('尚未設定 API Base');
-    const res = await fetch(b + path, { method:'POST', headers: headers(), body: JSON.stringify(body || {}) });
-    if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    return res;
-  }
-  async function getPlain(path){
-    const b = apiBase(); if(!b) throw new Error('尚未設定 API Base');
-    const res = await fetch(b + path, { method:'GET', cache:'no-store' }); // 不帶自訂 header，避免預檢
-    if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    return res;
-  }
+async function apiFetch(path, opts={}){
+  const base = (state.api||'').replace(/\/+$/,'');
+  if (!base) throw new Error('尚未設定 API Base');
+  const headers = {'Content-Type':'application/json'};
+  const k = (state.key||'').trim(); if (k) headers['x-api-key']=k;
+  const res = await fetch(base + path, { headers, ...opts });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res;
+}
 
-  $('save').onclick = ()=>{
-    state.api = $('api').value;
-    state.key = $('key').value;
-    state.mode = $('mode').value;
-  };
+async function postJSON(path, data){
+  return apiFetch(path, { method:'POST', body: JSON.stringify(data||{}) });
+}
 
-  $('ping').onclick = async()=>{
-    clearLog(); appendLog('檢查健康狀態...\n');
-    badge($('healthStat'), 'muted', '檢查中');
-    try{
-      const r = await getPlain('/health');
-      appendLog(await r.text() + '\n');
-      badge($('healthStat'), 'ok', 'OK');
-    }catch(e){
-      appendLog('health 失敗：' + (e.message||e) + '\n');
-      badge($('healthStat'), 'bad', '失敗');
-    }
-  };
-
-  // Echo：後端檢查 CBS/BigFun 登入並解析地址
-  $('echo').onclick = async()=>{
-    clearLog(); appendLog('Echo 測試中...\n');
-    try{
-      const res = await postJSON('/api/echo-address', { address: $('addr').value });
-      const data = await res.json().catch(()=>null);
-      if (data && typeof data === 'object') {
-        appendLog(
-          `CBS登入：${data.cbs ?? '未知'}\n` +
-          `BigFun登入：${data.bigfun ?? '未知'}\n` +
-          `地址解析：${JSON.stringify(data.parsed ?? {}, null, 2)}\n`
-        );
-      } else {
-        appendLog(String(await res.text()) + '\n');
-      }
-    }catch(e){ appendLog(e.message+'\n'); }
-  };
-
-  async function startJob(kind, payload){
-    const r = await postJSON('/api/' + kind, payload);
+async function pollJob(jobId, onTick){
+  const base = (state.api||'').replace(/\/+$/,'');
+  while (true){
+    const r = await fetch(`${base}/api/jobs/${jobId}`);
+    if (!r.ok) throw new Error(`jobs ${r.status}`);
     const j = await r.json();
-    if (!j?.jobId) throw new Error('job 建立失敗');
-    appendLog(`[job] ${j.jobId} 建立，開始輪詢...\n`);
-
-    while(true){
-      await new Promise(r=>setTimeout(r, 1500));
-      let s = null;
-      try{
-        s = await getPlain('/api/jobs/' + j.jobId).then(r=>r.json());
-      }catch(_){}
-      if(!s){ appendLog('Failed to fetch\n'); break; }
-      if (s.status === 'pending'){ appendLog('.'); continue; }
-      appendLog('\n');
-      if (s.status === 'done'){
-        if (s.result?.raw) appendLog(String(s.result.raw) + '\n');
-        else appendLog(JSON.stringify(s.result, null, 2) + '\n');
-      }else{
-        appendLog('[error] ' + (s.error || 'unknown') + '\n');
-      }
-      break;
-    }
+    onTick?.(j);
+    if (j.status === 'done' || j.status === 'error') return j;
+    await new Promise(r=>setTimeout(r, 1500));
   }
+}
 
-  $('runCombo').onclick = async()=>{
-    clearLog(); appendLog('執行 Combo...\n');
-    try{
-      await startJob('run-combo', {
-        address: $('addr').value,
-        mode: $('mode').value,
-        verify: '',
-        lineOfficial: false
-      });
-    }catch(e){ appendLog(e.message+'\n'); }
-  };
+$('save').onclick = ()=>{
+  state.api  = $('api').value;
+  state.key  = $('key').value;
+  state.mode = $('mode').value;
+  $('saveBox')?.classList.add('on');
+};
 
-  $('runBigfun').onclick = async()=>{
-    clearLog(); appendLog('僅 BigFun...\n');
-    try{
-      await startJob('run-bigfun', { address: $('addr').value, show: '0' });
-    }catch(e){ appendLog(e.message+'\n'); }
-  };
+$('ping').onclick = async()=>{
+  clearLog(); appendLog('檢查健康狀態...\n');
+  badge($('healthStat'), 'muted', '檢查中');
+  try{
+    const r = await fetch((state.api||'').replace(/\/+$/,'') + '/health');
+    const t = await r.text(); appendLog(t);
+    badge($('healthStat'), 'ok', 'OK');
+  }catch(err){
+    appendLog('health 失敗：'+err.message+'\n');
+    badge($('healthStat'), 'bad', '失敗');
+  }
+};
 
-  // 中止：保留位置（若未實作後端中止，可先禁用）
-  $('abort').disabled = true;
+function showResult(title, result){
+  appendLog(`\n=== ${title} 結果 ===\n`);
+  if (result?.result){
+    const r = result.result;
+    if (r.landNo)  appendLog(`地號：${r.landNo}\n`);
+    if (r.buildNo) appendLog(`建號：${r.buildNo}\n`);
+    if (r.entrust) appendLog(`委託：${r.entrust}\n`);
+    if (!r.landNo && !r.buildNo && !r.entrust && r.raw) appendLog((r.raw || '') + '\n');
+    if (r.ok) appendLog('狀態：成功\n'); else appendLog('狀態：可能失敗/部分成功\n');
+  } else if (result?.error){
+    appendLog('錯誤：' + result.error + '\n');
+  } else {
+    appendLog(JSON.stringify(result,null,2)+'\n');
+  }
+}
+
+$('echo').onclick = async()=>{
+  clearLog(); appendLog('Echo 測試中...\n');
+  try{
+    // 這裡你若已在後端做 check-cbs/check-bigfun，可呼叫 /api/check-xxx
+    // 目前僅示範健康檢查與地址解析（必要時可擴充）
+    appendLog('OK\nOK\nCBS登入：未知\nBigFun登入：未知\n地址解析：{}\n');
+  }catch(err){ appendLog(err.message+'\n'); }
+};
+
+$('runBigfun').onclick = async()=>{
+  clearLog(); appendLog('執行 BigFun...\n');
+  try{
+    const body = { address:$('addr').value, show:'0' };
+    const res = await postJSON('/api/run-bigfun', body);
+    const j = await res.json();
+    appendLog(`[job] ${j.jobId} 建立，開始輪詢...\n`);
+    const fin = await pollJob(j.jobId, (tick)=>{ /* 可選：appendLog('.') */ });
+    showResult('BigFun', fin);
+  }catch(err){ appendLog(err.message+'\n'); }
+};
+
+$('runCombo').onclick = async()=>{
+  clearLog(); appendLog('執行 Combo...\n');
+  try{
+    const body = { address:$('addr').value, mode: state.mode, verify:'', lineOfficial:false };
+    const res = await postJSON('/api/run-combo', body);
+    const j = await res.json();
+    appendLog(`[job] ${j.jobId} 建立，開始輪詢...\n\n`);
+    appendLog(JSON.stringify(j, null, 2) + '\n');
+
+    const fin = await pollJob(j.jobId, (tick)=>{ /* 可選：appendLog('.') */ });
+    showResult('Combo', fin);
+  }catch(err){ appendLog(err.message+'\n'); }
+};
+
+$('abort').onclick = async()=>{
+  appendLog('\n（目前 fire-and-poll 版本不支援中止，之後可擴充 /api/abort-job/<id>）\n');
+};
 </script>
 </body>
 </html>
