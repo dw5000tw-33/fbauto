@@ -135,7 +135,41 @@ function headers(){const h={'Content-Type':'application/json'};const k=state.key
 async function post(p,b){const u=(state.api||'').replace(/\/$/,'')+p;const r=await fetch(u,{method:'POST',headers:headers(),body:JSON.stringify(b||{})});if(!r.ok&&r.status!==202)throw new Error(r.status);return r.json();}
 async function get(p){const u=(state.api||'').replace(/\/$/,'')+p;const r=await fetch(u,{headers:headers()});if(!r.ok)throw new Error(r.status);return r.text().catch(()=>r.statusText);}
 $('themeToggle').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',state.theme);};
-const bgm=$('bgm');function applyMusic(){if(state.music==='on'){bgm.volume=0.45;bgm.play().catch(()=>{});}else bgm.pause();}$('musicToggle').onclick=()=>{state.music=state.music==='on'?'off':'on';applyMusic();};applyMusic();
+/* ---------- Music Toggle (按下→播放，再按→靜音) ---------- */
+const bgm = $('bgm');
+const btnMusic = $('musicToggle');
+let isPlaying = false;
+
+function updateMusicButton(){
+  btnMusic.textContent = isPlaying ? '🔇 靜音' : '🔊 音樂';
+}
+
+async function playMusic(){
+  try{
+    bgm.volume = 0.45;
+    await bgm.play();
+    isPlaying = true;
+    state.music = 'on';
+    updateMusicButton();
+  }catch(e){
+    console.warn('播放被瀏覽器阻擋，請先點擊頁面再試');
+  }
+}
+function stopMusic(){
+  bgm.pause();
+  isPlaying = false;
+  state.music = 'off';
+  updateMusicButton();
+}
+
+btnMusic.onclick = () => {
+  if(!isPlaying) playMusic();
+  else stopMusic();
+};
+
+// 初始化依照上次狀態
+if(state.music === 'on'){ playMusic(); } else { stopMusic(); }
+
 function showOverlay(msg){const el=$('overlay');el.style.display='flex';if(msg)el.querySelector('.overlay-msg').textContent=msg;}
 function hideOverlay(){$('overlay').style.display='none';}
 $('save').onclick=()=>{state.api=$('api').value;state.key=$('key').value;state.mode=$('mode').value;logLine("✅ 設定已儲存");};
