@@ -6,7 +6,6 @@
   <title>Σ 房仲委託查詢平台 v1.0</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext x='6' y='48' font-size='48'%3E%CF%83%3C/text%3E%3C/svg%3E" />
   <style>
-/* ===== 主題變數：亮色 ===== */
 :root{
   --bg:#f7f7f5;
   --panel:#ffffff;
@@ -15,18 +14,11 @@
   --border:#e5e7eb;
   --code:#f3f4f6;
   --primary:#1e3a8a;
-  --ok:#16a34a;
-  --bad:#dc2626;
-  --warn:#a16207;
-
-  /* 按鈕與欄位 */
-  --btn:#1e3a8a;
-  --btn-ink:#ffffff;
-  --input-bg:#ffffff;      /* 亮色主題輸入框背景 */
-  --log-ink:#1f2937;       /* 日誌在亮色主題的字色，深色提高可讀性 */
+  --ok:#16a34a; --bad:#dc2626; --warn:#a16207;
+  --btn:#1e3a8a; --btn-ink:#ffffff;
+  --input-bg:#ffffff;
+  --log-ink:#1f2937;
 }
-
-/* ===== 主題變數：深色 ===== */
 html[data-theme="dark"]{
   --bg:#0b0f14;
   --panel:#11161d;
@@ -35,66 +27,28 @@ html[data-theme="dark"]{
   --border:#263241;
   --code:#0f1720;
   --primary:#60a5fa;
-
-  --ok:#22c55e;
-  --bad:#ef4444;
-  --warn:#f59e0b;
-
-  --btn:#60a5fa;
-  --btn-ink:#0b1220;
-  --input-bg:#0f141b;      /* 深色主題輸入框背景 */
-  --log-ink:#e5e7eb;       /* 日誌在深色主題的字色，偏亮 */
+  --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b;
+  --btn:#60a5fa; --btn-ink:#0b1220;
+  --input-bg:#0f141b;
+  --log-ink:#e5e7eb;
 }
-
-/* ===== Reset & 版面 ===== */
 *{box-sizing:border-box}
-body{
-  margin:0;background:var(--bg);color:var(--text);
-  font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif
-}
-a{color:var(--primary);text-decoration:none}
-
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
 .wrap{max-width:860px;margin:20px auto 32px;padding:0 16px}
 .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .brand{display:flex;align-items:center;gap:10px}
-.logo{width:28px;height:28px;border-radius:8px;
-      background:linear-gradient(135deg,#4f46e5,#06b6d4);
-      display:grid;place-items:center;color:#fff;font-weight:900}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4f46e5,#06b6d4);display:grid;place-items:center;color:#fff;font-weight:900}
 .brand h1{margin:0;font-size:16px;font-weight:900;letter-spacing:.2px;display:flex;gap:8px;align-items:center}
 .hdr-controls{display:flex;align-items:center;gap:10px}
-.theme-toggle{appearance:none;border:1px solid var(--border);background:var(--panel);color:var(--text);
-              padding:6px 10px;border-radius:999px;cursor:pointer;font-weight:700}
-.btn-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
-          border:1px solid var(--border);color:var(--text);background:var(--panel);font-weight:700}
-
-.card{
-  background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;
-  box-shadow:0 6px 16px rgba(0,0,0,.35);margin-bottom:12px
-}
+.theme-toggle{appearance:none;border:1px solid var(--border);background:var(--panel);color:var(--text);padding:6px 10px;border-radius:999px;cursor:pointer;font-weight:700}
+.btn-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);color:var(--text);background:var(--panel);font-weight:700}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 6px 16px rgba(0,0,0,.35);margin-bottom:12px}
 .grid2{display:grid;grid-template-columns:160px 1fr;gap:10px 12px;align-items:center}
-
 label{margin:0;font-weight:800;font-size:13px;color:var(--text)}
-
-/* ===== 表單欄位（改用變數，不鎖死深色） ===== */
-input,select,textarea{
-  width:100%;
-  padding:10px 12px;
-  color:var(--text);
-  background:var(--input-bg);
-  border:1px solid var(--border);
-  border-radius:10px;
-  outline:none;
-}
+input,select,textarea{width:100%;padding:10px 12px;color:var(--text);background:var(--input-bg);border:1px solid var(--border);border-radius:10px;outline:none}
 input::placeholder,textarea::placeholder{color:#6b7280}
-input:focus,select:focus,textarea:focus{
-  border-color:#93c5fd;
-  box-shadow:0 0 0 3px rgba(147,197,253,.25)
-}
-
-/* ===== 按鈕 ===== */
 .btn-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
 button{appearance:none;border:none;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer}
-
 .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
 .btn-primary{background:var(--btn);color:var(--btn-ink)}
 .btn-info{background:#e0e7ff;color:#1e293b;border:1px solid #c7d2fe}
@@ -102,289 +56,121 @@ html[data-theme="dark"] .btn-info{background:#1f2937;color:#cfe0ff;border-color:
 .btn-stop{background:#f3f4f6;color:#111827;border:1px solid var(--border)}
 html[data-theme="dark"] .btn-stop{background:#0f141b;color:#e5e7eb;border-color:var(--border)}
 .btn-close{background:#111827;color:#fff}
-
-/* ===== Badge ===== */
-.badge{display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:999px;font-weight:800;font-size:12px}
-.ok{background:#ecfdf5;color:var(--ok);border:1px solid #bbf7d0}
-.warn{background:#fffbeb;color:var(--warn);border:1px solid #fde68a}
-.bad{background:#fef2f2;color:var(--bad);border:1px solid #fecaca}
-.muted{background:#eef2ff;color:#475569;border:1px solid #e2e8f0}
-html[data-theme="dark"] .muted{background:#131722;color:#a0a7b4;border-color:#1f2430}
-
-/* ===== 日誌 ===== */
-.log{
-  white-space:pre-wrap;overflow:auto;background:var(--code);border:1px solid var(--border);
-  border-radius:10px;padding:12px;min-height:420px;
-  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--log-ink);
-}
-
-/* ===== Overlay ===== */
+.log{white-space:pre-wrap;overflow:auto;background:var(--code);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:420px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--log-ink)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:9999;color:#e8ebf0}
-html[data-theme="light"] .overlay{background:#ffffff}
-.overlay .logo-big{width:68px;height:68px;border-radius:18px;background:linear-gradient(135deg,#4f46e5,#06b6d4);display:grid;place-items:center;color:#fff;font-weight:900;font-size:28px;box-shadow:0 10px 40px rgba(6,182,212,.35), 0 0 0 12px rgba(79,70,229,.12)}
+html[data-theme="light"] .overlay{background:#ffffff;color:#0b0c0f}
+.overlay .logo-big{width:68px;height:68px;border-radius:18px;background:linear-gradient(135deg,#4f46e5,#06b6d4);display:grid;place-items:center;color:#fff;font-weight:900;font-size:28px}
 .spinner{width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin 1s linear infinite}
 html[data-theme="light"] .spinner{border-color:rgba(0,0,0,.1);border-top-color:#0b0c0f}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-.pulse{position:relative;width:120px;height:24px;filter:blur(.2px)}
-.pulse::before,.pulse::after{
-  content:"";position:absolute;inset:0;border-radius:999px;
-  background:radial-gradient(ellipse at center, rgba(99,102,241,.85), transparent 55%),
-             radial-gradient(ellipse at 30% 50%, rgba(16,185,129,.85), transparent 55%),
-             radial-gradient(ellipse at 70% 50%, rgba(59,130,246,.85), transparent 55%);
-  animation:pulse 2.4s ease-in-out infinite;
-  mix-blend-mode:screen; opacity:.85;
-}
+.pulse{position:relative;width:120px;height:24px}
+.pulse::before,.pulse::after{content:"";position:absolute;inset:0;border-radius:999px;background:radial-gradient(circle,rgba(99,102,241,.85),transparent 55%),radial-gradient(circle,rgba(16,185,129,.85),transparent 55%),radial-gradient(circle,rgba(59,130,246,.85),transparent 55%);animation:pulse 2.4s ease-in-out infinite;mix-blend-mode:screen;opacity:.85}
 .pulse::after{animation-delay:.8s;filter:blur(6px);opacity:.55}
 @keyframes pulse{0%{transform:scale(.85);opacity:.7}50%{transform:scale(1.06);opacity:1}100%{transform:scale(.85);opacity:.7}}
-.overlay-msg{font-weight:800;letter-spacing:.2px}
-html[data-theme="light"] .overlay{color:#0b0c0f}
-
-/* header audio & controls */
-.hdr-controls{display:flex;align-items:center;gap:10px}
-.audio{height:28px;display:inline-block}
-
-/* narrow */
-@media (max-width:640px){ .grid2{grid-template-columns:1fr} }
+@media(max-width:640px){ .grid2{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
-  <!-- Theme + Audio + Header -->
-  <div class="wrap">
-    <div class="hdr">
-      <div class="brand">
-        <button id="themeToggle" class="theme-toggle" title="切換主題">🌓 主題</button>
-        <div class="logo">Σ</div>
-        <h1>房仲委託查詢平台 v1.0</h1>
-      </div>
-      <div class="hdr-controls">
-        <a class="btn-pill" href="https://line.me/R/ti/p/@307momvl" target="_blank" rel="noopener">LINE 官方</a>
-        <button id="musicToggle" class="btn-pill" title="播放/靜音">🔊 音樂</button>
-      </div>
+<div class="wrap">
+  <div class="hdr">
+    <div class="brand">
+      <button id="themeToggle" class="theme-toggle">🌓 主題</button>
+      <div class="logo">Σ</div>
+      <h1>房仲委託查詢平台 v1.0</h1>
     </div>
-
-    <!-- 設定 -->
-    <div class="card">
-      <div class="grid2">
-        <label>API Base</label>
-        <input id="api" placeholder="例如 https://cbs-agent-docker.onrender.com" />
-        <label>X-API-KEY</label>
-        <input id="key" placeholder="可留白" />
-        <label>模式</label>
-        <select id="mode">
-          <option value="exact">exact（精準）</option>
-          <option value="fuzzy">fuzzy（寬鬆）</option>
-        </select>
-      </div>
-      <div class="btn-row" style="margin-top:12px">
-        <button class="btn-primary" id="boot">⚡ 全系統啟動</button>
-        <button class="btn-ghost" id="save">💾 儲存</button>
-        <span></span><span></span>
-      </div>
-    </div>
-
-    <!-- 查詢 -->
-    <div class="card">
-      <div class="grid2">
-        <label>查詢地址</label>
-        <input id="addr" placeholder="例：台中市南屯區大墩南路356號" />
-      </div>
-      <div class="btn-row">
-        <button class="btn-primary" id="echo">Echo 測試</button>
-        <button class="btn-info" id="runCombo">執行 Combo</button>
-        <button class="btn-stop" id="runBigfun">僅 BigFun</button>
-        <button class="btn-close" id="abort" disabled>中止</button>
-      </div>
-
-      <label style="display:block;margin-top:12px;font-weight:800">日誌輸出</label>
-      <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示串流日誌..."></textarea>
+    <div class="hdr-controls">
+      <a class="btn-pill" href="https://line.me/R/ti/p/@307momvl" target="_blank">LINE 官方</a>
+      <button id="musicToggle" class="btn-pill">🔊 音樂</button>
     </div>
   </div>
 
-  <!-- 音樂 -->
-  <audio id="bgm" class="audio" preload="auto" loop
-    src="https://www.christourlife.ca/images/music/instrumental-hymns-cd/03%20Be%20Still%20My%20Soul.mp3"></audio>
-
-  <!-- Overlay -->
-  <div id="overlay" class="overlay" style="display:none">
-    <div class="logo-big">Σ</div>
-    <div class="spinner"></div>
-    <div class="pulse"></div>
-    <div class="overlay-msg">🧠 智慧連線中，請稍候…</div>
+  <div class="card">
+    <div class="grid2">
+      <label>API Base</label><input id="api" placeholder="https://xxx.onrender.com"/>
+      <label>X-API-KEY</label><input id="key" placeholder="可留白"/>
+      <label>模式</label>
+      <select id="mode"><option value="exact">exact</option><option value="fuzzy">fuzzy</option></select>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn-primary" id="boot">⚡ 全系統啟動</button>
+      <button class="btn-ghost" id="save">💾 儲存</button>
+      <span></span><span></span>
+    </div>
   </div>
+
+  <div class="card">
+    <div class="grid2"><label>查詢地址</label><input id="addr" placeholder="例：台中市南屯區大墩南路356號"/></div>
+    <div class="btn-row">
+      <button class="btn-primary" id="echo">Echo 測試</button>
+      <button class="btn-info" id="runCombo">執行 Combo</button>
+      <button class="btn-stop" id="runBigfun">僅 BigFun</button>
+      <button class="btn-close" id="abort" disabled>中止</button>
+    </div>
+    <label style="display:block;margin-top:12px;font-weight:800">日誌輸出</label>
+    <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示串流日誌..."></textarea>
+  </div>
+</div>
+
+<audio id="bgm" loop src="https://www.christourlife.ca/images/music/instrumental-hymns-cd/03%20Be%20Still%20My%20Soul.mp3"></audio>
+
+<div id="overlay" class="overlay" style="display:none">
+  <div class="logo-big">Σ</div><div class="spinner"></div><div class="pulse"></div>
+  <div class="overlay-msg">🧠 智慧連線中，請稍候…</div>
+</div>
 
 <script>
-/* ---------- State & Utils ---------- */
-const $ = (id)=>document.getElementById(id);
-function logLine(t){ const ta=$('log'); ta.value += (typeof t==='string'? t : JSON.stringify(t,null,2)) + '\n'; ta.scrollTop = ta.scrollHeight; }
-function clearLog(){ $('log').value=''; }
-
-const state = {
-  get api(){ return localStorage.getItem('api') || '' },
-  set api(v){ localStorage.setItem('api', v||'') },
-  get key(){ return localStorage.getItem('key') || '' },
-  set key(v){ localStorage.setItem('key', v||'') },
-  get mode(){ return localStorage.getItem('mode') || 'exact' },
-  set mode(v){ localStorage.setItem('mode', v||'exact') },
-  get theme(){ return localStorage.getItem('theme') || 'light' },
-  set theme(v){ localStorage.setItem('theme', v||'light') },
-  get music(){ return localStorage.getItem('music') || 'on' },
-  set music(v){ localStorage.setItem('music', v || 'on') },
+const $=id=>document.getElementById(id);
+function logLine(t){const ta=$('log');ta.value+=(typeof t==='string'?t:JSON.stringify(t,null,2))+"\n";ta.scrollTop=ta.scrollHeight;}
+function clearLog(){$('log').value='';}
+const state={
+  get api(){return localStorage.getItem('api')||''},set api(v){localStorage.setItem('api',v||'')},
+  get key(){return localStorage.getItem('key')||''},set key(v){localStorage.setItem('key',v||'')},
+  get mode(){return localStorage.getItem('mode')||'exact'},set mode(v){localStorage.setItem('mode',v)},
+  get theme(){return localStorage.getItem('theme')||'light'},set theme(v){localStorage.setItem('theme',v)},
+  get music(){return localStorage.getItem('music')||'on'},set music(v){localStorage.setItem('music',v)}
 };
+function headers(){const h={'Content-Type':'application/json'};const k=state.key?.trim();if(k)h['x-api-key']=k;return h;}
+async function post(p,b){const u=(state.api||'').replace(/\/$/,'')+p;const r=await fetch(u,{method:'POST',headers:headers(),body:JSON.stringify(b||{})});if(!r.ok&&r.status!==202)throw new Error(r.status);return r.json();}
+async function get(p){const u=(state.api||'').replace(/\/$/,'')+p;const r=await fetch(u,{headers:headers()});if(!r.ok)throw new Error(r.status);return r.text().catch(()=>r.statusText);}
+$('themeToggle').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',state.theme);};
+const bgm=$('bgm');function applyMusic(){if(state.music==='on'){bgm.volume=0.45;bgm.play().catch(()=>{});}else bgm.pause();}$('musicToggle').onclick=()=>{state.music=state.music==='on'?'off':'on';applyMusic();};applyMusic();
+function showOverlay(msg){const el=$('overlay');el.style.display='flex';if(msg)el.querySelector('.overlay-msg').textContent=msg;}
+function hideOverlay(){$('overlay').style.display='none';}
+$('save').onclick=()=>{state.api=$('api').value;state.key=$('key').value;state.mode=$('mode').value;logLine("✅ 設定已儲存");};
 
-function headers(){ const h={'Content-Type':'application/json'}; const k=state.key?.trim(); if(k) h['x-api-key']=k; return h; }
-async function post(path, body){ const b=(state.api||'').replace(/\/$/,'')+path; const r=await fetch(b,{method:'POST',headers:headers(),body:JSON.stringify(body||{})}); if(!r.ok && r.status!==202) throw new Error(`${r.status} ${r.statusText}`); return r.json(); }
-async function get(path){ const b=(state.api||'').replace(/\/$/,'')+path; const r=await fetch(b,{headers:headers()}); if(!r.ok) throw new Error(`${r.status} ${r.statusText}`); return r.text().catch(()=>r.statusText); }
-
-/* ---------- Init (URL params → fields) ---------- */
-(function initFromURL(){
-  const p = new URLSearchParams(location.search);
-  const api = p.get('api'); const key = p.get('key'); const theme = p.get('theme');
-  if(api){ state.api = api; } if(key){ state.key = key; } if(theme){ state.theme = theme; }
-})();
-(function initForm(){
-  $('api').value=state.api; $('key').value=state.key; $('mode').value=state.mode;
-  document.documentElement.setAttribute('data-theme', state.theme);
-})();
-
-/* ---------- Theme ---------- */
-$('themeToggle').onclick = ()=>{
-  state.theme = (state.theme === 'light') ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', state.theme);
-};
-
-/* ---------- Music ---------- */
-const bgm = $('bgm');
-function applyMusic(){
-  if(state.music==='on'){
-    $('musicToggle').textContent = '🔊 音樂';
-    bgm.volume = 0.45;
-    bgm.play().catch(()=>{/* 某些瀏覽器需互動後播放 */});
-  }else{
-    $('musicToggle').textContent = '🔈 靜音';
-    bgm.pause();
-  }
-}
-$('musicToggle').onclick = ()=>{
-  state.music = (state.music==='on') ? 'off' : 'on';
-  applyMusic();
-};
-applyMusic();
-
-/* ---------- Overlay ---------- */
-function showOverlay(msg){
-  const el=$('overlay'); el.style.display='flex';
-  if(msg) el.querySelector('.overlay-msg').textContent = msg;
-}
-function hideOverlay(){ $('overlay').style.display='none'; }
-
-/* ---------- Helpers ---------- */
-function parseAddress(addr){
-  const s0=(addr||'').replace(/臺/g,'台').replace(/\s+/g,'').trim();
-  const mCity=s0.match(/^(台北市|新北市|桃園市|台中市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|台東縣|澎湖縣|金門縣|連江縣)/);
-  const city=mCity?mCity[1]:''; const r1=s0.slice(city.length);
-  const mTown=r1.match(/^(.+?[市區鄉鎮])/); const town=mTown?mTown[1]:''; const r2=r1.slice(town.length);
-  const mRoad=r2.match(/^(.+?(?:路|街|大道|道)(?:[一二三四五六七八九十0-9]+段)?)/);
-  const road=mRoad?mRoad[1]:''; const r3=r2.slice(road.length);
-  const lane=(r3.match(/(\d+)\s*巷/)||[, ''])[1];
-  const alley=(r3.match(/(\d+)\s*弄/)||[, ''])[1];
-  const num=(r3.match(/(\d+(?:-\d+)?)\s*號/)||[, ''])[1];
-  const floor=(r3.match(/(\d+)\s*樓/)||[, ''])[1];
-  return {city,town,road,lane,alley,num,floor};
-}
-function toCleanStatusText(t){
-  if(!t) return '未知';
-  const s=String(t).toLowerCase();
-  if(s.includes('ok')) return 'OK';
-  if(s.includes('error')||s.includes('fail')||s.includes('internal')) return '失敗';
-  return t.replace(/<[^>]+>/g,'').trim();
-}
-
-/* ---------- Storage ---------- */
-$('save').onclick=()=>{ state.api=$('api').value; state.key=$('key').value; state.mode=$('mode').value; logLine('✅ 設定已儲存'); };
-
-/* ---------- 全系統啟動 ---------- */
+/* ✅ 全系統啟動 — 直打一條 Render → 桌機暖機 */
 $('boot').onclick=async()=>{
-  clearLog();
-  showOverlay('🧠 智慧連線中，請稍候…');
+  clearLog();showOverlay('🧠 智慧連線中，請稍候…');
   try{
     const base=(state.api||'').replace(/\/$/,'');
-    const h = await fetch(base+'/health').then(r=>r.text()).catch(e=>String(e));
-    logLine('💡 已連接雲端代理：'+toCleanStatusText(h));
-
-    const cbs = await get('/api/check-cbs').catch(e=>String(e));
-    logLine('💡 CBS Session 狀態：'+toCleanStatusText(cbs));
-
-    const bf  = await get('/api/check-bigfun').catch(e=>String(e));
-    logLine('💡 BigFun 驗證：'+toCleanStatusText(bf));
-
-    logLine('🌐 系統就緒，隨時為您服務');
-  }catch(e){
-    logLine('❌ 啟動失敗：'+(e?.message||e));
-  }finally{
-    setTimeout(()=>hideOverlay(), 800);
-  }
-};
-
-/* ---------- Echo（多行中文精簡） ---------- */
-$('echo').onclick=async()=>{
-  clearLog();
-  const addr = $('addr').value.trim();
-  const p = parseAddress(addr);
-  try{
-    const cbs = toCleanStatusText(await get('/api/check-cbs').catch(e=>String(e)));
-    const bf  = toCleanStatusText(await get('/api/check-bigfun').catch(e=>String(e)));
-
-    logLine(`CBS：${cbs}`);
-    logLine(`BigFun：${bf}`);
-    logLine(`地址解析：${JSON.stringify(p)}`);
-  }catch(e){
-    logLine('❌ Echo 失敗：'+(e?.message||e));
-  }
-};
-
-/* ---------- 任務輪詢 ---------- */
-async function pollJob(jobId, label){
-  logLine(`［${label}］任務建立：${jobId}`);
-  for(;;){
-    await new Promise(r=>setTimeout(r,2000));
-    let j; 
-    try{
-      j = await fetch((state.api||'').replace(/\/$/,'')+'/api/jobs/'+jobId,{headers:headers()}).then(r=>r.json());
-    }catch{ j=null; }
-    if(!j){ logLine('任務不存在或連線中斷'); return; }
-
-    if(j.status==='done'){
-      const r=j.result||{};
-      const land = r.landNo || r.land_no || '';
-      const build= r.buildNoFull || r.building_no || '';
-      const entrust = (typeof r.entrust==='string')? r.entrust : (r.message||'');
-      logLine(`地號：${land}`);
-      logLine(`建號：${build}`);
-      if(entrust) logLine(`委託：${entrust}`);
-      return;
+    const h=await fetch(base+'/health').then(r=>r.text()).catch(e=>String(e));
+    logLine('💡 已連接雲端代理：'+h);
+    const r=await fetch(base+'/api/start-all',{method:'POST',headers:headers()});
+    const text=await r.text();let d;try{d=JSON.parse(text);}catch{d={ok:false,error:text};}
+    if(d.error)logLine('❌ '+d.error);else{
+      logLine('🧠 啟動：'+(d.ok?'OK':'FAIL'));
+      logLine('💡 CBS：'+(d.cbs||'未知'));
+      logLine('💡 BigFun：'+(d.bigfun||'未知'));
+      logLine('🌐 系統就緒');
     }
-    if(j.status==='error'){ logLine(`失敗：${j.error||'unknown'}`); return; }
-    logLine('…處理中');
-  }
-}
+  }catch(e){logLine('❌ '+(e?.message||e));}
+  finally{setTimeout(()=>hideOverlay(),800);}
+};
 
-/* ---------- BigFun / Combo ---------- */
-$('runBigfun').onclick=async()=>{
-  clearLog();
-  try{
-    const resp = await post('/api/run-bigfun',{ address:$('addr').value.trim() });
-    await pollJob(resp.jobId || resp.taskId || '(no id)', 'BigFun');
-  }catch(e){ logLine('❌ BigFun 失敗：'+(e?.message||e)); }
-};
-$('runCombo').onclick=async()=>{
-  clearLog();
-  try{
-    const resp = await post('/api/run-combo',{ address:$('addr').value.trim(), mode:state.mode, verify:'', lineOfficial:false });
-    await pollJob(resp.jobId || resp.taskId || '(no id)', 'Combo');
-  }catch(e){ logLine('❌ Combo 失敗：'+(e?.message||e)); }
-};
-$('abort').onclick=()=>logLine('（目前改為背景任務，不提供 abort）');
+function toClean(t){if(!t)return'未知';t=t.toLowerCase();if(t.includes('ok'))return'OK';if(t.includes('fail')||t.includes('error'))return'失敗';return t.replace(/<[^>]+>/g,'');}
+function parseAddress(a){const s=a.replace(/臺/g,'台').replace(/\s+/g,'');const c=s.match(/^(台北市|新北市|桃園市|台中市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|台東縣)/);const city=c?c[1]:'';let r=s.slice(city.length);const t=r.match(/^(.+?[市區鄉鎮])/);const town=t?t[1]:'';r=r.slice(town.length);const rd=r.match(/^(.+?(?:路|街|大道)(?:[一二三四五六七八九十0-9]+段)?)/);const road=rd?rd[1]:'';r=r.slice(road.length);const lane=(r.match(/(\d+)巷/)||[, ''])[1];const alley=(r.match(/(\d+)弄/)||[, ''])[1];const num=(r.match(/(\d+(?:-\d+)?)號/)||[, ''])[1];const floor=(r.match(/(\d+)樓/)||[, ''])[1];return{city,town,road,lane,alley,num,floor};}
+
+$('echo').onclick=async()=>{clearLog();const p=parseAddress($('addr').value);try{
+  const c=toClean(await get('/api/check-cbs').catch(e=>String(e)));
+  const b=toClean(await get('/api/check-bigfun').catch(e=>String(e)));
+  logLine(`CBS：${c}`);logLine(`BigFun：${b}`);logLine(`地址解析：${JSON.stringify(p)}`);
+}catch(e){logLine('❌ '+(e?.message||e));}};
+
+async function pollJob(id,label){logLine(`［${label}］任務建立：${id}`);for(;;){await new Promise(r=>setTimeout(r,2000));let j;try{j=await fetch((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).then(r=>r.json())}catch{j=null}if(!j){logLine('任務不存在');return;}if(j.status==='done'){const r=j.result||{};logLine(`地號：${r.landNo||''}`);logLine(`建號：${r.buildNoFull||''}`);if(r.entrust)logLine(`委託：${r.entrust}`);return;}if(j.status==='error'){logLine(`失敗：${j.error}`);return;}logLine('…處理中');}}
+
+$('runBigfun').onclick=async()=>{clearLog();try{const r=await post('/api/run-bigfun',{address:$('addr').value.trim()});await pollJob(r.jobId,'BigFun');}catch(e){logLine('❌ '+e);}};
+$('runCombo').onclick=async()=>{clearLog();try{const r=await post('/api/run-combo',{address:$('addr').value.trim(),mode:state.mode});await pollJob(r.jobId,'Combo');}catch(e){logLine('❌ '+e);}};
+$('abort').onclick=()=>logLine('（背景任務，無法中止）');
 </script>
 </body>
 </html>
