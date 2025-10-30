@@ -1,113 +1,163 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CBS Agent 控制台</title>
+  <title>Σ 房仲委託查詢平台 v1.0</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext x='6' y='48' font-size='48'%3E%CF%83%3C/text%3E%3C/svg%3E" />
   <style>
     :root{
       --bg:#f7f7f5; --panel:#ffffff; --muted:#6b7280; --text:#0a1a3f;
       --primary:#1e3a8a; --border:#e5e7eb; --code:#f3f4f6;
       --ok:#16a34a; --bad:#dc2626; --warn:#a16207;
+      --btn-ink:#fff; --btn:#1e3a8a;
+    }
+    html[data-theme="dark"]{
+      --bg:#0b0c0f; --panel:#0f1115; --muted:#9aa0aa; --text:#e8ebf0;
+      --primary:#8ab4ff; --border:#1c1f26; --code:#0c0e12;
+      --ok:#34d399; --bad:#f87171; --warn:#f59e0b;
+      --btn-ink:#0b0c0f; --btn:#8ab4ff;
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
-    .wrap{max-width:820px;margin:18px auto 28px;padding:0 16px}
+    a{color:var(--primary);text-decoration:none}
+    .wrap{max-width:860px;margin:20px auto 32px;padding:0 16px}
     .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-    .hdr h2{margin:0;font-size:18px;font-weight:800}
-    .hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
-    .link-btn{
-      display:inline-flex;align-items:center;gap:6px;
-      padding:6px 10px;border-radius:999px;
-      background:#eef2ff;color:#1e293b;border:1px solid #c7d2fe;
-      font-weight:700;font-size:13px;text-decoration:none;
-    }
-    .link-btn:hover{filter:brightness(0.98)}
-    .hdr-audio{height:28px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4f46e5, #06b6d4);display:grid;place-items:center;color:#fff;font-weight:900}
+    .brand h1{margin:0;font-size:16px;font-weight:900;letter-spacing:.2px;display:flex;gap:8px;align-items:center}
+    .hdr-tools{display:flex;align-items:center;gap:10px}
+    .theme-toggle{appearance:none;border:1px solid var(--border);background:var(--panel);color:var(--text);padding:6px 10px;border-radius:999px;cursor:pointer;font-weight:700}
+    .btn-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);color:var(--text);background:var(--panel);font-weight:700}
 
-
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 4px 12px rgba(2,6,23,.06);margin-bottom:12px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 4px 12px rgba(2,6,23,.08);margin-bottom:12px}
     .grid2{display:grid;grid-template-columns:160px 1fr;gap:10px 12px;align-items:center}
-    .row{display:flex;gap:8px;align-items:center}
-    label{margin:0;font-weight:700;font-size:13px;color:#111827}
-    input,select{width:100%;padding:10px 12px;background:#fafafa;color:var(--text);border:1px solid var(--border);border-radius:10px;outline:none}
-    input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px #dbeafe}
-
-    .btn-row{display:grid;grid-template-columns:repeat(4, minmax(0,1fr));gap:8px;margin-top:10px}
-    button{appearance:none;border:none;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer}
-    .btn-start{background:#1e3a8a;color:#fff}
+    label{margin:0;font-weight:800;font-size:13px;color:var(--text)}
+    input,select{width:100%;padding:10px 12px;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;outline:none}
+    input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(147,197,253,.25)}
+    .btn-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+    button{appearance:none;border:none;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer}
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+    .btn-primary{background:var(--btn);color:var(--btn-ink)}
     .btn-info{background:#e0e7ff;color:#1e293b;border:1px solid #c7d2fe}
+    html[data-theme="dark"] .btn-info{background:#111826;color:#9fb4ff;border-color:#273046}
     .btn-stop{background:#f3f4f6;color:#111827;border:1px solid var(--border)}
+    html[data-theme="dark"] .btn-stop{background:#101318;color:#cdd3dd}
     .btn-close{background:#111827;color:#fff}
-
-    .badge{display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:999px;font-weight:700;font-size:12px}
+    .badge{display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:999px;font-weight:800;font-size:12px}
     .ok{background:#ecfdf5;color:var(--ok);border:1px solid #bbf7d0}
     .warn{background:#fffbeb;color:var(--warn);border:1px solid #fde68a}
     .bad{background:#fef2f2;color:var(--bad);border:1px solid #fecaca}
     .muted{background:#eef2ff;color:#475569;border:1px solid #e2e8f0}
-
+    html[data-theme="dark"] .muted{background:#131722;color:#a0a7b4;border-color:#1f2430}
     .log{white-space:pre-wrap;overflow:auto;background:var(--code);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:420px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+
+    /* --- Loading Overlay (Apple-style) --- */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:9999;color:#e8ebf0}
+    html[data-theme="light"] .overlay{background:#ffffff}
+    .overlay .logo-big{width:68px;height:68px;border-radius:18px;background:linear-gradient(135deg,#4f46e5,#06b6d4);display:grid;place-items:center;color:#fff;font-weight:900;font-size:28px;box-shadow:0 10px 40px rgba(6,182,212,.35), 0 0 0 12px rgba(79,70,229,.12)}
+    .spinner{width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin 1s linear infinite}
+    html[data-theme="light"] .spinner{border-color:rgba(0,0,0,.1);border-top-color:#0b0c0f}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Siri-like pulse */
+    .pulse{position:relative;width:120px;height:24px;filter:blur(.2px)}
+    .pulse::before,.pulse::after{
+      content:"";position:absolute;inset:0;border-radius:999px;
+      background:radial-gradient(ellipse at center, rgba(99,102,241,.85), transparent 55%),
+                 radial-gradient(ellipse at 30% 50%, rgba(16,185,129,.85), transparent 55%),
+                 radial-gradient(ellipse at 70% 50%, rgba(59,130,246,.85), transparent 55%);
+      animation:pulse 2.4s ease-in-out infinite;
+      mix-blend-mode:screen; opacity:.85;
+    }
+    .pulse::after{animation-delay:.8s;filter:blur(6px);opacity:.55}
+    @keyframes pulse{
+      0%{transform:scale(.85);opacity:.7}
+      50%{transform:scale(1.06);opacity:1}
+      100%{transform:scale(.85);opacity:.7}
+    }
+    .overlay-msg{font-weight:800;letter-spacing:.2px}
+    html[data-theme="light"] .overlay{color:#0b0c0f}
+
+    /* header audio & controls */
+    .hdr-controls{display:flex;align-items:center;gap:10px}
+    .audio{height:28px;display:inline-block}
+
+    /* narrow */
+    @media (max-width:640px){
+      .grid2{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
+  <!-- Theme + Audio + Header -->
   <div class="wrap">
     <div class="hdr">
-  <h2>🏠 CBS Agent 控制台</h2>
-  <div class="hdr-right">
-    <a class="link-btn" href="https://line.me/R/ti/p/@307momvl" target="_blank">💬 LINE 官方</a>
-    <audio id="bgm" class="hdr-audio" controls preload="metadata"></audio>
-  </div>
-</div>
-
-
-    <!-- 設定區 -->
-    <div class="card">
-      <div class="grid2">
-        <label for="api">API Base</label>
-        <input id="api" placeholder="例如：https://cbs-agent-docker.onrender.com" />
-
-        <label for="key">X-API-KEY</label>
-        <input id="key" placeholder="可留白" />
-
-        <label for="mode">模式</label>
-        <div class="row">
-          <select id="mode" style="max-width:220px">
-            <option value="exact">exact（精準）</option>
-            <option value="fuzzy">fuzzy（寬鬆）</option>
-          </select>
-          <span id="healthStat" class="badge muted">未知</span>
-        </div>
-
-        <div></div>
-        <div class="row" style="gap:8px">
-          <button class="btn-stop" id="save">💾 儲存</button>
-          <button class="btn-info" id="ping">🔎 健康檢查</button>
-        </div>
+      <div class="brand">
+        <button id="themeToggle" class="theme-toggle" title="切換主題">🌓 主題</button>
+        <div class="logo">Σ</div>
+        <h1>房仲委託查詢平台 v1.0</h1>
+      </div>
+      <div class="hdr-controls">
+        <a class="btn-pill" href="https://line.me/R/ti/p/@your-line" target="_blank" rel="noopener">LINE 官方</a>
+        <button id="musicToggle" class="btn-pill" title="播放/靜音">🔊 音樂</button>
       </div>
     </div>
 
-    <!-- 操作區 -->
+    <!-- 設定 -->
     <div class="card">
       <div class="grid2">
-        <label for="addr">查詢地址</label>
+        <label>API Base</label>
+        <input id="api" placeholder="例如 https://cbs-agent-docker.onrender.com" />
+        <label>X-API-KEY</label>
+        <input id="key" placeholder="可留白" />
+        <label>模式</label>
+        <select id="mode">
+          <option value="exact">exact（精準）</option>
+          <option value="fuzzy">fuzzy（寬鬆）</option>
+        </select>
+      </div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn-primary" id="boot">⚡ 全系統啟動</button>
+        <button class="btn-ghost" id="save">💾 儲存</button>
+        <span></span><span></span>
+      </div>
+    </div>
+
+    <!-- 查詢 -->
+    <div class="card">
+      <div class="grid2">
+        <label>查詢地址</label>
         <input id="addr" placeholder="例：台中市南屯區大墩南路356號" />
       </div>
-
       <div class="btn-row">
-        <button class="btn-start" id="echo">Echo 測試</button>
+        <button class="btn-primary" id="echo">Echo 測試</button>
         <button class="btn-info" id="runCombo">執行 Combo</button>
         <button class="btn-stop" id="runBigfun">僅 BigFun</button>
         <button class="btn-close" id="abort" disabled>中止</button>
       </div>
 
-      <label style="display:block;margin:12px 0 6px;font-weight:700">日誌輸出</label>
+      <label style="display:block;margin-top:12px;font-weight:800">日誌輸出</label>
       <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示串流日誌..."></textarea>
     </div>
   </div>
 
+  <!-- 音樂 -->
+  <audio id="bgm" class="audio" preload="auto" loop
+    src="https://www.christourlife.ca/images/music/instrumental-hymns-cd/03%20Be%20Still%20My%20Soul.mp3"></audio>
+
+  <!-- Overlay -->
+  <div id="overlay" class="overlay" style="display:none">
+    <div class="logo-big">Σ</div>
+    <div class="spinner"></div>
+    <div class="pulse"></div>
+    <div class="overlay-msg">🧠 智慧連線中，請稍候…</div>
+  </div>
+
 <script>
+/* ---------- State & Utils ---------- */
 const $ = (id)=>document.getElementById(id);
-function appendLog(t){ const ta=$('log'); ta.value += (typeof t==='string'? t : JSON.stringify(t,null,2)) + '\n'; ta.scrollTop = ta.scrollHeight; }
+function logLine(t){ const ta=$('log'); ta.value += (typeof t==='string'? t : JSON.stringify(t,null,2)) + '\n'; ta.scrollTop = ta.scrollHeight; }
 function clearLog(){ $('log').value=''; }
 
 const state = {
@@ -117,144 +167,170 @@ const state = {
   set key(v){ localStorage.setItem('key', v||'') },
   get mode(){ return localStorage.getItem('mode') || 'exact' },
   set mode(v){ localStorage.setItem('mode', v||'exact') },
+  get theme(){ return localStorage.getItem('theme') || 'light' },
+  set theme(v){ localStorage.setItem('theme', v||'light') },
+  get music(){ return localStorage.getItem('music') || 'on' },
+  set music(v){ localStorage.setItem('music', v || 'on') },
 };
-(function init(){ $('api').value=state.api; $('key').value=state.key; $('mode').value=state.mode; })();
 
 function headers(){ const h={'Content-Type':'application/json'}; const k=state.key?.trim(); if(k) h['x-api-key']=k; return h; }
-async function post(path, body){
-  const b=(state.api||'').replace(/\/$/,'')+path;
-  const r=await fetch(b,{method:'POST',headers:headers(),body:JSON.stringify(body||{})});
-  if(!r.ok && r.status!==202) throw new Error(`${r.status} ${r.statusText}`);
-  return r.json();
-}
-async function get(path){
-  const b=(state.api||'').replace(/\/$/,'')+path;
-  const r=await fetch(b,{headers:headers()});
-  if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  return r.json().catch(async()=>({ raw: await r.text() }));
-}
+async function post(path, body){ const b=(state.api||'').replace(/\/$/,'')+path; const r=await fetch(b,{method:'POST',headers:headers(),body:JSON.stringify(body||{})}); if(!r.ok && r.status!==202) throw new Error(`${r.status} ${r.statusText}`); return r.json(); }
+async function get(path){ const b=(state.api||'').replace(/\/$/,'')+path; const r=await fetch(b,{headers:headers()}); if(!r.ok) throw new Error(`${r.status} ${r.statusText}`); return r.text().catch(()=>r.statusText); }
 
-// -------- 地址解析（多行中文） --------
-function parseTaiwanAddress(addrRaw){
-  if(!addrRaw) return { city:'', town:'', road:'', lane:'', alley:'', num:'', floor:'' };
-  let s = addrRaw.replace(/臺/g,'台').replace(/\s+/g,'');
-  const cities = /(台北市|新北市|桃園市|台中市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|台東縣|澎湖縣|金門縣|連江縣)/;
-  const mCity = s.match(cities); const city = mCity? mCity[1]:''; s = city? s.slice(city.length):s;
-  const mTown = s.match(/^(.+?[市區鄉鎮])/); const town = mTown? mTown[1]:''; s = town? s.slice(town.length):s;
-  const mRoad = s.match(/^(.+?(?:路|街|大道|道)(?:[一二三四五六七八九十0-9]+段)?)/);
-  let road=''; if(mRoad){ road=mRoad[1]; s=s.slice(road.length); }
-  const lane = (s.match(/(\d+)\s*巷/)||[, ''])[1];
-  const alley= (s.match(/(\d+)\s*弄/)||[, ''])[1];
-  const num  = (s.match(/(\d+(?:-\d+)?)\s*號/)||[, ''])[1];
-  const floor= (s.match(/(\d+)\s*樓/)||[, ''])[1];
-  return { city,town,road,lane,alley,num,floor };
-}
-function printParsedChinese(p){
-  appendLog('地址解析成功 ✅');
-  appendLog(`城市：${p.city||'-'}`);
-  appendLog(`區域：${p.town||'-'}`);
-  appendLog(`路名：${p.road||'-'}`);
-  appendLog(`巷：${p.lane||'-'}`);
-  appendLog(`弄：${p.alley||'-'}`);
-  appendLog(`門牌：${p.num? p.num+'號':'-'}`);
-  appendLog(`樓層：${p.floor||'-'}`);
-}
-
-// -------- 健康檢查（精簡輸出） --------
-$('ping').onclick=async()=>{
-  clearLog(); appendLog('檢查健康狀態...');
-  const base = (state.api||'').replace(/\/$/,'');
-  const badge = $('healthStat'); badge.className='badge muted'; badge.textContent='檢查中';
-  try{
-    // API
-    const t = await fetch(base+'/health').then(r=>r.text()).catch(()=>null);
-    const apiOk = (t||'').toUpperCase().includes('OK');
-    appendLog(apiOk ? '✅ API 正常' : '❌ API 連線失敗');
-    badge.className = 'badge ' + (apiOk? 'ok':'bad'); badge.textContent = apiOk? 'OK':'失敗';
-
-    // CBS / BigFun（只看狀態碼，不輸出 HTML）
-    const cbsOk = await fetch(base+'/api/check-cbs').then(r=>r.ok).catch(()=>false);
-    const bfOk  = await fetch(base+'/api/check-bigfun').then(r=>r.ok).catch(()=>false);
-    appendLog(cbsOk ? '✅ CBS 已登入' : '⚠️ CBS 未登入（請在桌機登入）');
-    appendLog(bfOk  ? '✅ BigFun 已登入' : '⚠️ BigFun 未登入（請在桌機登入）');
-  }catch(e){
-    appendLog('❌ 檢查失敗：'+e.message);
-    badge.className='badge bad'; badge.textContent='失敗';
-  }
-};
-
-// -------- Echo（只印地址解析／多行中文） --------
-$('echo').onclick=async()=>{
-  clearLog(); appendLog('Echo 測試中...');
-  const p = parseTaiwanAddress($('addr').value.trim());
-  printParsedChinese(p);
-};
-
-// -------- 長任務輪詢 --------
-async function pollJob(jobId, label){
-  appendLog(`開始執行：${label}（job=${jobId}）`);
-  for(;;){
-    await new Promise(r=>setTimeout(r,2000));
-    let j = null;
-    try{ j = await get('/api/jobs/'+jobId); }catch{ }
-    if(!j){ appendLog('⚠️ 伺服器回應缺失或任務不存在'); return; }
-    if(j.status==='done'){
-      const r=j.result||{};
-      appendLog('【完成】');
-      if(r.landNo || r.buildNoFull || r.entrust){
-        if(r.landNo)     appendLog('地號：'+r.landNo);
-        if(r.buildNoFull)appendLog('建號：'+r.buildNoFull);
-        if(r.entrust!==undefined) appendLog('委託：'+r.entrust);
-      }else{
-        appendLog(JSON.stringify(r,null,2));
-      }
-      return;
-    }
-    if(j.status==='error'){ appendLog('【失敗】'+(j.error||'')); return; }
-    appendLog('等待桌機回應中…（狀態：'+j.status+'）');
-  }
-}
-
-// -------- 操作按鈕 --------
-$('save').onclick=()=>{ state.api=$('api').value; state.key=$('key').value; state.mode=$('mode').value; };
-
-$('runBigfun').onclick=async()=>{
-  clearLog(); appendLog('執行 BigFun...');
-  try{
-    const resp = await post('/api/run-bigfun',{ address:$('addr').value.trim() });
-    appendLog(`[job] ${resp.jobId||'(no id)'} 已建立`);
-    await pollJob(resp.jobId, 'BigFun');
-  }catch(e){ appendLog('❌ '+e.message); }
-};
-
-$('runCombo').onclick=async()=>{
-  clearLog(); appendLog('執行 Combo...');
-  try{
-    const resp = await post('/api/run-combo',{ address:$('addr').value.trim(), mode:state.mode, verify:'', lineOfficial:false });
-    appendLog(`[job] ${resp.jobId||'(no id)'} 已建立`);
-    await pollJob(resp.jobId, 'Combo');
-  }catch(e){ appendLog('❌ '+e.message); }
-};
-
-$('abort').onclick=()=>appendLog('（改為背景任務，不提供中止）');
-  (function setupHeaderMedia(){
-  const AUDIO_SRC = localStorage.getItem('bgm_src')
-    || 'https://dw5000tw-33.github.io/fbauto/the-truth-194426.mp3';
-  const audio = document.getElementById('bgm');
-  if (!audio) return;
-  audio.src = AUDIO_SRC;
-
-  const savedMuted = localStorage.getItem('bgm_muted');
-  const savedVol   = localStorage.getItem('bgm_vol');
-  if (savedMuted !== null) audio.muted = savedMuted === 'true';
-  if (savedVol   !== null) audio.volume = Math.min(1, Math.max(0, Number(savedVol)));
-
-  audio.addEventListener('volumechange', ()=>{
-    localStorage.setItem('bgm_muted', String(audio.muted));
-    localStorage.setItem('bgm_vol',   String(audio.volume));
-  });
+/* ---------- Init (URL params → fields) ---------- */
+(function initFromURL(){
+  const p = new URLSearchParams(location.search);
+  const api = p.get('api'); const key = p.get('key'); const theme = p.get('theme');
+  if(api){ state.api = api; } if(key){ state.key = key; } if(theme){ state.theme = theme; }
+})();
+(function initForm(){
+  $('api').value=state.api; $('key').value=state.key; $('mode').value=state.mode;
+  document.documentElement.setAttribute('data-theme', state.theme);
 })();
 
+/* ---------- Theme ---------- */
+$('themeToggle').onclick = ()=>{
+  state.theme = (state.theme === 'light') ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', state.theme);
+};
+
+/* ---------- Music ---------- */
+const bgm = $('bgm');
+function applyMusic(){
+  if(state.music==='on'){
+    $('musicToggle').textContent = '🔊 音樂';
+    bgm.volume = 0.45;
+    bgm.play().catch(()=>{/* 有些瀏覽器需互動後播放 */});
+  }else{
+    $('musicToggle').textContent = '🔈 靜音';
+    bgm.pause();
+  }
+}
+$('musicToggle').onclick = ()=>{
+  state.music = (state.music==='on') ? 'off' : 'on';
+  applyMusic();
+};
+applyMusic();
+
+/* ---------- Overlay ---------- */
+function showOverlay(msg){
+  const el=$('overlay'); el.style.display='flex';
+  if(msg) el.querySelector('.overlay-msg').textContent = msg;
+}
+function hideOverlay(){ $('overlay').style.display='none'; }
+
+/* ---------- Helpers ---------- */
+function parseAddress(addr){
+  const s0=(addr||'').replace(/臺/g,'台').replace(/\s+/g,'').trim();
+  const mCity=s0.match(/^(台北市|新北市|桃園市|台中市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|台東縣|澎湖縣|金門縣|連江縣)/);
+  const city=mCity?mCity[1]:'';
+  const r1=s0.slice(city.length);
+  const mTown=r1.match(/^(.+?[市區鄉鎮])/); const town=mTown?mTown[1]:'';
+  const r2=r1.slice(town.length);
+  const mRoad=r2.match(/^(.+?(?:路|街|大道|道)(?:[一二三四五六七八九十0-9]+段)?)/);
+  const road=mRoad?mRoad[1]:'';
+  const r3=r2.slice(road.length);
+  const lane=(r3.match(/(\d+)\s*巷/)||[, ''])[1];
+  const alley=(r3.match(/(\d+)\s*弄/)||[, ''])[1];
+  const num=(r3.match(/(\d+(?:-\d+)?)\s*號/)||[, ''])[1];
+  const floor=(r3.match(/(\d+)\s*樓/)||[, ''])[1];
+  return {city,town,road,lane,alley,num,floor};
+}
+function toCleanStatusText(t){
+  // 只想看 OK / FAIL，不要 HTML
+  if(!t) return '未知';
+  const s=String(t).toLowerCase();
+  if(s.includes('ok')) return 'OK';
+  if(s.includes('error')||s.includes('fail')||s.includes('internal')) return '失敗';
+  return t.replace(/<[^>]+>/g,'').trim();
+}
+
+/* ---------- Storage ---------- */
+$('save').onclick=()=>{ state.api=$('api').value; state.key=$('key').value; state.mode=$('mode').value; logLine('✅ 設定已儲存'); };
+
+/* ---------- 全系統啟動 ---------- */
+$('boot').onclick=async()=>{
+  clearLog();
+  showOverlay('🧠 智慧連線中，請稍候…');
+  try{
+    const base=(state.api||'').replace(/\/$/,'');
+    const h = await fetch(base+'/health').then(r=>r.text()).catch(e=>String(e));
+    logLine('💡 已連接雲端代理：'+toCleanStatusText(h));
+
+    const cbs = await get('/api/check-cbs').catch(e=>String(e));
+    logLine('💡 CBS Session 狀態：'+toCleanStatusText(cbs));
+
+    const bf  = await get('/api/check-bigfun').catch(e=>String(e));
+    logLine('💡 BigFun 驗證：'+toCleanStatusText(bf));
+
+    logLine('🌐 系統就緒，隨時為您服務');
+  }catch(e){
+    logLine('❌ 啟動失敗：'+(e?.message||e));
+  }finally{
+    setTimeout(()=>hideOverlay(), 800); // 保留一點質感
+  }
+};
+
+/* ---------- Echo（多行中文精簡） ---------- */
+$('echo').onclick=async()=>{
+  clearLog();
+  const addr = $('addr').value.trim();
+  const p = parseAddress(addr);
+  try{
+    const cbs = toCleanStatusText(await get('/api/check-cbs').catch(e=>String(e)));
+    const bf  = toCleanStatusText(await get('/api/check-bigfun').catch(e=>String(e)));
+
+    logLine(`CBS：${cbs}`);
+    logLine(`BigFun：${bf}`);
+    logLine(`地址解析：${JSON.stringify(p)}`);
+  }catch(e){
+    logLine('❌ Echo 失敗：'+(e?.message||e));
+  }
+};
+
+/* ---------- 任務輪詢 ---------- */
+async function pollJob(jobId, label){
+  logLine(`［${label}］任務建立：${jobId}`);
+  for(;;){
+    await new Promise(r=>setTimeout(r,2000));
+    let j; 
+    try{
+      j = await fetch((state.api||'').replace(/\/$/,'')+'/api/jobs/'+jobId,{headers:headers()}).then(r=>r.json());
+    }catch{ j=null; }
+    if(!j){ logLine('任務不存在或連線中斷'); return; }
+
+    if(j.status==='done'){
+      const r=j.result||{};
+      const land = r.landNo || r.land_no || '';
+      const build= r.buildNoFull || r.building_no || '';
+      const entrust = (typeof r.entrust==='string')? r.entrust : (r.message||'');
+      logLine(`地號：${land}`);
+      logLine(`建號：${build}`);
+      if(entrust) logLine(`委託：${entrust}`);
+      return;
+    }
+    if(j.status==='error'){ logLine(`失敗：${j.error||'unknown'}`); return; }
+    // pending 等待中不刷一堆點，用更友善文字
+    logLine('…處理中');
+  }
+}
+
+/* ---------- BigFun / Combo ---------- */
+$('runBigfun').onclick=async()=>{
+  clearLog();
+  try{
+    const resp = await post('/api/run-bigfun',{ address:$('addr').value.trim() });
+    await pollJob(resp.jobId || resp.taskId || '(no id)', 'BigFun');
+  }catch(e){ logLine('❌ BigFun 失敗：'+(e?.message||e)); }
+};
+$('runCombo').onclick=async()=>{
+  clearLog();
+  try{
+    const resp = await post('/api/run-combo',{ address:$('addr').value.trim(), mode:state.mode, verify:'', lineOfficial:false });
+    await pollJob(resp.jobId || resp.taskId || '(no id)', 'Combo');
+  }catch(e){ logLine('❌ Combo 失敗：'+(e?.message||e)); }
+};
+$('abort').onclick=()=>logLine('（目前改為背景任務，不提供 abort）');
 </script>
 </body>
 </html>
