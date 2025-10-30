@@ -30,10 +30,12 @@
     .theme-toggle{appearance:none;border:1px solid var(--border);background:var(--panel);color:var(--text);padding:6px 10px;border-radius:999px;cursor:pointer;font-weight:700}
     .btn-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);color:var(--text);background:var(--panel);font-weight:700}
 
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 4px 12px rgba(2,6,23,.08);margin-bottom:12px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 6px 16px rgba(0,0,0,.35);margin-bottom:12px}
     .grid2{display:grid;grid-template-columns:160px 1fr;gap:10px 12px;align-items:center}
     label{margin:0;font-weight:800;font-size:13px;color:var(--text)}
     input,select{width:100%;padding:10px 12px;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;outline:none}
+    input,select,textarea{color:var(--text);background:#0c1218;border:1px solid var(--border);}
+    input::placeholder,textarea::placeholder{color:#6b7280;}
     input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(147,197,253,.25)}
     .btn-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
     button{appearance:none;border:none;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer}
