@@ -80,121 +80,125 @@
 const $ = (id)=>document.getElementById(id);
 const state = {
   get api(){ return localStorage.getItem('api') || '' },
-  set api(v){ localStorage.setItem('api', v || '') },
+  set api(v){ localStorage.setItem('api', v||'') },
   get key(){ return localStorage.getItem('key') || '' },
-  set key(v){ localStorage.setItem('key', v || '') },
+  set key(v){ localStorage.setItem('key', v||'') },
   get mode(){ return localStorage.getItem('mode') || 'exact' },
-  set mode(v){ localStorage.setItem('mode', v || 'exact') },
+  set mode(v){ localStorage.setItem('mode', v||'exact') },
 };
 
-(function init(){
-  $('api').value = state.api; $('key').value = state.key; $('mode').value = state.mode;
-  $('saveBox')?.classList.remove('on');
-})();
+(function init(){ $('api').value=state.api; $('key').value=state.key; $('mode').value=state.mode; })();
 
 function badge(el, kind, text){ el.className='badge '+(kind||'muted'); el.textContent=text; }
-function appendLog(txt){ const ta=$('log'); ta.value += txt; ta.scrollTop = ta.scrollHeight }
-function clearLog(){ $('log').value='' }
+function appendLog(t){ const ta=$('log'); ta.value += t; ta.scrollTop=ta.scrollHeight; }
+function clearLog(){ $('log').value=''; }
 
-async function apiFetch(path, opts={}){
-  const base = (state.api||'').replace(/\/+$/,'');
-  if (!base) throw new Error('尚未設定 API Base');
-  const headers = {'Content-Type':'application/json'};
-  const k = (state.key||'').trim(); if (k) headers['x-api-key']=k;
-  const res = await fetch(base + path, { headers, ...opts });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res;
+function headers(){
+  const h={'Content-Type':'application/json'};
+  const k=(state.key||'').trim(); if(k) h['x-api-key']=k;
+  return h;
 }
 
-async function postJSON(path, data){
-  return apiFetch(path, { method:'POST', body: JSON.stringify(data||{}) });
+async function post(path, body){
+  const base=(state.api||'').replace(/\/$/,'');
+  const r = await fetch(base+path, { method:'POST', headers: headers(), body: JSON.stringify(body||{}) });
+  return { status:r.status, json: await r.json().catch(()=>null), text: await r.text().catch(()=>null) };
+}
+async function get(path){
+  const base=(state.api||'').replace(/\/$/,'');
+  const r = await fetch(base+path, { headers: headers() });
+  return { status:r.status, json: await r.json().catch(()=>null), text: await r.text().catch(()=>null) };
 }
 
 async function pollJob(jobId, onTick){
-  const base = (state.api||'').replace(/\/+$/,'');
-  while (true){
-    const r = await fetch(`${base}/api/jobs/${jobId}`);
-    if (!r.ok) throw new Error(`jobs ${r.status}`);
-    const j = await r.json();
-    onTick?.(j);
-    if (j.status === 'done' || j.status === 'error') return j;
-    await new Promise(r=>setTimeout(r, 1500));
+  for(let i=0;i<120;i++){ // 最多 ~120 次（約 2 分鐘）
+    const r = await get('/api/jobs/'+jobId);
+    if (onTick) onTick(r);
+    if (r.json && (r.json.status==='done' || r.json.status==='error')) return r.json;
+    await new Promise(r=>setTimeout(r,1000));
   }
+  return { status:'error', error:'poll timeout' };
 }
 
 $('save').onclick = ()=>{
-  state.api  = $('api').value;
-  state.key  = $('key').value;
-  state.mode = $('mode').value;
-  $('saveBox')?.classList.add('on');
+  state.api=$('api').value; state.key=$('key').value; state.mode=$('mode').value;
 };
 
 $('ping').onclick = async()=>{
   clearLog(); appendLog('檢查健康狀態...\n');
-  badge($('healthStat'), 'muted', '檢查中');
   try{
-    const r = await fetch((state.api||'').replace(/\/+$/,'') + '/health');
-    const t = await r.text(); appendLog(t);
-    badge($('healthStat'), 'ok', 'OK');
-  }catch(err){
-    appendLog('health 失敗：'+err.message+'\n');
-    badge($('healthStat'), 'bad', '失敗');
-  }
+    const r = await fetch((state.api||'').replace(/\/$/,'')+'/health');
+    const t = await r.text(); appendLog(t+'\n');
+    badge($('healthStat'),'ok','OK');
+  }catch(e){ appendLog('health 失敗：'+e.message+'\n'); badge($('healthStat'),'bad','失敗'); }
 };
-
-function showResult(title, result){
-  appendLog(`\n=== ${title} 結果 ===\n`);
-  if (result?.result){
-    const r = result.result;
-    if (r.landNo)  appendLog(`地號：${r.landNo}\n`);
-    if (r.buildNo) appendLog(`建號：${r.buildNo}\n`);
-    if (r.entrust) appendLog(`委託：${r.entrust}\n`);
-    if (!r.landNo && !r.buildNo && !r.entrust && r.raw) appendLog((r.raw || '') + '\n');
-    if (r.ok) appendLog('狀態：成功\n'); else appendLog('狀態：可能失敗/部分成功\n');
-  } else if (result?.error){
-    appendLog('錯誤：' + result.error + '\n');
-  } else {
-    appendLog(JSON.stringify(result,null,2)+'\n');
-  }
-}
 
 $('echo').onclick = async()=>{
   clearLog(); appendLog('Echo 測試中...\n');
   try{
-    // 這裡你若已在後端做 check-cbs/check-bigfun，可呼叫 /api/check-xxx
-    // 目前僅示範健康檢查與地址解析（必要時可擴充）
-    appendLog('OK\nOK\nCBS登入：未知\nBigFun登入：未知\n地址解析：{}\n');
-  }catch(err){ appendLog(err.message+'\n'); }
+    const r = await post('/api/echo-address', { address:$('addr').value });
+    const data = r.json || {};
+    appendLog('OK\n');
+    appendLog('CBS登入：'+(data?.cbs?.ok?'OK':'未知/否')+'\n');
+    appendLog('BigFun登入：'+(data?.bigfun?.ok?'OK':'未知/否')+'\n');
+    appendLog('地址解析：'+JSON.stringify(data?.parts||{})+'\n');
+  }catch(e){ appendLog('echo 失敗：'+e.message+'\n'); }
 };
 
 $('runBigfun').onclick = async()=>{
   clearLog(); appendLog('執行 BigFun...\n');
-  try{
-    const body = { address:$('addr').value, show:'0' };
-    const res = await postJSON('/api/run-bigfun', body);
-    const j = await res.json();
-    appendLog(`[job] ${j.jobId} 建立，開始輪詢...\n`);
-    const fin = await pollJob(j.jobId, (tick)=>{ /* 可選：appendLog('.') */ });
-    showResult('BigFun', fin);
-  }catch(err){ appendLog(err.message+'\n'); }
+  const r = await post('/api/run-bigfun', { address:$('addr').value });
+  if (r.status===202 && r.json?.jobId){
+    appendLog(`[job] ${r.json.jobId} 建立，開始輪詢...\n\n`);
+    const j = await pollJob(r.json.jobId);
+    if (j.status==='done'){
+      const resp = j.response || {};
+      const ok = !!resp?.ok;
+      appendLog('=== BigFun 結果 ===\n');
+      appendLog('狀態：'+(ok?'成功':'失敗/部分成功')+'\n');
+      appendLog('地號：'+(resp.landNo||'')+'\n');
+      appendLog('建號：'+(resp.buildNoFull||'')+'\n');
+    } else {
+      appendLog('BigFun 輪詢失敗：'+(j.error||'unknown')+'\n');
+    }
+  } else {
+    const d = r.json || {};
+    appendLog('=== BigFun 結果（即時） ===\n');
+    appendLog('狀態：'+(d.ok?'成功':'失敗/部分成功')+'\n');
+    appendLog('地號：'+(d.landNo||'')+'\n');
+    appendLog('建號：'+(d.buildNoFull||'')+'\n');
+  }
 };
 
 $('runCombo').onclick = async()=>{
   clearLog(); appendLog('執行 Combo...\n');
-  try{
-    const body = { address:$('addr').value, mode: state.mode, verify:'', lineOfficial:false };
-    const res = await postJSON('/api/run-combo', body);
-    const j = await res.json();
-    appendLog(`[job] ${j.jobId} 建立，開始輪詢...\n\n`);
-    appendLog(JSON.stringify(j, null, 2) + '\n');
-
-    const fin = await pollJob(j.jobId, (tick)=>{ /* 可選：appendLog('.') */ });
-    showResult('Combo', fin);
-  }catch(err){ appendLog(err.message+'\n'); }
+  const payload = { address:$('addr').value, mode:state.mode, verify:'', lineOfficial:false };
+  const r = await post('/api/run-combo', payload);
+  if (r.status===202 && r.json?.jobId){
+    appendLog(`[job] ${r.json.jobId} 建立，開始輪詢...\n\n`);
+    const j = await pollJob(r.json.jobId);
+    if (j.status==='done'){
+      const resp = j.response || {};
+      appendLog('=== Combo 結果 ===\n');
+      appendLog('狀態：'+(resp.ok?'成功':'失敗/部分成功')+'\n');
+      appendLog('地號：'+(resp.landNo||'')+'\n');
+      appendLog('建號：'+(resp.buildNoFull||'')+'\n');
+      appendLog('委託：'+(resp.entrust||'')+'\n');
+    } else {
+      appendLog('Combo 輪詢失敗：'+(j.error||'unknown')+'\n');
+    }
+  } else {
+    const d = r.json || {};
+    appendLog('=== Combo 結果（即時） ===\n');
+    appendLog('狀態：'+(d.ok?'成功':'失敗/部分成功')+'\n');
+    appendLog('地號：'+(d.landNo||'')+'\n');
+    appendLog('建號：'+(d.buildNoFull||'')+'\n');
+    appendLog('委託：'+(d.entrust||'')+'\n');
+  }
 };
 
 $('abort').onclick = async()=>{
-  appendLog('\n（目前 fire-and-poll 版本不支援中止，之後可擴充 /api/abort-job/<id>）\n');
+  try{ const r = await post('/api/abort', {}); appendLog('\n' + (r.text || '')); }catch(e){ appendLog(e.message+'\n'); }
 };
 </script>
 </body>
