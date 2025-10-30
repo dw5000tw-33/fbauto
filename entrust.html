@@ -78,6 +78,9 @@
 
 <script>
 const $ = (id)=>document.getElementById(id);
+function appendLog(t){ const ta=$('log'); ta.value += (typeof t==='string'? t : JSON.stringify(t,null,2)) + '\n'; ta.scrollTop = ta.scrollHeight; }
+function clearLog(){ $('log').value=''; }
+
 const state = {
   get api(){ return localStorage.getItem('api') || '' },
   set api(v){ localStorage.setItem('api', v||'') },
@@ -86,112 +89,79 @@ const state = {
   get mode(){ return localStorage.getItem('mode') || 'exact' },
   set mode(v){ localStorage.setItem('mode', v||'exact') },
 };
-
 (function init(){ $('api').value=state.api; $('key').value=state.key; $('mode').value=state.mode; })();
-function appendLog(t){ const ta=$('log'); ta.value += t; ta.scrollTop=ta.scrollHeight; }
-function clearLog(){ $('log').value=''; }
 
-function headers(){
-  const h={'Content-Type':'application/json'};
-  const k=(state.key||'').trim(); if(k) h['x-api-key']=k;
-  return h;
-}
-async function post(path, body){
-  const base=(state.api||'').replace(/\/$/,'');
-  const r = await fetch(base+path, { method:'POST', headers:headers(), body: JSON.stringify(body||{}) });
-  const txt = await r.text();
-  let j = null; try{ j = JSON.parse(txt); }catch{}
-  return { status:r.status, json:j, text:txt };
-}
-async function get(path){
-  const base=(state.api||'').replace(/\/$/,'');
-  const r = await fetch(base+path, { headers:headers() });
-  const txt = await r.text();
-  let j = null; try{ j = JSON.parse(txt); }catch{}
-  return { status:r.status, json:j, text:txt };
-}
-async function pollJob(jobId){
-  for(let i=0;i<180;i++){ // 最多 3 分鐘
-    const r = await get('/api/jobs/'+jobId);
-    if (r.json && (r.json.status==='done' || r.json.status==='error')) return r.json;
-    await new Promise(r=>setTimeout(r,1000));
-  }
-  return { status:'error', error:'poll timeout' };
-}
+function headers(){ const h={'Content-Type':'application/json'}; const k=state.key?.trim(); if(k) h['x-api-key']=k; return h; }
+async function post(path, body){ const b=(state.api||'').replace(/\/$/,'')+path; const r=await fetch(b,{method:'POST',headers:headers(),body:JSON.stringify(body||{})}); if(!r.ok && r.status!==202) throw new Error(`${r.status} ${r.statusText}`); return r.json(); }
+async function get(path){ const b=(state.api||'').replace(/\/$/,'')+path; const r=await fetch(b,{headers:headers()}); if(!r.ok) throw new Error(`${r.status} ${r.statusText}`); return r.json(); }
 
-$('save').onclick = ()=>{ state.api=$('api').value; state.key=$('key').value; state.mode=$('mode').value; };
+$('save').onclick=()=>{ state.api=$('api').value; state.key=$('key').value; state.mode=$('mode').value; };
 
-$('ping').onclick = async()=>{
-  clearLog(); appendLog('檢查健康狀態...\n');
+$('ping').onclick=async()=>{
+  clearLog(); appendLog('檢查健康狀態...');
   try{
-    const r = await fetch((state.api||'').replace(/\/$/,'')+'/health');
-    const t = await r.text(); appendLog(t+'\n');
-  }catch(e){ appendLog('health 失敗：'+e.message+'\n'); }
+    const r=await fetch((state.api||'').replace(/\/$/,'')+'/health'); appendLog(await r.text());
+    const c1=await fetch((state.api||'').replace(/\/$/,'')+'/api/check-cbs'); appendLog('CBS登入：'+await c1.text());
+    const c2=await fetch((state.api||'').replace(/\/$/,'')+'/api/check-bigfun'); appendLog('BigFun登入：'+await c2.text());
+    appendLog('地址解析：{}');
+  }catch(e){ appendLog('health 失敗：'+e.message); }
 };
 
-$('echo').onclick = async()=>{
-  clearLog(); appendLog('Echo 測試中...\n');
+async function pollJob(jobId, label){
+  appendLog(`[poll] 開始輪詢 ${label}（job=${jobId}）...`);
+  for(;;){
+    await new Promise(r=>setTimeout(r,2000));
+    const j = await get('/api/jobs/'+jobId).catch(()=>null);
+    if(!j){ appendLog('[poll] job 不存在'); return; }
+    if(j.status==='done'){
+      appendLog('[完成]');
+      if(j.result){
+        const r=j.result;
+        if(r.landNo || r.buildNoFull || r.entrust){
+          appendLog(`地號：${r.landNo||''}`);
+          appendLog(`建號：${r.buildNoFull||''}`);
+          if(r.entrust!==undefined) appendLog(`委託：${r.entrust}`);
+        }else{
+          appendLog(j);
+        }
+      }else appendLog(j);
+      return;
+    }
+    if(j.status==='error'){ appendLog('[失敗] '+(j.error||'')); return; }
+    appendLog(`[狀態] ${j.status} ...`);
+  }
+}
+
+$('echo').onclick=async()=>{
+  clearLog(); appendLog('Echo 測試中...');
   try{
-    const r = await post('/api/echo-address', { address:$('addr').value });
-    const d = r.json || {};
-    appendLog('CBS登入：'+(d?.cbs?.ok?'OK':'未知/否')+'\n');
-    appendLog('BigFun登入：'+(d?.bigfun?.ok?'OK':'未知/否')+'\n');
-    appendLog('地址解析：'+JSON.stringify(d?.parts||{})+'\n');
-  }catch(e){ appendLog('echo 失敗：'+e.message+'\n'); }
+    const addr=$('addr').value.trim();
+    // 這裡僅做輕量解析＋登入探針，避免長任務
+    const c1=await fetch((state.api||'').replace(/\/$/,'')+'/api/check-cbs'); appendLog('CBS登入：'+await c1.text());
+    const c2=await fetch((state.api||'').replace(/\/$/,'')+'/api/check-bigfun'); appendLog('BigFun登入：'+await c2.text());
+    appendLog('地址解析：{}');
+  }catch(e){ appendLog(e.message); }
 };
 
-$('runBigfun').onclick = async()=>{
-  clearLog(); appendLog('執行 BigFun...\n');
-  const r = await post('/api/run-bigfun', { address:$('addr').value });
-  if (r.status===202 && r.json?.jobId){
-    appendLog(`[job] ${r.json.jobId} 建立，開始輪詢...\n`);
-    const j = await pollJob(r.json.jobId);
-    if (j.status==='done'){
-      const resp = j.response || {};
-      appendLog('=== BigFun 結果 ===\n');
-      appendLog('狀態：'+(resp.ok?'成功':'失敗/部分成功')+'\n');
-      appendLog('地號：'+(resp.landNo||'')+'\n');
-      appendLog('建號：'+(resp.buildNoFull||'')+'\n');
-    } else {
-      appendLog('BigFun 失敗：'+(j.error||'unknown')+'\n');
-    }
-  } else {
-    const d = r.json || {};
-    appendLog('=== BigFun 結果 ===\n');
-    appendLog('狀態：'+(d.ok?'成功':'失敗/部分成功')+'\n');
-    appendLog('地號：'+(d.landNo||'')+'\n');
-    appendLog('建號：'+(d.buildNoFull||'')+'\n');
-  }
+$('runBigfun').onclick=async()=>{
+  clearLog(); appendLog('執行 BigFun...');
+  try{
+    const resp = await post('/api/run-bigfun',{ address:$('addr').value.trim() });
+    appendLog(`[job] ${resp.jobId||resp.taskId||'(no id)'} 建立，開始輪詢...`);
+    await pollJob(resp.jobId || resp.taskId, 'BigFun');
+  }catch(e){ appendLog(e.message); }
 };
 
-$('runCombo').onclick = async()=>{
-  clearLog(); appendLog('執行 Combo...\n');
-  const payload = { address:$('addr').value, mode: state.mode, verify:'', lineOfficial:false };
-  const r = await post('/api/run-combo', payload);
-  if (r.status===202 && r.json?.jobId){
-    appendLog(`[job] ${r.json.jobId} 建立，開始輪詢...\n`);
-    const j = await pollJob(r.json.jobId);
-    if (j.status==='done'){
-      const resp = j.response || {};
-      appendLog('=== Combo 結果 ===\n');
-      appendLog('狀態：'+(resp.ok?'成功':'失敗/部分成功')+'\n');
-      appendLog('地號：'+(resp.landNo||'')+'\n');
-      appendLog('建號：'+(resp.buildNoFull||'')+'\n');
-      appendLog('委託：'+(resp.entrust||'')+'\n');
-    } else {
-      appendLog('Combo 失敗：'+(j.error||'unknown')+'\n');
-    }
-  } else {
-    const d = r.json || {};
-    appendLog('=== Combo 結果 ===\n');
-    appendLog('狀態：'+(d.ok?'成功':'失敗/部分成功')+'\n');
-    appendLog('地號：'+(d.landNo||'')+'\n');
-    appendLog('建號：'+(d.buildNoFull||'')+'\n');
-    appendLog('委託：'+(d.entrust||'')+'\n');
-  }
+$('runCombo').onclick=async()=>{
+  clearLog(); appendLog('執行 Combo...');
+  try{
+    const resp = await post('/api/run-combo',{ address:$('addr').value.trim(), mode:state.mode, verify:'', lineOfficial:false });
+    appendLog(`[job] ${resp.jobId||resp.taskId||'(no id)'} 建立，開始輪詢...`);
+    await pollJob(resp.jobId || resp.taskId, 'Combo');
+  }catch(e){ appendLog(e.message); }
 };
 
-$('abort').onclick = ()=>{ appendLog('（火線版暫無 abort）\n'); };
+$('abort').onclick=()=>appendLog('（目前改為背景任務，不提供 abort）');
 </script>
 </body>
 </html>
