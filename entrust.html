@@ -54,7 +54,6 @@
     <div class="hdr">
   <h2>🏠 CBS Agent 控制台</h2>
   <div class="hdr-right">
-    <a class="link-btn" href="https://dw5000tw-33.github.io/fbauto/" target="_blank">🔗 官網</a>
     <a class="link-btn" href="https://line.me/R/ti/p/@307momvl" target="_blank">💬 LINE 官方</a>
     <audio id="bgm" class="hdr-audio" controls preload="metadata"></audio>
   </div>
@@ -240,7 +239,7 @@ $('runCombo').onclick=async()=>{
 $('abort').onclick=()=>appendLog('（改為背景任務，不提供中止）');
   (function setupHeaderMedia(){
   const AUDIO_SRC = localStorage.getItem('bgm_src')
-    || 'https://dw5000tw-33.github.io/fbauto/assets/bgm.mp3';
+    || 'https://dw5000tw-33.github.io/fbauto/the-truth-194426.mp3';
   const audio = document.getElementById('bgm');
   if (!audio) return;
   audio.src = AUDIO_SRC;
