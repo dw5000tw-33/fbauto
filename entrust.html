@@ -8,124 +8,91 @@
     :root{
       --bg:#f7f7f5; --panel:#ffffff; --muted:#6b7280; --text:#0a1a3f;
       --primary:#1e3a8a; --border:#e5e7eb; --code:#f3f4f6;
-      --ok:#16a34a; --bad:#dc2626;
+      --ok:#16a34a; --bad:#dc2626; --warn:#a16207;
     }
-    *{ box-sizing:border-box }
-    body{ margin:0; background:var(--bg); color:var(--text);
-      font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif }
-    .wrap{ max-width:860px; margin:18px auto 28px; padding:0 14px; }
-    .hdr{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
-    .hdr h2{ margin:0; font-size:18px; font-weight:800 }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
+    .wrap{max-width:820px;margin:18px auto 28px;padding:0 16px}
+    .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .hdr h2{margin:0;font-size:18px;font-weight:800}
 
-    .card{ background:var(--panel); border:1px solid var(--border); border-radius:14px;
-      padding:14px; box-shadow:0 4px 12px rgba(2,6,23,.06); margin-bottom:12px; }
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 4px 12px rgba(2,6,23,.06);margin-bottom:12px}
+    .grid2{display:grid;grid-template-columns:160px 1fr;gap:10px 12px;align-items:center}
+    .row{display:flex;gap:8px;align-items:center}
+    label{margin:0;font-weight:700;font-size:13px;color:#111827}
+    input,select{width:100%;padding:10px 12px;background:#fafafa;color:var(--text);border:1px solid var(--border);border-radius:10px;outline:none}
+    input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px #dbeafe}
 
-    /* 統一排版：左側固定寬的 label + 右側欄位，全部水平對齊 */
-    .form-grid{
-      display:grid; grid-template-columns: 120px 1fr auto; gap:10px 12px; align-items:center;
-    }
-    .form-grid .full{ grid-column: 1 / -1; }
+    .btn-row{display:grid;grid-template-columns:repeat(4, minmax(0,1fr));gap:8px;margin-top:10px}
+    button{appearance:none;border:none;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer}
+    .btn-start{background:#1e3a8a;color:#fff}
+    .btn-info{background:#e0e7ff;color:#1e293b;border:1px solid #c7d2fe}
+    .btn-stop{background:#f3f4f6;color:#111827;border:1px solid var(--border)}
+    .btn-close{background:#111827;color:#fff}
 
-    label{ font-weight:700; font-size:13px; color:#0b1639 }
-    input, select{
-      width:100%; padding:10px 12px; background:#fafafa; color:var(--text);
-      border:1px solid var(--border); border-radius:10px; outline:none; transition:.2s;
-    }
-    input:focus, select:focus{ border-color:#93c5fd; box-shadow:0 0 0 3px #dbeafe }
+    .badge{display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:999px;font-weight:700;font-size:12px}
+    .ok{background:#ecfdf5;color:var(--ok);border:1px solid #bbf7d0}
+    .warn{background:#fffbeb;color:var(--warn);border:1px solid #fde68a}
+    .bad{background:#fef2f2;color:var(--bad);border:1px solid #fecaca}
+    .muted{background:#eef2ff;color:#475569;border:1px solid #e2e8f0}
 
-    .btn{ appearance:none; border:none; border-radius:12px; padding:10px 14px; font-weight:800; cursor:pointer }
-    .btn-start{ background:#1e3a8a; color:#fff }
-    .btn-info{ background:#e0e7ff; color:#1e293b; border:1px solid #c7d2fe }
-    .btn-stop{ background:#f3f4f6; color:#111827; border:1px solid var(--border) }
-    .btn-close{ background:#111827; color:#fff }
-
-    .badges{ display:flex; gap:8px; align-items:center; }
-    .badge{ display:inline-flex; align-items:center; justify-content:center;
-      height:22px; padding:0 10px; border-radius:999px; font-weight:700; font-size:12px }
-    .ok{ background:#ecfdf5; color:var(--ok); border:1px solid #bbf7d0 }
-    .bad{ background:#fef2f2; color:var(--bad); border:1px solid #fecaca }
-    .muted{ background:#eef2ff; color:#475569; border:1px solid #e2e8f0 }
-
-    .row-btns{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; }
-    .log{
-      white-space:pre-wrap; overflow:auto; background:var(--code); border:1px solid var(--border);
-      border-radius:10px; padding:12px; min-height:420px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px;
-    }
-
-    /* 音樂列 */
-    .music { display:flex; align-items:center; gap:12px; }
-    .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
-      border:1px solid #bcd0ff; color:#1e3a8a; background:#fff; font-weight:700; text-decoration:none }
-    audio{ height:28px }
+    .log{white-space:pre-wrap;overflow:auto;background:var(--code);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:420px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="hdr">
-      <h2>🏠 CBS Agent 控制台</h2>
-      <div class="music">
-        <a class="pill" href="https://line.me/R/ti/p/@307momvl" target="_blank" rel="noopener">LINE 官方</a>
-        <audio id="bgm" controls src="https://dw5000tw-33.github.io/fbauto/the-truth-194426.mp3"></audio>
-      </div>
-    </div>
+    <div class="hdr"><h2>🏠 CBS Agent 控制台</h2></div>
 
-    <!-- 設定卡 -->
+    <!-- 設定區 -->
     <div class="card">
-      <div class="form-grid">
+      <div class="grid2">
         <label for="api">API Base</label>
-        <input id="api" placeholder="例如 https://cbs-agent-docker.onrender.com" />
-        <button id="save" class="btn btn-stop">💾 儲存</button>
+        <input id="api" placeholder="例如：https://cbs-agent-docker.onrender.com" />
 
         <label for="key">X-API-KEY</label>
         <input id="key" placeholder="可留白" />
-        <div class="badges">
-          <button id="ping" class="btn btn-info">🔎 健康檢查</button>
+
+        <label for="mode">模式</label>
+        <div class="row">
+          <select id="mode" style="max-width:220px">
+            <option value="exact">exact（精準）</option>
+            <option value="fuzzy">fuzzy（寬鬆）</option>
+          </select>
           <span id="healthStat" class="badge muted">未知</span>
         </div>
 
-        <label for="mode">模式</label>
-        <select id="mode">
-          <option value="exact">exact（精準）</option>
-          <option value="fuzzy">fuzzy（寬鬆）</option>
-        </select>
         <div></div>
+        <div class="row" style="gap:8px">
+          <button class="btn-stop" id="save">💾 儲存</button>
+          <button class="btn-info" id="ping">🔎 健康檢查</button>
+        </div>
       </div>
     </div>
 
-    <!-- 動作卡 -->
+    <!-- 操作區 -->
     <div class="card">
-      <div class="form-grid">
+      <div class="grid2">
         <label for="addr">查詢地址</label>
         <input id="addr" placeholder="例：台中市南屯區大墩南路356號" />
-        <div></div>
-
-        <div class="full row-btns">
-          <button class="btn btn-start" id="echo">Echo 測試</button>
-          <button class="btn btn-info"  id="runCombo">執行 Combo</button>
-          <button class="btn btn-stop"  id="runBigfun">僅 BigFun</button>
-          <button class="btn btn-close" id="abort" disabled>中止</button>
-        </div>
-
-        <label class="full" for="log">日誌輸出</label>
-        <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示串流日誌..."></textarea>
       </div>
+
+      <div class="btn-row">
+        <button class="btn-start" id="echo">Echo 測試</button>
+        <button class="btn-info" id="runCombo">執行 Combo</button>
+        <button class="btn-stop" id="runBigfun">僅 BigFun</button>
+        <button class="btn-close" id="abort" disabled>中止</button>
+      </div>
+
+      <label style="display:block;margin:12px 0 6px;font-weight:700">日誌輸出</label>
+      <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示串流日誌..."></textarea>
     </div>
   </div>
 
 <script>
-/* ───────── 基礎工具 ───────── */
 const $ = (id)=>document.getElementById(id);
-const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
-function appendLog(t){
-  const ta=$('log');
-  const line = (typeof t==='string') ? t : JSON.stringify(t,null,2);
-  ta.value += line + '\n';
-  ta.scrollTop = ta.scrollHeight;
-}
+function appendLog(t){ const ta=$('log'); ta.value += (typeof t==='string'? t : JSON.stringify(t,null,2)) + '\n'; ta.scrollTop = ta.scrollHeight; }
 function clearLog(){ $('log').value=''; }
-function setBadge(el, kind, text){ el.className = 'badge ' + (kind||'muted'); el.textContent = text; }
 
-/* 狀態保存 */
 const state = {
   get api(){ return localStorage.getItem('api') || '' },
   set api(v){ localStorage.setItem('api', v||'') },
@@ -134,148 +101,125 @@ const state = {
   get mode(){ return localStorage.getItem('mode') || 'exact' },
   set mode(v){ localStorage.setItem('mode', v||'exact') },
 };
-(function init(){
-  $('api').value  = state.api;
-  $('key').value  = state.key;
-  $('mode').value = state.mode;
-})();
+(function init(){ $('api').value=state.api; $('key').value=state.key; $('mode').value=state.mode; })();
 
-function base(){ return (state.api||'').replace(/\/$/,''); }
-function headers(){
-  const h={'Content-Type':'application/json'};
-  const k=(state.key||'').trim();
-  if(k) h['x-api-key']=k;
-  return h;
-}
-async function GET(path){
-  const r = await fetch(base()+path,{ headers:headers() });
-  if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  const ct = r.headers.get('content-type')||'';
-  return ct.includes('application/json') ? r.json() : r.text();
-}
-async function POST(path, body){
-  const r = await fetch(base()+path,{
-    method:'POST', headers:headers(),
-    body: JSON.stringify(body||{})
-  });
+function headers(){ const h={'Content-Type':'application/json'}; const k=state.key?.trim(); if(k) h['x-api-key']=k; return h; }
+async function post(path, body){
+  const b=(state.api||'').replace(/\/$/,'')+path;
+  const r=await fetch(b,{method:'POST',headers:headers(),body:JSON.stringify(body||{})});
   if(!r.ok && r.status!==202) throw new Error(`${r.status} ${r.statusText}`);
   return r.json();
 }
-
-/* 解析地址（僅回傳簡單片段，供 Echo 展示） */
-function parseTaiwanAddress(s){
-  if(!s) return {};
-  s = s.replace(/臺/g,'台').replace(/\s+/g,'').trim();
-  const mCity=s.match(/^(台北市|新北市|桃園市|台中市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|台東縣|澎湖縣|金門縣|連江縣)/);
-  const city=mCity?mCity[1]:'';
-  s = city ? s.slice(city.length): s;
-  const mTown=s.match(/^(.+?[市區鄉鎮])/); const town=mTown?mTown[1]:'';
-  s = town ? s.slice(town.length) : s;
-  const mRoad=s.match(/^(.+?(?:路|街|大道|道)(?:[一二三四五六七八九十0-9]+段)?)/);
-  let road=''; if(mRoad){ road=mRoad[1]; s=s.slice(road.length); }
-  const lane =(s.match(/(\d+)\s*巷/)||[, ''])[1];
-  const alley=(s.match(/(\d+)\s*弄/)||[, ''])[1];
-  const num  =(s.match(/(\d+(?:-\d+)?)\s*號/)||[, ''])[1];
-  const floor=(s.match(/(\d+)\s*樓/)||[, ''])[1];
-  return { city,town,road,lane,alley,num,floor };
+async function get(path){
+  const b=(state.api||'').replace(/\/$/,'')+path;
+  const r=await fetch(b,{headers:headers()});
+  if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json().catch(async()=>({ raw: await r.text() }));
 }
 
-/* 共用：輪詢 /api/jobs/:id → 中文輸出 */
-async function pollJob(jobId, label){
-  appendLog(`[poll] 開始輪詢 ${label}（job=${jobId}）...`);
-  for(;;){
-    await sleep(1500);
-    let j=null;
-    try{ j = await GET('/api/jobs/'+jobId); }catch{ /* ignore */ }
-    if(!j){ appendLog('查無此任務（可能已清除）'); return; }
+// -------- 地址解析（多行中文） --------
+function parseTaiwanAddress(addrRaw){
+  if(!addrRaw) return { city:'', town:'', road:'', lane:'', alley:'', num:'', floor:'' };
+  let s = addrRaw.replace(/臺/g,'台').replace(/\s+/g,'');
+  const cities = /(台北市|新北市|桃園市|台中市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|台東縣|澎湖縣|金門縣|連江縣)/;
+  const mCity = s.match(cities); const city = mCity? mCity[1]:''; s = city? s.slice(city.length):s;
+  const mTown = s.match(/^(.+?[市區鄉鎮])/); const town = mTown? mTown[1]:''; s = town? s.slice(town.length):s;
+  const mRoad = s.match(/^(.+?(?:路|街|大道|道)(?:[一二三四五六七八九十0-9]+段)?)/);
+  let road=''; if(mRoad){ road=mRoad[1]; s=s.slice(road.length); }
+  const lane = (s.match(/(\d+)\s*巷/)||[, ''])[1];
+  const alley= (s.match(/(\d+)\s*弄/)||[, ''])[1];
+  const num  = (s.match(/(\d+(?:-\d+)?)\s*號/)||[, ''])[1];
+  const floor= (s.match(/(\d+)\s*樓/)||[, ''])[1];
+  return { city,town,road,lane,alley,num,floor };
+}
+function printParsedChinese(p){
+  appendLog('地址解析成功 ✅');
+  appendLog(`城市：${p.city||'-'}`);
+  appendLog(`區域：${p.town||'-'}`);
+  appendLog(`路名：${p.road||'-'}`);
+  appendLog(`巷：${p.lane||'-'}`);
+  appendLog(`弄：${p.alley||'-'}`);
+  appendLog(`門牌：${p.num? p.num+'號':'-'}`);
+  appendLog(`樓層：${p.floor||'-'}`);
+}
 
+// -------- 健康檢查（精簡輸出） --------
+$('ping').onclick=async()=>{
+  clearLog(); appendLog('檢查健康狀態...');
+  const base = (state.api||'').replace(/\/$/,'');
+  const badge = $('healthStat'); badge.className='badge muted'; badge.textContent='檢查中';
+  try{
+    // API
+    const t = await fetch(base+'/health').then(r=>r.text()).catch(()=>null);
+    const apiOk = (t||'').toUpperCase().includes('OK');
+    appendLog(apiOk ? '✅ API 正常' : '❌ API 連線失敗');
+    badge.className = 'badge ' + (apiOk? 'ok':'bad'); badge.textContent = apiOk? 'OK':'失敗';
+
+    // CBS / BigFun（只看狀態碼，不輸出 HTML）
+    const cbsOk = await fetch(base+'/api/check-cbs').then(r=>r.ok).catch(()=>false);
+    const bfOk  = await fetch(base+'/api/check-bigfun').then(r=>r.ok).catch(()=>false);
+    appendLog(cbsOk ? '✅ CBS 已登入' : '⚠️ CBS 未登入（請在桌機登入）');
+    appendLog(bfOk  ? '✅ BigFun 已登入' : '⚠️ BigFun 未登入（請在桌機登入）');
+  }catch(e){
+    appendLog('❌ 檢查失敗：'+e.message);
+    badge.className='badge bad'; badge.textContent='失敗';
+  }
+};
+
+// -------- Echo（只印地址解析／多行中文） --------
+$('echo').onclick=async()=>{
+  clearLog(); appendLog('Echo 測試中...');
+  const p = parseTaiwanAddress($('addr').value.trim());
+  printParsedChinese(p);
+};
+
+// -------- 長任務輪詢 --------
+async function pollJob(jobId, label){
+  appendLog(`開始執行：${label}（job=${jobId}）`);
+  for(;;){
+    await new Promise(r=>setTimeout(r,2000));
+    let j = null;
+    try{ j = await get('/api/jobs/'+jobId); }catch{ }
+    if(!j){ appendLog('⚠️ 伺服器回應缺失或任務不存在'); return; }
     if(j.status==='done'){
+      const r=j.result||{};
       appendLog('【完成】');
-      const r = j.result || {};
-      if(typeof r === 'string'){ appendLog(r); return; }
-      // 以中文欄位輸出（地號／建號／委託）
-      if(r.landNo || r.buildNoFull || r.entrust!==undefined){
-        appendLog(`地號：${r.landNo || ''}`);
-        appendLog(`建號：${r.buildNoFull || ''}`);
-        if(r.entrust!==undefined) appendLog(`委託：${r.entrust}`);
+      if(r.landNo || r.buildNoFull || r.entrust){
+        if(r.landNo)     appendLog('地號：'+r.landNo);
+        if(r.buildNoFull)appendLog('建號：'+r.buildNoFull);
+        if(r.entrust!==undefined) appendLog('委託：'+r.entrust);
       }else{
-        appendLog(r);
+        appendLog(JSON.stringify(r,null,2));
       }
       return;
     }
-    if(j.status==='error'){
-      appendLog(`【失敗】${j.error || ''}`);
-      return;
-    }
-    appendLog(`狀態：${j.status} ...`);
+    if(j.status==='error'){ appendLog('【失敗】'+(j.error||'')); return; }
+    appendLog('等待桌機回應中…（狀態：'+j.status+'）');
   }
 }
 
-/* 事件綁定 */
-$('save').onclick = () => {
-  state.api  = $('api').value;
-  state.key  = $('key').value;
-  state.mode = $('mode').value;
-  appendLog('已儲存設定。');
-};
+// -------- 操作按鈕 --------
+$('save').onclick=()=>{ state.api=$('api').value; state.key=$('key').value; state.mode=$('mode').value; };
 
-$('ping').onclick = async () => {
-  clearLog(); appendLog('檢查健康狀態...');
-  setBadge($('healthStat'),'muted','檢查中');
-  try{
-    const t = await fetch(base()+'/health').then(r=>r.text());
-    appendLog(t.trim()==='OK' ? 'OK' : t);
-    const cbs = await fetch(base()+'/api/check-cbs').then(r=>r.text()).catch(()=> '失敗');
-    const bf  = await fetch(base()+'/api/check-bigfun').then(r=>r.text()).catch(()=> '失敗');
-    appendLog('CBS 登入：'+cbs);
-    appendLog('BigFun 登入：'+bf);
-    setBadge($('healthStat'), (t.trim()==='OK' ? 'ok':'bad'), (t.trim()==='OK' ? 'OK':'失敗'));
-  }catch(e){
-    appendLog('health 失敗：'+e.message);
-    setBadge($('healthStat'),'bad','失敗');
-  }
-};
-
-$('echo').onclick = async () => {
-  clearLog(); appendLog('Echo 測試中...');
-  const addr = $('addr').value.trim();
-  // 登入探針
-  try{
-    const cbs = await fetch(base()+'/api/check-cbs').then(r=>r.text()).catch(()=> '失敗');
-    const bf  = await fetch(base()+'/api/check-bigfun').then(r=>r.text()).catch(()=> '失敗');
-    appendLog('CBS 登入：'+cbs);
-    appendLog('BigFun 登入：'+bf);
-  }catch(e){ appendLog('探針錯誤：'+e.message); }
-
-  // 輕量地址解析（不發長任務，讓 Echo 永遠秒回）
-  const p = parseTaiwanAddress(addr);
-  appendLog('地址解析：'+JSON.stringify(p));
-};
-
-$('runBigfun').onclick = async () => {
+$('runBigfun').onclick=async()=>{
   clearLog(); appendLog('執行 BigFun...');
   try{
-    const resp = await POST('/api/run-bigfun', { address:$('addr').value.trim() });
-    appendLog(`[job] ${resp.jobId || resp.taskId || '(無編號)'} 建立，開始輪詢...`);
-    await pollJob(resp.jobId || resp.taskId, 'BigFun');
-  }catch(e){ appendLog('發起失敗：'+e.message); }
+    const resp = await post('/api/run-bigfun',{ address:$('addr').value.trim() });
+    appendLog(`[job] ${resp.jobId||'(no id)'} 已建立`);
+    await pollJob(resp.jobId, 'BigFun');
+  }catch(e){ appendLog('❌ '+e.message); }
 };
 
-$('runCombo').onclick = async () => {
+$('runCombo').onclick=async()=>{
   clearLog(); appendLog('執行 Combo...');
   try{
-    const resp = await POST('/api/run-combo', {
-      address: $('addr').value.trim(),
-      mode:    state.mode,
-      verify:  '',
-      lineOfficial: false
-    });
-    appendLog(`[job] ${resp.jobId || resp.taskId || '(無編號)'} 建立，開始輪詢...`);
-    await pollJob(resp.jobId || resp.taskId, 'Combo');
-  }catch(e){ appendLog('發起失敗：'+e.message); }
+    const resp = await post('/api/run-combo',{ address:$('addr').value.trim(), mode:state.mode, verify:'', lineOfficial:false });
+    appendLog(`[job] ${resp.jobId||'(no id)'} 已建立`);
+    await pollJob(resp.jobId, 'Combo');
+  }catch(e){ appendLog('❌ '+e.message); }
 };
 
-$('abort').onclick = () => appendLog('（改為背景任務，不提供中止）');
+$('abort').onclick=()=>appendLog('（改為背景任務，不提供中止）');
 </script>
 </body>
 </html>
