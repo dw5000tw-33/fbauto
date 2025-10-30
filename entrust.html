@@ -15,6 +15,16 @@
     .wrap{max-width:820px;margin:18px auto 28px;padding:0 16px}
     .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
     .hdr h2{margin:0;font-size:18px;font-weight:800}
+    .hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+    .link-btn{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 10px;border-radius:999px;
+      background:#eef2ff;color:#1e293b;border:1px solid #c7d2fe;
+      font-weight:700;font-size:13px;text-decoration:none;
+    }
+    .link-btn:hover{filter:brightness(0.98)}
+    .hdr-audio{height:28px}
+
 
     .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 4px 12px rgba(2,6,23,.06);margin-bottom:12px}
     .grid2{display:grid;grid-template-columns:160px 1fr;gap:10px 12px;align-items:center}
@@ -41,7 +51,15 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="hdr"><h2>🏠 CBS Agent 控制台</h2></div>
+    <div class="hdr">
+  <h2>🏠 CBS Agent 控制台</h2>
+  <div class="hdr-right">
+    <a class="link-btn" href="https://dw5000tw-33.github.io/fbauto/" target="_blank">🔗 官網</a>
+    <a class="link-btn" href="https://line.me/R/ti/p/@307momvl" target="_blank">💬 LINE 官方</a>
+    <audio id="bgm" class="hdr-audio" controls preload="metadata"></audio>
+  </div>
+</div>
+
 
     <!-- 設定區 -->
     <div class="card">
@@ -220,6 +238,24 @@ $('runCombo').onclick=async()=>{
 };
 
 $('abort').onclick=()=>appendLog('（改為背景任務，不提供中止）');
+  (function setupHeaderMedia(){
+  const AUDIO_SRC = localStorage.getItem('bgm_src')
+    || 'https://dw5000tw-33.github.io/fbauto/assets/bgm.mp3';
+  const audio = document.getElementById('bgm');
+  if (!audio) return;
+  audio.src = AUDIO_SRC;
+
+  const savedMuted = localStorage.getItem('bgm_muted');
+  const savedVol   = localStorage.getItem('bgm_vol');
+  if (savedMuted !== null) audio.muted = savedMuted === 'true';
+  if (savedVol   !== null) audio.volume = Math.min(1, Math.max(0, Number(savedVol)));
+
+  audio.addEventListener('volumechange', ()=>{
+    localStorage.setItem('bgm_muted', String(audio.muted));
+    localStorage.setItem('bgm_vol',   String(audio.volume));
+  });
+})();
+
 </script>
 </body>
 </html>
