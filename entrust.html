@@ -32,6 +32,7 @@ html[data-theme="dark"]{
   --input-bg:#0f141b;
   --log-ink:#e5e7eb;
 }
+
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
 .wrap{max-width:860px;margin:20px auto 32px;padding:0 16px}
@@ -45,6 +46,8 @@ body{margin:0;background:var(--bg);color:var(--text);font:14px/1.58 ui-sans-seri
 .grid2{display:grid;grid-template-columns:160px 1fr;gap:10px 12px;align-items:center}
 label{margin:0;font-weight:800;font-size:13px;color:var(--text)}
 input,select,textarea{width:100%;padding:10px 12px;color:var(--text);background:var(--input-bg);border:1px solid var(--border);border-radius:10px;outline:none}
+/* 讓 focus 有動畫過渡 */
+input,select,textarea{transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease}
 input::placeholder,textarea::placeholder{color:#6b7280}
 .btn-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
 button{appearance:none;border:none;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer}
@@ -53,7 +56,7 @@ button{appearance:none;border:none;border-radius:12px;padding:10px 12px;font-wei
 .btn-info{background:#e0e7ff;color:#1e293b;border:1px solid #c7d2fe}
 html[data-theme="dark"] .btn-info{background:#1f2937;color:#cfe0ff;border-color:#334155}
 .btn-stop{background:#f3f4f6;color:#111827;border:1px solid var(--border)}
-html[data-theme="dark"] .btn-stop{background:#0f141b;color:#e5e7eb;border-color:var(--border)}
+html[data-theme="dark"] .btn-stop{background:#0f141b;color:#e5e7eb;border-color:#border}
 .btn-close{background:#111827;color:#fff}
 .log{white-space:pre-wrap;overflow:auto;background:var(--code);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:420px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--log-ink)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:9999;color:#e8ebf0}
@@ -67,6 +70,38 @@ html[data-theme="light"] .spinner{border-color:rgba(0,0,0,.1);border-top-color:#
 .pulse::after{animation-delay:.8s;filter:blur(6px);opacity:.55}
 @keyframes pulse{0%{transform:scale(.85);opacity:.7}50%{transform:scale(1.06);opacity:1}100%{transform:scale(.85);opacity:.7}}
 @media(max-width:640px){ .grid2{grid-template-columns:1fr} }
+
+/* ===================== 你指定的改動 ===================== */
+/* 亮色主題：輸入框聚焦 = 深色邊框 + 微陰影 */
+html[data-theme="light"] input:focus,
+html[data-theme="light"] select:focus,
+html[data-theme="light"] textarea:focus{
+  border-color:#0b0c0f;
+  box-shadow:0 0 0 3px rgba(10,26,63,.12);
+  outline:none;
+}
+
+/* 深色主題：輸入框聚焦 = 科技藍光 */
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus{
+  border-color:#60a5fa;
+  box-shadow:
+    0 0 0 2px rgba(96,165,250,.45),
+    0 0 12px rgba(96,165,250,.35);
+  outline:none;
+}
+
+/* 亮色主題：把「儲存」按鈕改成 #D8C8A1 */
+html[data-theme="light"] #save{
+  background:#D8C8A1;
+  color:#1f2937;
+  border:1px solid transparent;
+}
+html[data-theme="light"] #save:hover{
+  filter:brightness(.97);
+}
+/* 深色主題不改，沿用原本 .btn-ghost 樣式 */
   </style>
 </head>
 <body>
@@ -137,78 +172,8 @@ function headers(){const h={'Content-Type':'application/json'};const k=state.key
 async function post(p,b){const u=(state.api||'').replace(/\/$/,'')+p;const r=await fetch(u,{method:'POST',headers:headers(),body:JSON.stringify(b||{})});if(!r.ok&&r.status!==202)throw new Error(r.status);return r.json();}
 async function get(p){const u=(state.api||'').replace(/\/$/,'')+p;const r=await fetch(u,{headers:headers()});if(!r.ok)throw new Error(r.status);return r.text().catch(()=>r.statusText);}
 $('themeToggle').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',state.theme);};
-/* ---------- Music Toggle (按下→播放，再按→靜音) ---------- */
-const bgm = $('bgm');
-const btnMusic = $('musicToggle');
-let isPlaying = false;
-
-function updateMusicButton(){
-  btnMusic.textContent = isPlaying ? '🔇BGM靜音' : '🔊BGM音樂';
-}
-
-async function playMusic(){
-  try{
-    bgm.volume = 0.45;
-    await bgm.play();
-    isPlaying = true;
-    state.music = 'on';
-    updateMusicButton();
-  }catch(e){
-    console.warn('播放被瀏覽器阻擋，請先點擊頁面再試');
-  }
-}
-function stopMusic(){
-  bgm.pause();
-  isPlaying = false;
-  state.music = 'off';
-  updateMusicButton();
-}
-
-btnMusic.onclick = () => {
-  if(!isPlaying) playMusic();
-  else stopMusic();
-};
-
-// 初始化依照上次狀態
-if(state.music === 'on'){ playMusic(); } else { stopMusic(); }
-
-function showOverlay(msg){const el=$('overlay');el.style.display='flex';if(msg)el.querySelector('.overlay-msg').textContent=msg;}
-function hideOverlay(){$('overlay').style.display='none';}
-$('save').onclick=()=>{state.api=$('api').value;state.key=$('key').value;state.mode=$('mode').value;logLine("✅ 設定已儲存");};
-
-/* ✅ 全系統啟動 — 直打一條 Render → 桌機暖機 */
-$('boot').onclick=async()=>{
-  clearLog();showOverlay('🧠 智慧連線中，請稍候…');
-  try{
-    const base=(state.api||'').replace(/\/$/,'');
-    const h=await fetch(base+'/health').then(r=>r.text()).catch(e=>String(e));
-    logLine('💡 已連接雲端代理：'+h);
-    const r=await fetch(base+'/api/start-all',{method:'POST',headers:headers()});
-    const text=await r.text();let d;try{d=JSON.parse(text);}catch{d={ok:false,error:text};}
-    if(d.error)logLine('❌ '+d.error);else{
-      logLine('🧠 啟動：'+(d.ok?'OK':'FAIL'));
-      logLine('💡 CBS：'+(d.cbs||'未知'));
-      logLine('💡 BigFun：'+(d.bigfun||'未知'));
-      logLine('🌐 系統就緒');
-    }
-  }catch(e){logLine('❌ '+(e?.message||e));}
-  finally{setTimeout(()=>hideOverlay(),800);}
-};
-
-function toClean(t){if(!t)return'未知';t=t.toLowerCase();if(t.includes('ok'))return'OK';if(t.includes('fail')||t.includes('error'))return'失敗';return t.replace(/<[^>]+>/g,'');}
-function parseAddress(a){const s=a.replace(/臺/g,'台').replace(/\s+/g,'');const c=s.match(/^(台北市|新北市|桃園市|台中市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|台東縣)/);const city=c?c[1]:'';let r=s.slice(city.length);const t=r.match(/^(.+?[市區鄉鎮])/);const town=t?t[1]:'';r=r.slice(town.length);const rd=r.match(/^(.+?(?:路|街|大道)(?:[一二三四五六七八九十0-9]+段)?)/);const road=rd?rd[1]:'';r=r.slice(road.length);const lane=(r.match(/(\d+)巷/)||[, ''])[1];const alley=(r.match(/(\d+)弄/)||[, ''])[1];const num=(r.match(/(\d+(?:-\d+)?)號/)||[, ''])[1];const floor=(r.match(/(\d+)樓/)||[, ''])[1];return{city,town,road,lane,alley,num,floor};}
-
-$('echo').onclick=async()=>{clearLog();const p=parseAddress($('addr').value);try{
-  const c=toClean(await get('/api/check-cbs').catch(e=>String(e)));
-  const b=toClean(await get('/api/check-bigfun').catch(e=>String(e)));
-  logLine(`CBS：${c}`);logLine(`BigFun：${b}`);logLine(`地址解析：${JSON.stringify(p)}`);
-}catch(e){logLine('❌ '+(e?.message||e));}};
-
-async function pollJob(id,label){logLine(`［${label}］任務建立：${id}`);for(;;){await new Promise(r=>setTimeout(r,2000));let j;try{j=await fetch((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).then(r=>r.json())}catch{j=null}if(!j){logLine('任務不存在');return;}if(j.status==='done'){const r=j.result||{};logLine(`地號：${r.landNo||''}`);logLine(`建號：${r.buildNoFull||''}`);if(r.entrust)logLine(`委託：${r.entrust}`);return;}if(j.status==='error'){logLine(`失敗：${j.error}`);return;}logLine('…處理中');}}
-
-$('runBigfun').onclick=async()=>{clearLog();try{const r=await post('/api/run-bigfun',{address:$('addr').value.trim()});await pollJob(r.jobId,'BigFun');}catch(e){logLine('❌ '+e);}};
-$('runCombo').onclick=async()=>{clearLog();try{const r=await post('/api/run-combo',{address:$('addr').value.trim(),mode:state.mode});await pollJob(r.jobId,'Combo');}catch(e){logLine('❌ '+e);}};
-$('abort').onclick=()=>logLine('（背景任務，無法中止）');
-</script>
-</body>
-</html>
+/* ---------- Music Toggle ---------- */
+const bgm=$('bgm');const btnMusic=$('musicToggle');let isPlaying=false;
+function updateMusicButton(){btnMusic.textContent=isPlaying?'🔇BGM靜音':'🔊BGM音樂';}
+async function playMusic(){try{bgm.volume=.45;await bgm.play();isPlaying=true;state.music='on';updateMusicButton();}catch(e){console.warn('播放被瀏覽器阻擋，請先點擊頁面再試');}}
+fun
