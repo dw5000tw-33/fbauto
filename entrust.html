@@ -124,8 +124,23 @@ html[data-theme="light"] #save:hover{
       </h1>
     </div>
     <div class="hdr-controls">
-      <a class="btn-pill" style="text-decoration:none !important;"
-         href="https://line.me/R/ti/p/@307momvl" target="_blank" rel="noopener">💬 LINE官方</a>
+      <!-- 行動與桌面共用的加入按鈕（優先用 Universal Link） -->
+      <a id="btn-line"
+         class="btn-pill"
+         href="https://line.me/R/ti/p/@307momvl"
+         target="_blank" rel="noopener">
+        💬 加入 LINE 官方
+      </a>
+
+      <!-- 桌面版才顯示的 QR 區塊 -->
+      <div id="qr-block" style="display:none; margin-top:12px;">
+        <div style="font-size:12px;color:#6b7280;">桌面用戶可掃描 QR 加好友</div>
+        <img src="https://dw5000tw-33.github.io/fbauto/LINEOFFICE.jpg" alt="LINE 加好友 QR" style="width:90px;height:180px;">
+      </div>
+
+      <!-- 輔助：一鍵複製 LINE ID（行動也能用長按貼上） -->
+      <button id="copy-id" type="button">複製 LINE ID：@307momvl</button>
+
 
       <button id="musicToggle" class="btn-pill" style="color: var(--text);">🔊 BGM音樂</button>
       <button id="themeToggle" class="theme-toggle">🌓 BG主題</button>
@@ -227,6 +242,36 @@ async function pollJob(id,label){logLine(`［${label}］任務建立：${id}`);f
 $('runBigfun').onclick=async()=>{clearLog();try{const r=await post('/api/run-bigfun',{address:$('addr').value.trim()});await pollJob(r.jobId,'BigFun');}catch(e){logLine('❌ '+e);}};
 $('runCombo').onclick=async()=>{clearLog();try{const r=await post('/api/run-combo',{address:$('addr').value.trim(),mode:state.mode});await pollJob(r.jobId,'Combo');}catch(e){logLine('❌ '+e);}};
 $('abort').onclick=()=>logLine('（背景任務，無法中止）');
+  
+/* 📌 LINE 行為：手機開 App、桌面顯示 QR */
+(function () {
+  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+  const lineBtn = document.querySelector('a[href*="line.me"]');
+
+  // 用一個 QR 容器（桌面才顯示）
+  const qr = document.createElement('div');
+  qr.style.display = 'none';
+  qr.style.marginTop = '8px';
+  qr.innerHTML = `
+    <div style="font-size:12px;color:var(--muted)">桌面用戶可掃描 QR 加好友</div>
+    <img src="https://qr-official.line.me/gs/M_307momvl.png" style="width:150px;height:150px;">
+  `;
+  lineBtn.parentNode.insertBefore(qr, lineBtn.nextSibling);
+
+  lineBtn.addEventListener('click', function (e) {
+    const link = 'https://line.me/R/ti/p/@307momvl';
+
+    if (isMobile) {
+      window.location.href = link;
+    } else {
+      e.preventDefault();
+      qr.style.display = 'block';
+      window.open(link, '_blank');
+    }
+  });
+})();
+
 </script>
 </body>
 </html>
