@@ -176,4 +176,47 @@ $('themeToggle').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';d
 const bgm=$('bgm');const btnMusic=$('musicToggle');let isPlaying=false;
 function updateMusicButton(){btnMusic.textContent=isPlaying?'🔇BGM靜音':'🔊BGM音樂';}
 async function playMusic(){try{bgm.volume=.45;await bgm.play();isPlaying=true;state.music='on';updateMusicButton();}catch(e){console.warn('播放被瀏覽器阻擋，請先點擊頁面再試');}}
-fun
+function stopMusic(){bgm.pause();isPlaying=false;state.music='off';updateMusicButton();}
+btnMusic.onclick=()=>{if(!isPlaying)playMusic();else stopMusic();};
+if(state.music==='on'){playMusic();}else{stopMusic();}
+
+function showOverlay(msg){const el=$('overlay');el.style.display='flex';if(msg)el.querySelector('.overlay-msg').textContent=msg;}
+function hideOverlay(){$('overlay').style.display='none';}
+$('save').onclick=()=>{state.api=$('api').value;state.key=$('key').value;state.mode=$('mode').value;logLine("✅ 設定已儲存");};
+
+/* ✅ 全系統啟動 */
+$('boot').onclick=async()=>{
+  clearLog();showOverlay('🧠 智慧連線中，請稍候…');
+  try{
+    const base=(state.api||'').replace(/\/$/,'');
+    const h=await fetch(base+'/health').then(r=>r.text()).catch(e=>String(e));
+    logLine('💡 已連接雲端代理：'+h);
+    const r=await fetch(base+'/api/start-all',{method:'POST',headers:headers()});
+    const text=await r.text();let d;try{d=JSON.parse(text);}catch{d={ok:false,error:text};}
+    if(d.error)logLine('❌ '+d.error);else{
+      logLine('🧠 啟動：'+(d.ok?'OK':'FAIL'));
+      logLine('💡 CBS：'+(d.cbs||'未知'));
+      logLine('💡 BigFun：'+(d.bigfun||'未知'));
+      logLine('🌐 系統就緒');
+    }
+  }catch(e){logLine('❌ '+(e?.message||e));}
+  finally{setTimeout(()=>hideOverlay(),800);}
+};
+
+function toClean(t){if(!t)return'未知';t=t.toLowerCase();if(t.includes('ok'))return'OK';if(t.includes('fail')||t.includes('error'))return'失敗';return t.replace(/<[^>]+>/g,'');}
+function parseAddress(a){const s=a.replace(/臺/g,'台').replace(/\s+/g,'');const c=s.match(/^(台北市|新北市|桃園市|台中市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|台東縣)/);const city=c?c[1]:'';let r=s.slice(city.length);const t=r.match(/^(.+?[市區鄉鎮])/);const town=t?t[1]:'';r=r.slice(town.length);const rd=r.match(/^(.+?(?:路|街|大道)(?:[一二三四五六七八九十0-9]+段)?)/);const road=rd?rd[1]:'';r=r.slice(road.length);const lane=(r.match(/(\d+)巷/)||[, ''])[1];const alley=(r.match(/(\d+)弄/)||[, ''])[1];const num=(r.match(/(\d+(?:-\d+)?)號/)||[, ''])[1];const floor=(r.match(/(\d+)樓/)||[, ''])[1];return{city,town,road,lane,alley,num,floor};}
+
+$('echo').onclick=async()=>{clearLog();const p=parseAddress($('addr').value);try{
+  const c=toClean(await get('/api/check-cbs').catch(e=>String(e)));
+  const b=toClean(await get('/api/check-bigfun').catch(e=>String(e)));
+  logLine(`CBS：${c}`);logLine(`BigFun：${b}`);logLine(`地址解析：${JSON.stringify(p)}`);
+}catch(e){logLine('❌ '+(e?.message||e));}};
+
+async function pollJob(id,label){logLine(`［${label}］任務建立：${id}`);for(;;){await new Promise(r=>setTimeout(r,2000));let j;try{j=await fetch((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).then(r=>r.json())}catch{j=null}if(!j){logLine('任務不存在');return;}if(j.status==='done'){const r=j.result||{};logLine(`地號：${r.landNo||''}`);logLine(`建號：${r.buildNoFull||''}`);if(r.entrust)logLine(`委託：${r.entrust}`);return;}if(j.status==='error'){logLine(`失敗：${j.error}`);return;}logLine('…處理中');}}
+
+$('runBigfun').onclick=async()=>{clearLog();try{const r=await post('/api/run-bigfun',{address:$('addr').value.trim()});await pollJob(r.jobId,'BigFun');}catch(e){logLine('❌ '+e);}};
+$('runCombo').onclick=async()=>{clearLog();try{const r=await post('/api/run-combo',{address:$('addr').value.trim(),mode:state.mode});await pollJob(r.jobId,'Combo');}catch(e){logLine('❌ '+e);}};
+$('abort').onclick=()=>logLine('（背景任務，無法中止）');
+</script>
+</body>
+</html>
