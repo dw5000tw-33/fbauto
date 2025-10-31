@@ -92,9 +92,18 @@ html[data-theme="dark"] textarea:focus{
   outline:none;
 }
 
-/* 亮色主題：把「儲存」按鈕改成 #D8C8A1 */
-html[data-theme="light"] #save{
+/* 亮色主題：把「全系統啟動」按鈕改成 #D8C8A1 */
+html[data-theme="light"] #boot{
   background:#D8C8A1;
+  color:#1f2937;
+  border:1px solid transparent;
+}
+html[data-theme="light"] #boot:hover{
+  filter:brightness(.97);
+}
+/* 亮色主題：把「儲存」按鈕改成 #E7E4DB */
+html[data-theme="light"] #save{
+  background:#E7E4DB;
   color:#1f2937;
   border:1px solid transparent;
 }
