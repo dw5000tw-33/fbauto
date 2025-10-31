@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title> 房仲委託查詢平台 v1.0</title>
+  <title>房仲委託查詢平台 v1.0</title>
   <link rel="icon" href="./logo.png" />
   <style>
 :root{
@@ -42,11 +42,11 @@ body{margin:0;background:var(--bg);color:var(--text);font:14px/1.58 ui-sans-seri
 .hdr-controls{display:flex;align-items:center;gap:10px}
 .theme-toggle{appearance:none;border:1px solid var(--border);background:var(--panel);color:var(--text);padding:6px 10px;border-radius:999px;cursor:pointer;font-weight:700}
 .btn-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);color:var(--text);background:var(--panel);font-weight:700}
+a.btn-pill{text-decoration:none} /* 保持膠囊按鈕乾淨無底線 */
 .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 6px 16px rgba(0,0,0,.35);margin-bottom:12px}
 .grid2{display:grid;grid-template-columns:160px 1fr;gap:10px 12px;align-items:center}
 label{margin:0;font-weight:800;font-size:13px;color:var(--text)}
 input,select,textarea{width:100%;padding:10px 12px;color:var(--text);background:var(--input-bg);border:1px solid var(--border);border-radius:10px;outline:none}
-/* 讓 focus 有動畫過渡 */
 input,select,textarea{transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease}
 input::placeholder,textarea::placeholder{color:#6b7280}
 .btn-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
@@ -71,8 +71,7 @@ html[data-theme="light"] .spinner{border-color:rgba(0,0,0,.1);border-top-color:#
 @keyframes pulse{0%{transform:scale(.85);opacity:.7}50%{transform:scale(1.06);opacity:1}100%{transform:scale(.85);opacity:.7}}
 @media(max-width:640px){ .grid2{grid-template-columns:1fr} }
 
-/* ===================== 你指定的改動 ===================== */
-/* 亮色主題：輸入框聚焦 = 深色邊框 + 微陰影 */
+/* 焦點與亮色/深色按鈕調整 */
 html[data-theme="light"] input:focus,
 html[data-theme="light"] select:focus,
 html[data-theme="light"] textarea:focus{
@@ -80,37 +79,17 @@ html[data-theme="light"] textarea:focus{
   box-shadow:0 0 0 3px rgba(10,26,63,.12);
   outline:none;
 }
-
-/* 深色主題：輸入框聚焦 = 科技藍光 */
 html[data-theme="dark"] input:focus,
 html[data-theme="dark"] select:focus,
 html[data-theme="dark"] textarea:focus{
   border-color:#60a5fa;
-  box-shadow:
-    0 0 0 2px rgba(96,165,250,.45),
-    0 0 12px rgba(96,165,250,.35);
+  box-shadow:0 0 0 2px rgba(96,165,250,.45), 0 0 12px rgba(96,165,250,.35);
   outline:none;
 }
-
-/* 亮色主題：把「全系統啟動」按鈕改成 #D8C8A1 */
-html[data-theme="light"] #boot{
-  background:#D8C8A1;
-  color:#1f2937;
-  border:1px solid transparent;
-}
-html[data-theme="light"] #boot:hover{
-  filter:brightness(.97);
-}
-/* 亮色主題：把「儲存」按鈕改成 #E7E4DB */
-html[data-theme="light"] #save{
-  background:#E7E4DB;
-  color:#1f2937;
-  border:1px solid transparent;
-}
-html[data-theme="light"] #save:hover{
-  filter:brightness(.97);
-}
-/* 深色主題不改，沿用原本 .btn-ghost 樣式 */
+html[data-theme="light"] #boot{background:#D8C8A1;color:#1f2937;border:1px solid transparent}
+html[data-theme="light"] #boot:hover{filter:brightness(.97)}
+html[data-theme="light"] #save{background:#E7E4DB;color:#1f2937;border:1px solid transparent}
+html[data-theme="light"] #save:hover{filter:brightness(.97)}
   </style>
 </head>
 <body>
@@ -118,31 +97,15 @@ html[data-theme="light"] #save:hover{
   <div class="hdr">
     <div class="brand">
       <h1>
-        <img src="./logo.png"
-         style="width:40px;height:40px;border-radius:4px;vertical-align:middle;margin-left:14px;">
+        <img src="./logo.png" style="width:40px;height:40px;border-radius:4px;vertical-align:middle;margin-left:14px;">
         委託查詢平台
       </h1>
     </div>
     <div class="hdr-controls">
-      <!-- 行動與桌面共用的加入按鈕（優先用 Universal Link） -->
-      <a id="btn-line"
-         class="btn-pill"
-         href="https://line.me/R/ti/p/@307momvl"
-         target="_blank" rel="noopener">
-        💬 加入 LINE 官方
-      </a>
-
-      <!-- 桌面版才顯示的 QR 區塊 -->
-      <div id="qr-block" style="display:none; margin-top:12px;">
-        <div style="font-size:12px;color:#6b7280;">桌面用戶可掃描 QR 加好友</div>
-        <img src="https://dw5000tw-33.github.io/fbauto/LINEOFFICE.jpg" alt="LINE 加好友 QR" style="width:90px;height:180px;">
-      </div>
-
-      <!-- 輔助：一鍵複製 LINE ID（行動也能用長按貼上） -->
-      <button id="copy-id" type="button">複製 LINE ID：@307momvl</button>
-
-
-      <button id="musicToggle" class="btn-pill" style="color: var(--text);">🔊 BGM音樂</button>
+      <!-- 保留原膠囊按鈕外觀 -->
+      <a id="btn-line" class="btn-pill"
+         href="https://line.me/R/ti/p/@307momvl" target="_blank" rel="noopener">💬 LINE官方</a>
+      <button id="musicToggle" class="btn-pill" style="color:var(--text);">🔊 BGM音樂</button>
       <button id="themeToggle" class="theme-toggle">🌓 BG主題</button>
     </div>
   </div>
@@ -176,13 +139,45 @@ html[data-theme="light"] #save:hover{
 
 <audio id="bgm" loop src="https://www.christourlife.ca/images/music/instrumental-hymns-cd/03%20Be%20Still%20My%20Soul.mp3"></audio>
 
+<!-- 全頁 loading overlay（保留原有） -->
 <div id="overlay" class="overlay" style="display:none">
   <div class="spinner" aria-label="loading"></div>
   <div class="overlay-msg">🧠 智慧連線中，請稍候…</div>
 </div>
+
+<!-- ① 問是否用 LINE 開啟 -->
+<div id="line-modal" class="overlay" style="display:none; gap:12px;">
+  <div class="card" style="min-width:300px;max-width:92vw;text-align:center">
+    <div style="font-weight:900;font-size:16px;margin-bottom:6px">要用 LINE 開啟嗎？</div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:12px">已安裝會直接開啟；未安裝將帶你前往商店</div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button id="lm-open"   class="btn-primary">是，用 LINE 開啟</button>
+      <button id="lm-qr"     class="btn-ghost">否，顯示 QR / 招募圖</button>
+      <button id="lm-cancel" class="btn-stop">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ② QR / 招募圖 -->
+<div id="qr-modal" class="overlay" style="display:none; gap:12px;">
+  <div class="card" style="text-align:center;max-width:94vw">
+    <div style="display:flex;gap:16px;align-items:center;justify-content:center;flex-wrap:wrap">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">掃描加入 LINE 好友</div>
+        <img src="https://qr-official.line.me/gs/M_307momvl.png"
+             alt="LINE 加好友 QR" style="width:180px;height:180px;border-radius:8px">
+      </div>
+      <img src="https://dw5000tw-33.github.io/fbauto/LINEOFFICE.jpg"
+           alt="LINE 官方好友募集" style="max-width:360px;width:100%;border-radius:10px">
+    </div>
+    <div style="margin-top:12px">
+      <button id="qr-close" class="btn-primary">關閉</button>
+    </div>
+  </div>
 </div>
 
 <script>
+/* 工具函式與狀態（原樣保留） */
 const $=id=>document.getElementById(id);
 function logLine(t){const ta=$('log');ta.value+=(typeof t==='string'?t:JSON.stringify(t,null,2))+"\n";ta.scrollTop=ta.scrollHeight;}
 function clearLog(){$('log').value='';}
@@ -196,8 +191,11 @@ const state={
 function headers(){const h={'Content-Type':'application/json'};const k=state.key?.trim();if(k)h['x-api-key']=k;return h;}
 async function post(p,b){const u=(state.api||'').replace(/\/$/,'')+p;const r=await fetch(u,{method:'POST',headers:headers(),body:JSON.stringify(b||{})});if(!r.ok&&r.status!==202)throw new Error(r.status);return r.json();}
 async function get(p){const u=(state.api||'').replace(/\/$/,'')+p;const r=await fetch(u,{headers:headers()});if(!r.ok)throw new Error(r.status);return r.text().catch(()=>r.statusText);}
+
+/* 主題切換 */
 $('themeToggle').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',state.theme);};
-/* ---------- Music Toggle ---------- */
+
+/* BGM 切換 */
 const bgm=$('bgm');const btnMusic=$('musicToggle');let isPlaying=false;
 function updateMusicButton(){btnMusic.textContent=isPlaying?'🔇BGM靜音':'🔊BGM音樂';}
 async function playMusic(){try{bgm.volume=.45;await bgm.play();isPlaying=true;state.music='on';updateMusicButton();}catch(e){console.warn('播放被瀏覽器阻擋，請先點擊頁面再試');}}
@@ -205,11 +203,14 @@ function stopMusic(){bgm.pause();isPlaying=false;state.music='off';updateMusicBu
 btnMusic.onclick=()=>{if(!isPlaying)playMusic();else stopMusic();};
 if(state.music==='on'){playMusic();}else{stopMusic();}
 
+/* Overlay */
 function showOverlay(msg){const el=$('overlay');el.style.display='flex';if(msg)el.querySelector('.overlay-msg').textContent=msg;}
 function hideOverlay(){$('overlay').style.display='none';}
+
+/* 儲存設定 */
 $('save').onclick=()=>{state.api=$('api').value;state.key=$('key').value;state.mode=$('mode').value;logLine("✅ 設定已儲存");};
 
-/* ✅ 全系統啟動 */
+/* 全系統啟動 */
 $('boot').onclick=async()=>{
   clearLog();showOverlay('🧠 智慧連線中，請稍候…');
   try{
@@ -228,6 +229,7 @@ $('boot').onclick=async()=>{
   finally{setTimeout(()=>hideOverlay(),800);}
 };
 
+/* 其它原功能 */
 function toClean(t){if(!t)return'未知';t=t.toLowerCase();if(t.includes('ok'))return'OK';if(t.includes('fail')||t.includes('error'))return'失敗';return t.replace(/<[^>]+>/g,'');}
 function parseAddress(a){const s=a.replace(/臺/g,'台').replace(/\s+/g,'');const c=s.match(/^(台北市|新北市|桃園市|台中市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|台東縣)/);const city=c?c[1]:'';let r=s.slice(city.length);const t=r.match(/^(.+?[市區鄉鎮])/);const town=t?t[1]:'';r=r.slice(town.length);const rd=r.match(/^(.+?(?:路|街|大道)(?:[一二三四五六七八九十0-9]+段)?)/);const road=rd?rd[1]:'';r=r.slice(road.length);const lane=(r.match(/(\d+)巷/)||[, ''])[1];const alley=(r.match(/(\d+)弄/)||[, ''])[1];const num=(r.match(/(\d+(?:-\d+)?)號/)||[, ''])[1];const floor=(r.match(/(\d+)樓/)||[, ''])[1];return{city,town,road,lane,alley,num,floor};}
 
@@ -237,41 +239,61 @@ $('echo').onclick=async()=>{clearLog();const p=parseAddress($('addr').value);try
   logLine(`CBS：${c}`);logLine(`BigFun：${b}`);logLine(`地址解析：${JSON.stringify(p)}`);
 }catch(e){logLine('❌ '+(e?.message||e));}};
 
-async function pollJob(id,label){logLine(`［${label}］任務建立：${id}`);for(;;){await new Promise(r=>setTimeout(r,2000));let j;try{j=await fetch((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).then(r=>r.json())}catch{j=null}if(!j){logLine('任務不存在');return;}if(j.status==='done'){const r=j.result||{};logLine(`地號：${r.landNo||''}`);logLine(`建號：${r.buildNoFull||''}`);if(r.entrust)logLine(`委託：${r.entrust}`);return;}if(j.status==='error'){logLine(`失敗：${j.error}`);return;}logLine('…處理中');}}
+async function pollJob(id,label){logLine(`［${label}］任務建立：${id}`);for(;;){await new Promise(r=>setTimeout(r,2000));let j;try{j=await fetch((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id',{headers:headers()}).then(r=>r.json())}catch{j=null}if(!j){logLine('任務不存在');return;}if(j.status==='done'){const r=j.result||{};logLine(`地號：${r.landNo||''}`);logLine(`建號：${r.buildNoFull||''}`);if(r.entrust)logLine(`委託：${r.entrust}`);return;}if(j.status==='error'){logLine(`失敗：${j.error}`);return;}logLine('…處理中');}}
 
 $('runBigfun').onclick=async()=>{clearLog();try{const r=await post('/api/run-bigfun',{address:$('addr').value.trim()});await pollJob(r.jobId,'BigFun');}catch(e){logLine('❌ '+e);}};
 $('runCombo').onclick=async()=>{clearLog();try{const r=await post('/api/run-combo',{address:$('addr').value.trim(),mode:state.mode});await pollJob(r.jobId,'Combo');}catch(e){logLine('❌ '+e);}};
 $('abort').onclick=()=>logLine('（背景任務，無法中止）');
-  
-/* 📌 LINE 行為：手機開 App、桌面顯示 QR */
+
+/* 💬 LINE官方 → 先詢問；是＝喚起 LINE（未裝導商店），否＝顯示 QR/招募圖 */
 (function () {
-  const ua = navigator.userAgent || navigator.vendor || window.opera;
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
-  const lineBtn = document.querySelector('a[href*="line.me"]');
+  const btn = document.getElementById('btn-line');
+  const mAsk = document.getElementById('line-modal');
+  const mQr  = document.getElementById('qr-modal');
 
-  // 用一個 QR 容器（桌面才顯示）
-  const qr = document.createElement('div');
-  qr.style.display = 'none';
-  qr.style.marginTop = '8px';
-  qr.innerHTML = `
-    <div style="font-size:12px;color:var(--muted)">桌面用戶可掃描 QR 加好友</div>
-    <img src="https://qr-official.line.me/gs/M_307momvl.png" style="width:150px;height:150px;">
-  `;
-  lineBtn.parentNode.insertBefore(qr, lineBtn.nextSibling);
+  const bOpen   = document.getElementById('lm-open');
+  const bQr     = document.getElementById('lm-qr');
+  const bCancel = document.getElementById('lm-cancel');
+  const bQrClose= document.getElementById('qr-close');
 
-  lineBtn.addEventListener('click', function (e) {
-    const link = 'https://line.me/R/ti/p/@307momvl';
-
-    if (isMobile) {
-      window.location.href = link;
-    } else {
-      e.preventDefault();
-      qr.style.display = 'block';
-      window.open(link, '_blank');
-    }
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    mAsk.style.display = 'flex';
   });
-})();
 
+  bCancel.onclick = () => mAsk.style.display = 'none';
+  bQr.onclick     = () => { mAsk.style.display = 'none'; mQr.style.display = 'flex'; };
+  bQrClose.onclick= () => mQr.style.display = 'none';
+
+  // 點 overlay 空白處或按 ESC 可關閉
+  [mAsk, mQr].forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; }));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { mAsk.style.display='none'; mQr.style.display='none'; } });
+
+  // 使用者選「是」：喚起 LINE；未裝導商店（桌面僅開官方頁）
+  bOpen.onclick = () => {
+    mAsk.style.display = 'none';
+    const link = 'https://line.me/R/ti/p/@307momvl';
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    const isAndroid = /Android/i.test(ua);
+    const isIOS     = /iPhone|iPad|iPod/i.test(ua);
+
+    // 先嘗試 Universal Link
+    window.location.href = link;
+
+    // 僅在使用者選「是」時做最小平台後備
+    if (isAndroid) {
+      setTimeout(() => {
+        const intent = 'intent://ti/p/@307momvl#Intent;scheme=https;package=jp.naver.line.android;S.browser_fallback_url='
+          + encodeURIComponent('https://play.google.com/store/apps/details?id=jp.naver.line.android');
+        window.location.href = intent;
+      }, 700);
+    } else if (isIOS) {
+      setTimeout(() => {
+        window.location.href = 'https://apps.apple.com/app/line/id443904275';
+      }, 900);
+    }
+  };
+})();
 </script>
 </body>
 </html>
