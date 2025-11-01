@@ -34,22 +34,20 @@ html[data-theme="dark"]{
   --log-ink:#e5e7eb;
 }
 
-.theme-toggle{
-  appearance:none;
-  border:1px solid var(--border);
-  background:var(--panel);
-  color:var(--text);
-
-  /* 這四行是讓它跟 btn-pill 完全一致 */
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:6px 12px;
-
-  border-radius:999px;
-  cursor:pointer;
-  font-weight:700;
-  font-size:14px; /* 和 btn-pill 同 */
+/* 🔥只統一這三顆為同樣大小/字型/排版🔥 */
+/* 💬 LINE官方 / 🔊 BGM音樂 / 🌓 BG主題 */
+.hdr-controls a.btn-pill,
+.hdr-controls button.btn-pill,
+.hdr-controls #themeToggle {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
 
 
 *{box-sizing:border-box}
