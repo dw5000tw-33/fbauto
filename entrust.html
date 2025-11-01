@@ -34,6 +34,18 @@ html[data-theme="dark"]{
   --log-ink:#e5e7eb;
 }
 
+/* 讓 BG主題 與 LINE官方 / BGM 按鈕視覺一致 */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px; /* 與 btn-pill 同步 */
+}
+
+
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
 .wrap{max-width:860px;margin:20px auto 32px;padding:0 16px}
