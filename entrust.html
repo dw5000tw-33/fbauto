@@ -34,16 +34,22 @@ html[data-theme="dark"]{
   --log-ink:#e5e7eb;
 }
 
-/* 讓 BG主題 與 LINE官方 / BGM 按鈕視覺一致 */
-.theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 14px; /* 與 btn-pill 同步 */
-}
+.theme-toggle{
+  appearance:none;
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:var(--text);
+
+  /* 這四行是讓它跟 btn-pill 完全一致 */
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 12px;
+
+  border-radius:999px;
+  cursor:pointer;
+  font-weight:700;
+  font-size:14px; /* 和 btn-pill 同 */
 
 
 *{box-sizing:border-box}
