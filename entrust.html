@@ -42,6 +42,10 @@ html[data-theme="dark"]{
     flex-wrap:nowrap;
     justify-content:flex-start;
   }
+  .btn-line {
+  font-size: 13px;
+  padding: 9px 10px;
+  }
   .hdr-controls a.btn-pill,
   .hdr-controls button.btn-pill,
   .hdr-controls #themeToggle{
@@ -52,7 +56,21 @@ html[data-theme="dark"]{
     flex: 0 0 auto;         /* 不把整行撐滿，不變長條 */
   }
 }
-
+/* LINE主按鈕 */
+.btn-line {
+  background: #06C755; /* LINE綠色 */
+  color: #fff;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  font-weight: 900;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
 
 
 *{box-sizing:border-box}
@@ -164,7 +182,10 @@ html[data-theme="light"] #save:hover{
     <div class="btn-row" style="margin-top:12px">
       <button class="btn-primary" id="boot">⚡ 全系統啟動</button>
       <button class="btn-ghost" id="save">💾 儲存</button>
-      <span></span><span></span>
+      <a class="btn-line" href="https://line.me/R/ti/p/@307momvl" target="_blank" rel="noopener">
+      💬 LINE官方
+      </a>
+      <span></span>
     </div>
   </div>
 
