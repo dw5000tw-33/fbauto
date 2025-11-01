@@ -34,20 +34,25 @@ html[data-theme="dark"]{
   --log-ink:#e5e7eb;
 }
 
-/* 🔥只統一這三顆為同樣大小/字型/排版🔥 */
-/* 💬 LINE官方 / 🔊 BGM音樂 / 🌓 BG主題 */
-.hdr-controls a.btn-pill,
-.hdr-controls button.btn-pill,
-.hdr-controls #themeToggle {
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  white-space: nowrap;
+/* 手機視覺修正：三顆維持同一排，但更精緻、不擠不炸 */
+@media (max-width: 600px) {
+  .hdr-controls{
+    display:flex;
+    gap:8px;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+  }
+  .hdr-controls a.btn-pill,
+  .hdr-controls button.btn-pill,
+  .hdr-controls #themeToggle{
+    font-size: clamp(12px, 3.5vw, 14px);
+    padding: 5px 10px;      /* 比桌機略收一點，視覺不臃腫 */
+    line-height: 1;         /* 與桌機一致，避免高度跳動 */
+    white-space: nowrap;    /* 不換行，不擠字 */
+    flex: 0 0 auto;         /* 不把整行撐滿，不變長條 */
+  }
 }
+
 
 
 *{box-sizing:border-box}
