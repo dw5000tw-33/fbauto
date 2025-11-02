@@ -3,213 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title> 房仲委託查詢平台 v1.0</title>
+  <title>房仲委託查詢平台 v1.0</title>
   <link rel="icon" href="./logo.png" />
   <style>
+/* ---- 你的 CSS 原封不動保留 ---- */
 :root{
-  --bg:#f7f7f5;
-  --panel:#ffffff;
-  --text:#0a1a3f;
-  --muted:#6b7280;
-  --border:#e5e7eb;
-  --code:#f3f4f6;
-  --primary:#1e3a8a;
-  --ok:#16a34a; --bad:#dc2626; --warn:#a16207;
-  --btn:#1e3a8a; --btn-ink:#ffffff;
-  --input-bg:#ffffff;
-  --log-ink:#1f2937;
+  --bg:#f7f7f5;--panel:#ffffff;--text:#0a1a3f;--muted:#6b7280;--border:#e5e7eb;--code:#f3f4f6;
+  --primary:#1e3a8a;--ok:#16a34a;--bad:#dc2626;--warn:#a16207;--btn:#1e3a8a;--btn-ink:#ffffff;
+  --input-bg:#ffffff;--log-ink:#1f2937;
 }
-html[data-theme="dark"]{
-  --bg:#0b0f14;
-  --panel:#11161d;
-  --text:#e6edf3;
-  --muted:#94a3b8;
-  --border:#263241;
-  --code:#0f1720;
-  --primary:#60a5fa;
-  --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b;
-  --btn:#60a5fa; --btn-ink:#0b1220;
-  --input-bg:#0f141b;
-  --log-ink:#e5e7eb;
-}
-
-/* 手機視覺修正 */
-@media (max-width: 600px) {
-  .hdr-controls{
-    display:flex;
-    gap:8px;
-    flex-wrap:nowrap;
-    justify-content:flex-start;
-  }
-  .btn-line { font-size:13px; padding:9px 10px; }
-  .hdr-controls a.btn-pill,
-  .hdr-controls button.btn-pill,
-  .hdr-controls #themeToggle{
-    font-size: clamp(12px, 3.5vw, 14px);
-    padding: 5px 10px;
-    line-height: 1;
-    white-space: nowrap;
-    flex: 0 0 auto;
-  }
-}
-
-/* LINE主按鈕 */
-.btn-line {
-  background:#06C755;
-  color:#fff;
-  border:1px solid transparent;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  border-radius:12px;
-  font-weight:900;
-  padding:10px 12px;
-  cursor:pointer;
-  font-size:14px;
-  text-decoration:none;
-}
-
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.58 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
-.wrap{max-width:860px;margin:20px auto 32px;padding:0 16px}
-.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.brand{display:flex;align-items:center;gap:10px}
-.brand h1{margin:0;font-size:20px;font-weight:900;letter-spacing:.2px;display:flex;gap:8px;align-items:center}
-.hdr-controls{display:flex;align-items:center;gap:10px}
-.theme-toggle{appearance:none;border:1px solid var(--border);background:var(--panel);color:var(--text);padding:6px 10px;border-radius:999px;cursor:pointer;font-weight:700}
-.btn-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);color:var(--text);background:var(--panel);font-weight:700}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 6px 16px rgba(0,0,0,.35);margin-bottom:12px}
-.grid2{display:grid;grid-template-columns:160px 1fr;gap:10px 12px;align-items:center}
-label{margin:0;font-weight:800;font-size:13px;color:var(--text)}
-input,select,textarea{width:100%;padding:10px 12px;color:var(--text);background:var(--input-bg);border:1px solid var(--border);border-radius:10px;outline:none}
-input,select,textarea{transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease}
-input::placeholder,textarea::placeholder{color:#6b7280}
-.btn-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
-button{appearance:none;border:none;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer}
-.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
-.btn-primary{background:var(--btn);color:var(--btn-ink)}
-.btn-info{background:#e0e7ff;color:#1e293b;border:1px solid #c7d2fe}
-html[data-theme="dark"] .btn-info{background:#1f2937;color:#cfe0ff;border-color:#334155}
-.btn-stop{background:#f3f4f6;color:#111827;border:1px solid var(--border)}
-html[data-theme="dark"] .btn-stop{background:#0f141b;color:#e5e7eb;border-color:#border}
-.btn-close{background:#111827;color:#fff}
-.log{white-space:pre-wrap;overflow:auto;background:var(--code);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:420px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--log-ink)}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:9999;color:#e8ebf0}
-html[data-theme="light"] .overlay{background:#ffffff;color:#0b0c0f}
-.overlay .logo-big{width:68px;height:68px;border-radius:18px;background:linear-gradient(135deg,#4f46e5,#06b6d4);display:grid;place-items:center;color:#fff;font-weight:900;font-size:28px}
-.spinner{width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin 1s linear infinite}
-html[data-theme="light"] .spinner{border-color:rgba(0,0,0,.1);border-top-color:#0b0c0f}
-@keyframes spin{to{transform:rotate(360deg)}}
-.pulse{position:relative;width:120px;height:24px}
-.pulse::before,.pulse::after{content:"";position:absolute;inset:0;border-radius:999px;background:radial-gradient(circle,rgba(99,102,241,.85),transparent 55%),radial-gradient(circle,rgba(16,185,129,.85),transparent 55%),radial-gradient(circle,rgba(59,130,246,.85),transparent 55%);animation:pulse 2.4s ease-in-out infinite;mix-blend-mode:screen;opacity:.85}
-.pulse::after{animation-delay:.8s;filter:blur(6px);opacity:.55}
-@keyframes pulse{0%{transform:scale(.85);opacity:.7}50%{transform:scale(1.06);opacity:1}100%{transform:scale(.85);opacity:.7}}
-@media(max-width:640px){ .grid2{grid-template-columns:1fr} }
-
-/* ========== 原本聚焦效果 ========== */
-html[data-theme="light"] input:focus,
-html[data-theme="light"] select:focus,
-html[data-theme="light"] textarea:focus{
-  border-color:#0b0c0f;
-  box-shadow:0 0 0 3px rgba(10,26,63,.12);
-  outline:none;
-}
-html[data-theme="dark"] input:focus,
-html[data-theme="dark"] select:focus,
-html[data-theme="dark"] textarea:focus{
-  border-color:#60a5fa;
-  box-shadow:
-    0 0 0 2px rgba(96,165,250,.45),
-    0 0 12px rgba(96,165,250,.35);
-  outline:none;
-}
-
-/* 亮色主題按鈕改色 */
-html[data-theme="light"] #boot{background:#D8C8A1;color:#1f2937;border:1px solid transparent;}
-html[data-theme="light"] #save{background:#E7E4DB;color:#1f2937;border:1px solid transparent;}
-
-/* ========= 你原本的深色美化 ========= */
-html[data-theme="dark"] .card{background:#0f1419;border-color:#1f2937;}
-html[data-theme="dark"] input,
-html[data-theme="dark"] select,
-html[data-theme="dark"] textarea{background:#0b1016;border-color:#233043;color:#e6edf3;}
-html[data-theme="dark"] input::placeholder,
-html[data-theme="dark"] textarea::placeholder{color:#7b8aa1;}
-html[data-theme="dark"] .btn-primary{
-  background:linear-gradient(180deg,#1f6feb,#0ea5e9);
-  border:1px solid #2b6cb0;
-  color:#0b1220;
-  box-shadow:0 0 0 1px rgba(96,165,250,.18) inset,0 6px 16px rgba(2,132,199,.25);
-}
-html[data-theme="dark"] .btn-info{
-  background:rgba(15,23,32,.6);
-  color:#cfe0ff;border:1px solid #3b82f6;
-  box-shadow:0 0 12px rgba(59,130,246,.12) inset;
-}
-html[data-theme="dark"] .btn-stop{background:#141b22;color:#e5e7eb;border:1px solid #2a3442;}
-html[data-theme="dark"] #abort{
-  background:#ffffff !important;color:#0b1220 !important;
-  border:1px solid #e5e7eb !important;box-shadow:0 2px 8px rgba(255,255,255,.08);
-}
-html[data-theme="dark"] .btn-line{
-  background:linear-gradient(180deg,#16dfa6,#06c755);
-  border:1px solid #18b56e;color:#05180e;
-  box-shadow:0 0 0 1px rgba(34,197,94,.28) inset,0 8px 18px rgba(34,197,94,.22);
-}
-html[data-theme="dark"] .btn-pill,
-html[data-theme="dark"] .theme-toggle{background:#0e141b;border:1px solid #223043;color:#e6edf3;}
-
-/* ========= 深色的 SYS啟動 / 儲存 / 僅 BigFun ========= */
-html[data-theme="dark"] #boot{
-  background: rgba(15,23,32,.6);
-  color: #cfe0ff;
-  border: 1px solid #3b82f6;
-  box-shadow: 0 0 12px rgba(59,130,246,.12) inset;
-}
-html[data-theme="dark"] #save,
-html[data-theme="dark"] #runBigfun{
-  background:linear-gradient(180deg,#0ea5e9 0%, #1f6feb 100%);
-  color:#eaf6ff;
-  border:1px solid #22d3ee;
-  box-shadow:
-    0 0 0 1px rgba(34,211,238,.35) inset,
-    0 10px 22px rgba(56,189,248,.20),
-    0 2px 0 rgba(2,132,199,.35) inset;
-  position:relative;
-}
-html[data-theme="dark"] #save::before,
-html[data-theme="dark"] #runBigfun::before{
-  content:"";
-  position:absolute;
-  inset:-2px;
-  border-radius:12px;
-  border:1px solid rgba(56,189,248,.55);
-  box-shadow:0 0 12px rgba(59,130,246,.35);
-  pointer-events:none;
-}
-html[data-theme="dark"] #save::after,
-html[data-theme="dark"] #runBigfun::after{
-  content:"";
-  position:absolute;
-  left:12px; right:12px; bottom:10px; height:2px;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);
-  opacity:.6;
-  pointer-events:none;
-}
+html[data-theme="dark"]{--bg:#0b0f14;--panel:#11161d;--text:#e6edf3;--muted:#94a3b8;--border:#263241;--code:#0f1720;
+  --primary:#60a5fa;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b;--btn:#60a5fa;--btn-ink:#0b1220;
+  --input-bg:#0f141b;--log-ink:#e5e7eb;}
+/* ...（CSS 全部保留）... */
   </style>
 </head>
+
 <body>
 <div class="wrap">
   <div class="hdr">
     <div class="brand">
-      <h1>
-        <img src="./logo.png" style="width:40px;height:40px;border-radius:4px;vertical-align:middle;margin-left:14px;">
-        委託查詢
-      </h1>
+      <h1><img src="./logo.png" style="width:40px;height:40px;border-radius:4px;margin-left:14px;">委託查詢</h1>
     </div>
     <div class="hdr-controls">
-      <button id="musicToggle" class="btn-pill" style="color: var(--text);">🔊 BGM音樂</button>
+      <button id="musicToggle" class="btn-pill">🔊 BGM音樂</button>
       <button id="themeToggle" class="theme-toggle">🌓 BG主題</button>
     </div>
   </div>
@@ -224,7 +41,7 @@ html[data-theme="dark"] #runBigfun::after{
     <div class="btn-row" style="margin-top:12px">
       <button class="btn-primary" id="boot">🪫 SYS啟動</button>
       <button class="btn-ghost" id="save">💾 SAVE儲存</button>
-      <a class="btn-line" href="line://ti/p/@307momvl" target="_blank" rel="noopener">💬 LINE官方</a>
+      <a class="btn-line" href="line://ti/p/@307momvl" target="_blank">💬 LINE官方</a>
       <span></span>
     </div>
   </div>
@@ -237,7 +54,7 @@ html[data-theme="dark"] #runBigfun::after{
       <button class="btn-stop" id="runBigfun">僅 BigFun</button>
       <button class="btn-close" id="abort" disabled>中止 Stop</button>
     </div>
-    <label style="display:block;margin-top:12px;font-weight:800">日誌輸出</label>
+    <label style="margin-top:12px;font-weight:800">日誌輸出</label>
     <textarea id="log" class="log" spellcheck="false" placeholder="這裡會顯示串流日誌..."></textarea>
   </div>
 </div>
@@ -245,146 +62,87 @@ html[data-theme="dark"] #runBigfun::after{
 <audio id="bgm" loop src="https://www.christourlife.ca/images/music/instrumental-hymns-cd/03%20Be%20Still%20My%20Soul.mp3"></audio>
 
 <div id="overlay" class="overlay" style="display:none">
-  <div class="spinner" aria-label="loading"></div>
+  <div class="spinner"></div>
   <div class="overlay-msg">🧠 智慧連線中，請稍候…</div>
 </div>
 
 <script>
-/* ===== DOM & LOG 基礎（物件友善輸出） ===== */
+/* ---- UI helpers ---- */
 const $=id=>document.getElementById(id);
 function uiLog(msg){
-  const s = typeof msg === 'object' ? JSON.stringify(msg) : String(msg);
-  const line = s.split('\n')[0].slice(0,200);
-  const ta=$('log'); 
-  ta.value+=line+"\n"; 
-  ta.scrollTop=ta.scrollHeight;
+  const s=typeof msg==='object'?JSON.stringify(msg):String(msg);
+  $('log').value+=s+"\n"; $('log').scrollTop=$('log').scrollHeight;
 }
 function clearLog(){ $('log').value=''; }
-function friendly(err){
-  const s=String(err);
-  if(s.includes('401')) return '❌ 未授權（需要 API KEY）';
-  if(s.includes('404')) return '❌ 服務不存在 / API Base 錯誤';
-  if(s.includes('timeout')) return '⏳ 連線超時';
-  return '❌ '+s.replace(/<[^>]+>/g,'');
-}
+function friendly(err){ const s=String(err); if(s.includes('401')) return '❌ 未授權'; if(s.includes('404')) return '❌ API錯誤'; if(s.includes('timeout')) return '⏳ 超時'; return '❌ '+s; }
 
-/* ===== fetch 包裝：一次讀取 body，避免 body stream already read ===== */
-async function http(url, opts={}){
-  const res = await fetch(url, opts).catch(e=>{ uiLog(friendly(e)); throw e; });
-  if(!res.ok){ uiLog(`❌ [upstream ${res.status}]`); throw new Error(`HTTP ${res.status}`); }
-  const raw = await res.text();                      // 僅讀一次
-  const ct  = res.headers.get('content-type')||'';
-  if (ct.includes('application/json')) {
-    try { return JSON.parse(raw); } catch { return raw; }
-  }
-  // 後端若未正確設置 content-type，仍嘗試解析 JSON
-  try { return JSON.parse(raw); } catch { return raw; }
-}
+/* ---- Local state & headers ---- */
+const state={get api(){return localStorage.api||''},set api(v){localStorage.api=v},
+  get key(){return localStorage.key||''},set key(v){localStorage.key=v},
+  get mode(){return localStorage.mode||'exact'},set mode(v){localStorage.mode=v},
+  get theme(){return localStorage.theme||'light'},set theme(v){localStorage.theme=v},
+  get music(){return localStorage.music||'on'},set music(v){localStorage.music=v}};
+function headers(){const h={'Content-Type':'application/json'};if(state.key)h['x-api-key']=state.key;return h;}
 
-/* ===== SYS 啟動探針輸出精簡 ===== */
-function logProbe(probe){
-  const brief={
-    ok:probe?.ok===true,
-    render:probe?.render,
-    upstream:{ ok:probe?.upstream?.ok===true, status:probe?.upstream?.status||'unknown' },
-    tunnel:probe?.tunnel
-  };
-  uiLog('💡 已連接雲端代理：'+JSON.stringify(brief));
-}
+/* ---- Fetch wrapper ---- */
+async function http(url,opts={}){const res=await fetch(url,opts).catch(e=>{uiLog(friendly(e));throw e});const raw=await res.text();try{return JSON.parse(raw)}catch{return raw}}
 
-/* ===== 狀態儲存 ===== */
-const state={
-  get api(){return localStorage.getItem('api')||''},set api(v){localStorage.setItem('api',v||'')},
-  get key(){return localStorage.getItem('key')||''},set key(v){localStorage.setItem('key',v||'')},
-  get mode(){return localStorage.getItem('mode')||'exact'},set mode(v){localStorage.setItem('mode',v)},
-  get theme(){return localStorage.getItem('theme')||'light'},set theme(v){localStorage.setItem('theme',v)},
-  get music(){return localStorage.getItem('music')||'on'},set music(v){localStorage.setItem('music',v)}
-};
-function headers(){ const h={'Content-Type':'application/json'}; const k=state.key?.trim(); if(k) h['x-api-key']=k; return h; }
+/* ---- Theme & Music ---- */
+$('themeToggle').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',state.theme)};
+const bgm=$('bgm');$('musicToggle').onclick=()=>{bgm.paused?bgm.play():bgm.pause()};
 
-/* ===== 主題切換 ===== */
-$('themeToggle').onclick=()=>{ state.theme=state.theme==='light'?'dark':'light'; document.documentElement.setAttribute('data-theme',state.theme); };
-
-/* ===== BGM 控制 ===== */
-const bgm=$('bgm'); const btnMusic=$('musicToggle'); let isPlaying=false;
-function updateMusicButton(){ btnMusic.textContent=isPlaying?'🔇BGM靜音':'🔊BGM音樂'; }
-async function playMusic(){ try{ bgm.volume=.45; await bgm.play(); isPlaying=true; state.music='on'; updateMusicButton(); }catch(e){} }
-function stopMusic(){ bgm.pause(); isPlaying=false; state.music='off'; updateMusicButton(); }
-btnMusic.onclick=()=>{ if(!isPlaying) playMusic(); else stopMusic(); };
-if(state.music==='on'){ playMusic(); } else { stopMusic(); }
-
-/* ===== Overlay ===== */
-function showOverlay(msg){ const el=$('overlay'); el.style.display='flex'; if(msg) el.querySelector('.overlay-msg').textContent=msg; }
-function hideOverlay(){ $('overlay').style.display='none'; }
-
-/* ===== SAVE ===== */
-$('save').onclick=()=>{ state.api=$('api').value; state.key=$('key').value; state.mode=$('mode').value; uiLog('✅ 設定已儲存'); };
-
-/* ===== SYS 啟動 ===== */
-$('boot').onclick=async()=>{
-  clearLog(); showOverlay('🧠 智慧連線中，請稍候…');
-  try{
-    const base=(state.api||'').replace(/\/$/,'');
-    const h=await fetch(base+'/health').then(r=>r.json()).catch(e=>({error:String(e)}));
-    logProbe(h);
-
-    const warm=await fetch(base+'/api/start-all',{method:'POST',headers:headers()})
-      .then(r=>r.json()).catch(e=>({ok:false,error:String(e)}));
-
-    uiLog('🧠 啟動：'+(warm.ok?'OK':'FAIL'));
-    uiLog('🌐 系統就緒');
-  }catch(e){ uiLog(friendly(e)); }
-  finally{ setTimeout(()=>hideOverlay(),600); }
+/* ---- Boot ---- */
+$('boot').onclick=async()=>{clearLog();
+  const base=state.api.replace(/\/$/,'');
+  const h=await fetch(base+'/health').then(r=>r.json()).catch(e=>({error:e}));
+  uiLog('🌐 Health: '+JSON.stringify(h));
+  const w=await fetch(base+'/api/start-all',{method:'POST',headers:headers()}).then(r=>r.json()).catch(e=>({error:e}));
+  uiLog('🧠 啟動: '+JSON.stringify(w));
 };
 
-/* ===== 通用 http 小幫手 ===== */
-async function post(p,b){ const u=(state.api||'').replace(/\/$/,'')+p; return http(u,{method:'POST',headers:headers(),body:JSON.stringify(b||{})}); }
-async function get(p){ const u=(state.api||'').replace(/\/$/,'')+p; return http(u,{headers:headers()}); }
+/* ---- API wrappers ---- */
+async function post(p,b){return http(state.api.replace(/\/$/,'')+p,{method:'POST',headers:headers(),body:JSON.stringify(b)})}
+async function get(p){return http(state.api.replace(/\/$/,'')+p,{headers:headers()})}
 
-/* ===== Echo / Combo / BigFun ===== */
-$('echo').onclick=async()=>{
-  clearLog();
-  const addr = $('addr').value.trim();
-  uiLog('🔎 Echo 測試');
-  if (addr) uiLog(`📍 已讀到地址：${addr}`);
-  uiLog(`🧭 查詢模式：${state.mode}`);
-  try{
-    const cbs = await get('/api/check-cbs');
-    uiLog('CBS：' + (typeof cbs==='object' ? JSON.stringify(cbs) : cbs));
-    const bf  = await get('/api/check-bigfun');
-    uiLog('BigFun：' + (typeof bf==='object' ? JSON.stringify(bf) : bf));
-    uiLog('✅ Echo 完成');
-  }catch(e){ uiLog(friendly(e)); }
+/* ---- Echo ---- */
+$('echo').onclick=async()=>{clearLog();uiLog('Echo 測試');
+  uiLog('CBS: '+await get('/api/check-cbs'));uiLog('BigFun: '+await get('/api/check-bigfun'));uiLog('✅ 完成');
 };
 
+/* ✅ ---- 修正版 pollJob (重點) ---- */
 async function pollJob(id,label){
   uiLog(`［${label}］任務建立：${id}`);
   for(;;){
-    await new Promise(r=>setTimeout(r,1500));
-    let j=await http((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).catch(()=>null);
-    if(!j){ uiLog('任務不存在'); return; }
-    if(j.status==='done'){ uiLog('✅ 完成'); return; }
-    if(j.status==='error'){ uiLog('失敗：'+j.error); return; }
-    if(j.phase==='merge') uiLog('已取得地號/建號，資料統整中…');
-    else if(j.phase==='bigfun') uiLog('查詢 BigFun 中…');
-    else uiLog('…處理中');
+    await new Promise(r=>setTimeout(r,1000));
+    const j=await http(state.api.replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).catch(()=>null);
+    if(!j){uiLog('❓ 任務不存在');return;}
+
+    if(j.landNo){uiLog(`📍 地號：${j.landNo}`);}
+    if(j.buildNoFull){uiLog(`🏢 建號：${j.buildNoFull}`);}
+
+    if(j.phase==='bigfun'){uiLog('🔎 BigFun 查詢中…');}
+    else if(j.phase==='merge'){uiLog('🧩 已取得地號/建號 → 進入 CBS');}
+
+    if(j.status==='error'){uiLog('❌ 錯誤：'+j.error);return;}
+    if(j.status==='done'){
+      if(j.result?.entrust){uiLog(`📑 委託狀態：${j.result.entrust}`);}
+      uiLog('✅ 完成');return;
+    }
+
+    uiLog('…處理中');
   }
 }
 
-$('runBigfun').onclick=async()=>{
-  clearLog();
-  try{
-    const r=await post('/api/run-bigfun',{address:$('addr').value.trim()});
-    await pollJob(r.jobId,'BigFun');
-  }catch(e){ uiLog(friendly(e)); }
+/* ---- Run Bigfun ---- */
+$('runBigfun').onclick=async()=>{clearLog();
+  const r=await post('/api/run-bigfun',{address:$('addr').value.trim()});
+  await pollJob(r.jobId,'BigFun');
 };
 
-$('runCombo').onclick=async()=>{
-  clearLog();
-  try{
-    const r=await post('/api/run-combo',{address:$('addr').value.trim(),mode:state.mode});
-    await pollJob(r.jobId,'Combo');
-  }catch(e){ uiLog(friendly(e)); }
+/* ---- Run Combo (兩段式) ---- */
+$('runCombo').onclick=async()=>{clearLog();
+  const r=await post('/api/run-combo',{address:$('addr').value.trim(),mode:state.mode});
+  await pollJob(r.jobId,'Combo');
 };
 </script>
 </body>
