@@ -360,7 +360,7 @@ $('echo').onclick=async()=>{
 async function pollJob(id,label){
   uiLog(`［${label}］任務建立：${id}`);
   for(;;){
-    await new Promise(r=>setTimeout(r,1000));
+    await new Promise(r=>setTimeout(r,20000));
     const j = await http((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).catch(()=>null);
     if(!j){ uiLog('❓ 任務不存在'); return; }
 
