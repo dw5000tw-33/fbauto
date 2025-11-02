@@ -357,62 +357,32 @@ $('echo').onclick=async()=>{
   }catch(e){ uiLog(friendly(e)); }
 };
 
-// 全域：確保同時間只有一個輪詢器
-let currentPollAbort = null;
-
-async function pollJob(id, label){
-  // 關掉舊輪詢
-  if (typeof currentPollAbort === 'function') currentPollAbort();
-  let alive = true;
-  currentPollAbort = () => { alive = false; };
-
+async function pollJob(id,label){
   uiLog(`［${label}］任務建立：${id}`);
+  for(;;){
+    await new Promise(r=>setTimeout(r,20000));
+    const j = await http((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).catch(()=>null);
+    if(!j){ uiLog('❓ 任務不存在'); return; }
 
-  // 去重狀態
-  let last = { phase: null, status: null, landNo: null, buildNoFull: null, entrust: null };
+    if(j.phase === 'bigfun') uiLog('🔎 BigFun 查詢中…');
+    if(j.phase === 'merge') uiLog('🧩 已取得地號/建號 → CBS 交叉比對');
 
-  while (alive) {
-    await new Promise(r => setTimeout(r, 20000)); // 20s
-    const j = await http((state.api||'').replace(/\/$/,'') + '/api/jobs/' + id, { headers: headers() }).catch(() => null);
-    if (!alive) return;
-    if (!j) { uiLog('❓ 任務不存在'); return; }
-
-    // 取值：頂層優先，其次 result（保底）
-    const land  = j.landNo ?? j.result?.landNo ?? null;
-    const build = j.buildNoFull ?? j.result?.buildNoFull ?? null;
-
-    // 地號 / 建號：有變化才印
-    if (land  && land  !== last.landNo)      { uiLog(`📍 地號：${land}`); last.landNo = land; }
-    if (build && build !== last.buildNoFull) { uiLog(`🏢 建號：${build}`); last.buildNoFull = build; }
-
-    // 階段：變更才印
-    if (j.phase !== last.phase) {
-      if (j.phase === 'bigfun') uiLog('🔎 BigFun 查詢中…');
-      if (j.phase === 'merge')  uiLog('🧩 已取得地號/建號 → CBS 交叉比對');
-      last.phase = j.phase;
-    }
-
-    // 失敗：只印一次
-    if (j.status === 'error' && last.status !== 'error') {
-      uiLog(`❌ 任務失敗：${j.error || 'unknown error'}`);
+    if(j.status === 'error'){
+      uiLog(`❌ 任務失敗：${j.error}`);
       return;
     }
 
-    // 完成：保底一次（若前面已印過就不重複）
-    if (j.status === 'done' && last.status !== 'done') {
-      if (land  && last.landNo == null)      
-      if (build && last.buildNoFull == null)
-      const entrust = j.result?.entrust ?? null;
-      if (entrust && entrust !== last.entrust) { uiLog(`📑 委託狀態：${entrust}`); last.entrust = entrust; }
+    if (j.status === 'done') {
+      const land  = j.landNo ?? j.result?.landNo;
+      const build = j.buildNoFull ?? j.result?.buildNoFull;
+      if (land)  uiLog(`📍 地號：${land}`);
+      if (build) uiLog(`🏢 建號：${build}`);
+      if (j.result?.entrust) uiLog(`📑 委託狀態：${j.result.entrust}`);
       uiLog('✅ 完成');
       return;
     }
-
-    last.status = j.status;
   }
 }
-
-
 
 
 $('runBigfun').onclick=async()=>{
