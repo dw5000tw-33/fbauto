@@ -375,13 +375,16 @@ async function pollJob(id,label){
       return;
     }
 
-    if(j.status === 'done'){
-      if(j.result?.entrust){
-        uiLog(`📑 委託狀態：${j.result.entrust}`);
-      }
+    if (j.status === 'done') {
+      const land  = j.landNo ?? j.result?.landNo;
+      const build = j.buildNoFull ?? j.result?.buildNoFull;
+      if (land)  uiLog(`📍 地號：${land}`);
+      if (build) uiLog(`🏢 建號：${build}`);
+      if (j.result?.entrust) uiLog(`📑 委託狀態：${j.result.entrust}`);
       uiLog('✅ 完成');
       return;
     }
+
 
     uiLog('…處理中');
   }
