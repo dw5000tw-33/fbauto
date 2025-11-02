@@ -250,12 +250,14 @@ html[data-theme="dark"] #runBigfun::after{
 </div>
 
 <script>
-/* ===== DOM & LOG 基礎 ===== */
+/* ===== DOM & LOG 基礎（物件友善輸出） ===== */
 const $=id=>document.getElementById(id);
 function uiLog(msg){
-  const s=String(msg).replace(/<[^>]*>/g,'');
-  const line=s.split('\n')[0].slice(0,200);
-  const ta=$('log'); ta.value+=line+"\n"; ta.scrollTop=ta.scrollHeight;
+  const s = typeof msg === 'object' ? JSON.stringify(msg) : String(msg);
+  const line = s.split('\n')[0].slice(0,200);
+  const ta=$('log'); 
+  ta.value+=line+"\n"; 
+  ta.scrollTop=ta.scrollHeight;
 }
 function clearLog(){ $('log').value=''; }
 function friendly(err){
@@ -266,11 +268,17 @@ function friendly(err){
   return '❌ '+s.replace(/<[^>]+>/g,'');
 }
 
-/* ===== fetch 包裝：錯誤精簡 ===== */
+/* ===== fetch 包裝：一次讀取 body，避免 body stream already read ===== */
 async function http(url, opts={}){
   const res = await fetch(url, opts).catch(e=>{ uiLog(friendly(e)); throw e; });
   if(!res.ok){ uiLog(`❌ [upstream ${res.status}]`); throw new Error(`HTTP ${res.status}`); }
-  try{ return await res.json(); } catch{ return await res.text(); }
+  const raw = await res.text();                      // 僅讀一次
+  const ct  = res.headers.get('content-type')||'';
+  if (ct.includes('application/json')) {
+    try { return JSON.parse(raw); } catch { return raw; }
+  }
+  // 後端若未正確設置 content-type，仍嘗試解析 JSON
+  try { return JSON.parse(raw); } catch { return raw; }
 }
 
 /* ===== SYS 啟動探針輸出精簡 ===== */
@@ -336,9 +344,16 @@ async function get(p){ const u=(state.api||'').replace(/\/$/,'')+p; return http(
 /* ===== Echo / Combo / BigFun ===== */
 $('echo').onclick=async()=>{
   clearLog();
+  const addr = $('addr').value.trim();
+  uiLog('🔎 Echo 測試');
+  if (addr) uiLog(`📍 已讀到地址：${addr}`);
+  uiLog(`🧭 查詢模式：${state.mode}`);
   try{
-    uiLog('CBS：'+await get('/api/check-cbs'));
-    uiLog('BigFun：'+await get('/api/check-bigfun'));
+    const cbs = await get('/api/check-cbs');
+    uiLog('CBS：' + (typeof cbs==='object' ? JSON.stringify(cbs) : cbs));
+    const bf  = await get('/api/check-bigfun');
+    uiLog('BigFun：' + (typeof bf==='object' ? JSON.stringify(bf) : bf));
+    uiLog('✅ Echo 完成');
   }catch(e){ uiLog(friendly(e)); }
 };
 
@@ -350,7 +365,6 @@ async function pollJob(id,label){
     if(!j){ uiLog('任務不存在'); return; }
     if(j.status==='done'){ uiLog('✅ 完成'); return; }
     if(j.status==='error'){ uiLog('失敗：'+j.error); return; }
-    // 顯示兩段式 phase（如有）
     if(j.phase==='merge') uiLog('已取得地號/建號，資料統整中…');
     else if(j.phase==='bigfun') uiLog('查詢 BigFun 中…');
     else uiLog('…處理中');
@@ -372,7 +386,6 @@ $('runCombo').onclick=async()=>{
     await pollJob(r.jobId,'Combo');
   }catch(e){ uiLog(friendly(e)); }
 };
-
 </script>
 </body>
 </html>
