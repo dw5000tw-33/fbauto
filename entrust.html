@@ -360,16 +360,33 @@ $('echo').onclick=async()=>{
 async function pollJob(id,label){
   uiLog(`［${label}］任務建立：${id}`);
   for(;;){
-    await new Promise(r=>setTimeout(r,1500));
-    let j=await http((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).catch(()=>null);
-    if(!j){ uiLog('任務不存在'); return; }
-    if(j.status==='done'){ uiLog('✅ 完成'); return; }
-    if(j.status==='error'){ uiLog('失敗：'+j.error); return; }
-    if(j.phase==='merge') uiLog('已取得地號/建號，資料統整中…');
-    else if(j.phase==='bigfun') uiLog('查詢 BigFun 中…');
-    else uiLog('…處理中');
+    await new Promise(r=>setTimeout(r,1000));
+    const j = await http((state.api||'').replace(/\/$/,'')+'/api/jobs/'+id,{headers:headers()}).catch(()=>null);
+    if(!j){ uiLog('❓ 任務不存在'); return; }
+
+    if(j.landNo){ uiLog(`📍 地號：${j.landNo}`); }
+    if(j.buildNoFull){ uiLog(`🏢 建號：${j.buildNoFull}`); }
+
+    if(j.phase === 'bigfun') uiLog('🔎 BigFun 查詢中…');
+    if(j.phase === 'merge') uiLog('🧩 已取得地號/建號 → CBS 交叉比對');
+
+    if(j.status === 'error'){
+      uiLog(`❌ 任務失敗：${j.error}`);
+      return;
+    }
+
+    if(j.status === 'done'){
+      if(j.result?.entrust){
+        uiLog(`📑 委託狀態：${j.result.entrust}`);
+      }
+      uiLog('✅ 完成');
+      return;
+    }
+
+    uiLog('…處理中');
   }
 }
+
 
 $('runBigfun').onclick=async()=>{
   clearLog();
