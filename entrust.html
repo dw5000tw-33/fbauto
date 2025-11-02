@@ -400,8 +400,8 @@ async function pollJob(id, label){
 
     // 完成：保底一次（若前面已印過就不重複）
     if (j.status === 'done' && last.status !== 'done') {
-      if (land  && last.landNo == null)      { uiLog(`📍 地號：${land}`); last.landNo = land; }
-      if (build && last.buildNoFull == null) { uiLog(`🏢 建號：${build}`); last.buildNoFull = build; }
+      if (land  && last.landNo == null)      
+      if (build && last.buildNoFull == null)
       const entrust = j.result?.entrust ?? null;
       if (entrust && entrust !== last.entrust) { uiLog(`📑 委託狀態：${entrust}`); last.entrust = entrust; }
       uiLog('✅ 完成');
