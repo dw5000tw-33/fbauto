@@ -5,15 +5,31 @@
   root.dataset.verifyLock='1';
   const style=document.createElement('style');
   style.textContent=`
-#fb-ad-alpha-local-scheduler header{background:linear-gradient(110deg,#202023,#2d292b 72%,#482126)!important;border-bottom-color:#62343a!important}
+#fb-ad-alpha-local-scheduler{color:#fff!important}
+#fb-ad-alpha-local-scheduler .shell{border-color:#8f1829!important;background:#121214!important}
+#fb-ad-alpha-local-scheduler header{position:relative;background:linear-gradient(115deg,#b3122b 0 58%,#171719 58% 72%,#851021 72% 100%)!important;border-bottom-color:#e54a5d!important}
+#fb-ad-alpha-local-scheduler header h1{position:relative;z-index:1;color:#fff!important;text-shadow:0 1px 2px #000!important}
+#fb-ad-alpha-local-scheduler header .tag{position:relative;z-index:1;color:#fff!important}
+#fb-ad-alpha-local-scheduler header .close{position:relative;z-index:1;color:#fff!important}
+#fb-ad-alpha-local-scheduler main{background:linear-gradient(180deg,#1d1d20,#101012)!important}
+#fb-ad-alpha-local-scheduler p,#fb-ad-alpha-local-scheduler label{color:#f3efed!important}
 #fb-ad-alpha-local-scheduler .verify{margin:13px 0;padding:11px;border:1px solid #474143;border-radius:9px;background:#0e0e10}
 #fb-ad-alpha-local-scheduler .verify label{margin-top:0}
 #fb-ad-alpha-local-scheduler .verify .row input{flex:1.7}
 #fb-ad-alpha-local-scheduler .verify-note{margin-top:7px;color:#8f8885;font-size:10px}
-#fb-ad-alpha-local-scheduler .card.active{background:#282326!important;border-color:#a6474e!important;box-shadow:inset 3px 0 #bd545b!important}
+#fb-ad-alpha-local-scheduler .card{background:#242427!important;border-color:#6c5558!important;color:#fff!important}
+#fb-ad-alpha-local-scheduler .card span{color:#ddd4d0!important}
+#fb-ad-alpha-local-scheduler .card.active{background:#2b2426!important;border-color:#e23f52!important;box-shadow:inset 4px 0 #e23f52!important}
 #fb-ad-alpha-local-scheduler .card:disabled{filter:grayscale(1);background:#202023!important;border-color:#414143!important;color:#777!important;opacity:.58}
 #fb-ad-alpha-local-scheduler .card:disabled span{color:#666!important}
-#fb-ad-alpha-local-scheduler .phase{background:#24191b!important;color:#d0aaa8!important}
+#fb-ad-alpha-local-scheduler .panel{background:#171719!important;border-color:#5a4d4f!important}
+#fb-ad-alpha-local-scheduler input,#fb-ad-alpha-local-scheduler textarea,#fb-ad-alpha-local-scheduler select{background:#0a0a0c!important;border-color:#776467!important;color:#fff!important}
+#fb-ad-alpha-local-scheduler input::placeholder,#fb-ad-alpha-local-scheduler textarea::placeholder{color:#aaa!important}
+#fb-ad-alpha-local-scheduler button.primary{background:#b61f34!important;border-color:#e24b5e!important;color:#fff!important}
+#fb-ad-alpha-local-scheduler .phase{background:#b61f34!important;border-color:#e24b5e!important;color:#fff!important}
+#fb-ad-alpha-local-scheduler .manual{background:#292326!important;border-left-color:#e23f52!important;color:#eee5e1!important}
+#fb-ad-alpha-local-scheduler #t-message{height:40px;min-height:40px;max-height:84px;overflow:hidden;resize:none}
+#fb-ad-alpha-local-scheduler .status{color:#ddd2ce!important}
 `;
   root.append(style);
   const cards=root.querySelector('.cards'),track=root.querySelector('#m-track'),schedule=root.querySelector('#m-schedule'),trackPanel=root.querySelector('#p-track'),schedulePanel=root.querySelector('#p-schedule');
@@ -23,6 +39,9 @@
   const verify=document.createElement('div');verify.className='verify';
   verify.innerHTML='<label for="m-code">使用通行碼</label><div class="row"><input id="m-code" type="password" autocomplete="one-time-code" placeholder="輸入官方 LINE 取得的通行碼"><button class="primary" id="m-verify">解鎖面板</button></div><div class="status" id="m-verify-status">尚未驗證；功能目前為灰階鎖定。</div><div class="verify-note">通行碼由 33 廣告管理助手官方 LINE 提供。</div>';
   cards.before(verify);
+  const message=root.querySelector('#t-message'),messageLabel=root.querySelector('label[for="t-message"]');
+  if(messageLabel)messageLabel.textContent='預備留言（選填）';
+  if(message){message.placeholder='選填；定位後可自行按愛心，或需要時再複製留言';message.addEventListener('input',()=>{message.style.height='40px';message.style.height=Math.min(84,Math.max(40,message.scrollHeight))+'px'})}
   const input=verify.querySelector('#m-code'),button=verify.querySelector('#m-verify'),status=verify.querySelector('#m-verify-status'),ORIGIN='https://dw5000tw-33.github.io';
   const say=(text,kind='')=>{status.textContent=text;status.className='status '+kind};
   const unlock=()=>{track.disabled=false;schedule.disabled=false;track.classList.add('active');if(trackPanel)trackPanel.hidden=false;say('✓ 通行碼驗證成功，功能已解鎖。','ok')};
