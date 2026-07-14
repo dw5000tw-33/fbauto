@@ -7,7 +7,13 @@ const copyText=async text=>{try{await navigator.clipboard.writeText(text);return
 scanBtn.onclick=()=>{
  const word=keyword.value.trim();
  if(!word){setTrack('請輸入要尋找的關鍵字。','bad');keyword.focus();return}
- const source=[...document.querySelectorAll('article,[role="article"]')].filter(el=>!root.contains(el));
+ const visible=el=>{const box=el.getBoundingClientRect();return box.width>0&&box.height>0&&getComputedStyle(el).visibility!=='hidden'};
+ const closestPost=node=>{let cur=node;while(cur&&cur!==document.body){if(cur.matches?.('article,[role="article"],[data-pagelet^="FeedUnit_"]')||cur.hasAttribute?.('aria-posinset'))return cur;cur=cur.parentElement}return node};
+ let source=[...document.querySelectorAll('article,[role="article"],[data-pagelet^="FeedUnit_"]')].filter(el=>!root.contains(el)&&visible(el));
+ if(!source.length){
+   const textNodes=[...document.querySelectorAll('[role="main"] [dir="auto"],[role="feed"] [dir="auto"]')].filter(el=>!root.contains(el)&&visible(el)&&String(el.innerText||'').includes(word));
+   source=[...new Set(textNodes.map(closestPost))];
+ }
  const seen=new Set(),matches=[];
  for(const el of source){
    const text=(el.innerText||'').replace(/\s+/g,' ').trim();
