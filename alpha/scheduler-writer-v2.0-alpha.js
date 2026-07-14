@@ -44,14 +44,25 @@
     confirm.click();note('instagram-reel-notice','confirmed');await sleep(700);return true;
   }
   async function clickInstagramNext(step,waitMs=30000){
-    const next=await waitFor(()=>{
+    const findNext=()=>{
       const reelDialog=[...document.querySelectorAll('[role="dialog"]')].find(el=>!root.contains(el)&&visible(el)&&/Reel/i.test(clean(el.textContent)));
       const confirm=reelDialog&&findButton(['確定','OK'],reelDialog);
       if(confirm){confirm.click();note('instagram-reel-notice','confirmed-during-'+step);return null}
       return findButton(['下一步','Next']);
-    },waitMs,350);
+    };
+    const next=await waitFor(findNext,waitMs,350);
     if(!next)throw new Error('媒體已放入，但找不到 Instagram「'+step+'」畫面的下一步');
-    next.click();note('instagram-next',step);await sleep(step==='編輯'?1600:1100);
+    const screenChanged=()=>{
+      const page=clean(String(document.body.innerText||'').replace(root.innerText||'',''));
+      if(step==='裁切')return /(^|\s)編輯(\s|$)|(^|\s)Edit(\s|$)/i.test(page);
+      return /新 Reel|New reel/i.test(page)||!!findEditor('instagram');
+    };
+    for(let attempt=1;attempt<=3;attempt++){
+      button.textContent='步驟 '+(step==='裁切'?'5/6：裁切下一步':'5/6：編輯下一步');
+      next.click();note('instagram-next',step+' attempt '+attempt);
+      if(await waitFor(screenChanged,step==='裁切'?12000:18000,400))return true;
+    }
+    throw new Error('已找到「'+step+'」的下一步，但 Instagram 畫面沒有切換');
   }
   async function writeDraft(){
     const draft=root.__singleDraft;if(!draft){say('請先建立一則單筆預排草稿。','bad');return}
