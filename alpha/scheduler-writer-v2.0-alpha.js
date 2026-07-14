@@ -29,8 +29,17 @@
     if(!opener)opener=candidates().find(el=>platform==='instagram'?/建立|新增貼文|建立新貼文|Create|New post/i.test(semantics(el)):/建立|新增串文|開始新串文|New thread|Create/i.test(semantics(el)));
     if(!opener&&platform==='instagram'){const icon=[...document.querySelectorAll('svg[aria-label]')].find(svg=>/建立|新增貼文|New post|Create/i.test(svg.getAttribute('aria-label')||''));opener=icon?.closest('button,[role="button"],a')||null}
     if(!opener&&platform==='threads'){const icon=[...document.querySelectorAll('svg[aria-label]')].find(svg=>/建立|新增|New thread|Create/i.test(svg.getAttribute('aria-label')||''));opener=icon?.closest('button,[role="button"],a')||null}
+    if(!opener&&platform==='threads'){
+      const prompt=[...document.querySelectorAll('div,span,p')].find(el=>!root.contains(el)&&visible(el)&&/^(有什麼新鮮事？?|What's new\??)$/i.test(clean(el.textContent)));
+      opener=prompt?.closest('button,[role="button"],a')||prompt||null;
+    }
+    if(!opener&&platform==='threads'){
+      const rail=candidates().filter(el=>{const r=el.getBoundingClientRect();return r.left<90&&r.width<100&&r.height<100&&!!el.querySelector('svg')});
+      opener=rail.sort((a,b)=>Math.abs((a.getBoundingClientRect().top+a.getBoundingClientRect().height/2)-innerHeight*.52)-Math.abs((b.getBoundingClientRect().top+b.getBoundingClientRect().height/2)-innerHeight*.52))[0]||null;
+      if(opener)note('threads-create-fallback','left-rail-position');
+    }
     if(!opener)return false;
-    button.textContent='步驟 1/6：開啟建立';say('已找到左側「建立」，正在開啟貼文選單…');opener.click();note('open-composer',semantics(opener));await sleep(700);
+    button.textContent=platform==='threads'?'正在開啟 Threads 新串文':'步驟 1/6：開啟建立';say(platform==='threads'?'已找到 Threads 發文入口，正在開啟「新串文」…':'已找到左側「建立」，正在開啟貼文選單…');opener.click();note('open-composer',semantics(opener));await sleep(700);
     if(platform==='instagram'){
       button.textContent='步驟 2/6：等待貼文';say('已點擊「建立」，正在等待第二層「貼文」…');
       const post=await waitFor(()=>findButton(['貼文','Post']),7000);
