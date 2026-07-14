@@ -6,6 +6,7 @@
   const sleep=ms=>new Promise(r=>setTimeout(r,ms)),visible=el=>{const r=el?.getBoundingClientRect?.();return !!r&&r.width>1&&r.height>1&&getComputedStyle(el).visibility!=='hidden'},clean=s=>String(s||'').replace(/\s+/g,' ').trim();
   const say=(text,kind='')=>{status.textContent=text;status.className='status '+kind};
   const report={platform:'',steps:[],error:''};root.__writerReport=report;
+  let readyToShare=false,writtenDraft=null;
   const note=(step,detail='')=>report.steps.push({time:new Date().toISOString(),step,detail});
   const candidates=()=>[...document.querySelectorAll('button,[role="button"],a')].filter(el=>!root.contains(el)&&visible(el));
   const label=el=>clean(el.getAttribute('aria-label')||el.innerText||el.textContent);
@@ -95,9 +96,24 @@
         await clickInstagramNext('編輯',mediaWait);
         button.textContent='步驟 6/6：填入文字';const editor=await waitFor(()=>findEditor(platform),mediaWait);if(!editor)throw new Error('媒體已放入，但找不到 Instagram 說明文字欄位');setEditor(editor,draft.text);note('write-text','instagram');
       }
-      say('已把媒體與文字放入原生發文視窗；目前不會按「分享／發佈」，請人工確認。','ok');button.textContent='已寫入，等待人工確認';
+      readyToShare=true;writtenDraft=draft;say('已把媒體與文字放入原生發文視窗；請人工確認並保持此視窗開啟，時間到會按「分享」。','ok');button.textContent='已寫入，等待預定時間';
     }catch(error){report.error=String(error.message||error);note('failed',report.error);say('寫入測試停止：'+report.error+'。草稿仍保留，可回報此訊息修正。','bad');button.textContent='重試寫入平台（不送出）';button.disabled=false}
   }
+  function instagramShareScope(){
+    const titles=['建立新貼文','新 Reel','Create new post','New reel'];
+    const headings=[...document.querySelectorAll('h1,h2,h3,[role="heading"],div,span')].filter(el=>!root.contains(el)&&visible(el)&&titles.includes(clean(el.textContent)));
+    for(const heading of headings){let scope=heading;for(let depth=0;scope&&depth<10;depth++,scope=scope.parentElement){const rect=scope.getBoundingClientRect?.(),share=findButton(['分享','Share'],scope);if(rect&&rect.width>400&&rect.height>250&&share&&!share.disabled&&share.getAttribute('aria-disabled')!=='true')return scope}}
+    return null;
+  }
+  async function shareWhenDue(event){
+    const draft=event.detail?.draft||root.__singleDraft;
+    if(!readyToShare||!draft||writtenDraft!==draft){say('時間已到，但原生貼文尚未完成寫入；已停止，沒有送出。','bad');return}
+    if(!/instagram\.com/i.test(location.hostname)){say('時間已到，但目前尚未完成 Threads 的自動分享流程；已停止。','bad');return}
+    button.disabled=true;button.textContent='時間到：正在分享';
+    const scope=await waitFor(instagramShareScope,15000,400),share=scope&&findButton(['分享','Share'],scope);
+    if(!share){say('時間已到，但找不到前景發文視窗的「分享」；已停止，請人工確認。','bad');button.textContent='找不到分享，請人工處理';return}
+    share.focus?.();share.click();note('scheduled-share','instagram');readyToShare=false;writtenDraft=null;button.textContent='已送出分享指令';say('預定時間已到，已點擊 Instagram 原生「分享」。','ok');
+  }
   button.textContent='寫入平台（不送出）';button.disabled=!root.__singleDraft;button.onclick=writeDraft;
-  root.addEventListener('33:draft-ready',()=>{button.disabled=false;button.textContent='寫入平台（不送出）'});root.addEventListener('33:draft-cancelled',()=>{button.disabled=true;button.textContent='寫入平台（不送出）'});
+  root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;button.disabled=false;button.textContent='寫入平台（不送出）'});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;button.disabled=true;button.textContent='寫入平台（不送出）'});root.addEventListener('33:schedule-due',shareWhenDue);
 })();
