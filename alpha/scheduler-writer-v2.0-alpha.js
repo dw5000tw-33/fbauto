@@ -9,19 +9,26 @@
   const note=(step,detail='')=>report.steps.push({time:new Date().toISOString(),step,detail});
   const candidates=()=>[...document.querySelectorAll('button,[role="button"],a')].filter(el=>!root.contains(el)&&visible(el));
   const label=el=>clean(el.getAttribute('aria-label')||el.innerText||el.textContent);
-  const findButton=(names,scope=document)=>[...scope.querySelectorAll('button,[role="button"],a')].filter(el=>!root.contains(el)&&visible(el)).find(el=>names.some(name=>label(el)===name));
+  const semantics=el=>clean([
+    el.getAttribute('aria-label'),el.getAttribute('title'),el.innerText,el.textContent,
+    ...[...el.querySelectorAll('[aria-label],[title],svg title')].flatMap(node=>[node.getAttribute?.('aria-label'),node.getAttribute?.('title'),node.textContent])
+  ].filter(Boolean).join(' '));
+  const findButton=(names,scope=document)=>[...scope.querySelectorAll('button,[role="button"],a')].filter(el=>!root.contains(el)&&visible(el)).find(el=>names.some(name=>label(el)===name||semantics(el).split(' ').includes(name)));
   async function waitFor(fn,ms=10000,interval=250){const end=Date.now()+ms;while(Date.now()<end){const result=fn();if(result)return result;await sleep(interval)}return null}
   async function openComposer(platform){
     const existing=findFileInput()||findEditor(platform);if(existing)return true;
     const names=platform==='instagram'?['建立','新增貼文','Create','New post']:['建立','新增串文','開始新串文','New thread','Create'];
     let opener=findButton(names);
+    if(!opener)opener=candidates().find(el=>platform==='instagram'?/建立|新增貼文|建立新貼文|Create|New post/i.test(semantics(el)):/建立|新增串文|開始新串文|New thread|Create/i.test(semantics(el)));
     if(!opener&&platform==='instagram'){const icon=[...document.querySelectorAll('svg[aria-label]')].find(svg=>/建立|新增貼文|New post|Create/i.test(svg.getAttribute('aria-label')||''));opener=icon?.closest('button,[role="button"],a')||null}
     if(!opener&&platform==='threads'){const icon=[...document.querySelectorAll('svg[aria-label]')].find(svg=>/建立|新增|New thread|Create/i.test(svg.getAttribute('aria-label')||''));opener=icon?.closest('button,[role="button"],a')||null}
-    if(!opener)return false;opener.click();note('open-composer',label(opener));await sleep(700);
+    if(!opener)return false;
+    button.textContent='步驟 1/6：開啟建立';say('已找到左側「建立」，正在開啟貼文選單…');opener.click();note('open-composer',semantics(opener));await sleep(700);
     if(platform==='instagram'){
+      button.textContent='步驟 2/6：等待貼文';say('已點擊「建立」，正在等待第二層「貼文」…');
       const post=await waitFor(()=>findButton(['貼文','Post']),7000);
       if(!post)return false;
-      post.click();note('instagram-post-menu',label(post));await sleep(700);
+      post.click();note('instagram-post-menu',semantics(post));button.textContent='步驟 3/6：等待選檔';say('已點擊「貼文」，正在等待 Instagram 選檔視窗…');await sleep(700);
     }
     return true;
   }
@@ -52,20 +59,20 @@
     if(!platform){say('目前不是 Threads 或 Instagram 頁面。','bad');return}
     button.disabled=true;say('正在尋找 '+(platform==='instagram'?'Instagram':'Threads')+' 原生發文視窗…');
     try{
-      if(!await openComposer(platform))throw new Error('找不到建立貼文／串文按鈕');
+      if(!await openComposer(platform))throw new Error(platform==='instagram'?'找不到左側「建立」，或第二層「貼文」按鈕':'找不到建立串文按鈕');
       if(platform==='threads'){
         const editor=await waitFor(()=>findEditor(platform),8000);if(!editor)throw new Error('找不到 Threads 文字輸入區');setEditor(editor,draft.text);note('write-text','threads');
         const fileInput=await waitFor(findFileInput,8000);if(!fileInput)throw new Error('找不到 Threads 媒體選擇欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);
       }else{
-        const fileInput=await waitFor(findFileInput,10000);if(!fileInput)throw new Error('已開啟 Instagram 貼文視窗，但找不到媒體選擇欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);
+        const fileInput=await waitFor(findFileInput,10000);if(!fileInput)throw new Error('已開啟 Instagram 貼文視窗，但找不到媒體選擇欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);button.textContent='步驟 4/6：處理媒體';
         const mediaWait=draft.media.kind==='video'?75000:30000;
         await dismissInstagramReelNotice();
         await clickInstagramNext('裁切',mediaWait);
         await clickInstagramNext('編輯',mediaWait);
-        const editor=await waitFor(()=>findEditor(platform),mediaWait);if(!editor)throw new Error('媒體已放入，但找不到 Instagram 說明文字欄位');setEditor(editor,draft.text);note('write-text','instagram');
+        button.textContent='步驟 6/6：填入文字';const editor=await waitFor(()=>findEditor(platform),mediaWait);if(!editor)throw new Error('媒體已放入，但找不到 Instagram 說明文字欄位');setEditor(editor,draft.text);note('write-text','instagram');
       }
       say('已把媒體與文字放入原生發文視窗；目前不會按「分享／發佈」，請人工確認。','ok');button.textContent='已寫入，等待人工確認';
-    }catch(error){report.error=String(error.message||error);note('failed',report.error);say('寫入測試停止：'+report.error+'。草稿仍保留，可回報此訊息修正。','bad');button.disabled=false}
+    }catch(error){report.error=String(error.message||error);note('failed',report.error);say('寫入測試停止：'+report.error+'。草稿仍保留，可回報此訊息修正。','bad');button.textContent='重試寫入平台（不送出）';button.disabled=false}
   }
   button.textContent='寫入平台（不送出）';button.disabled=!root.__singleDraft;button.onclick=writeDraft;
   root.addEventListener('33:draft-ready',()=>{button.disabled=false;button.textContent='寫入平台（不送出）'});root.addEventListener('33:draft-cancelled',()=>{button.disabled=true;button.textContent='寫入平台（不送出）'});
