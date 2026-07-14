@@ -16,6 +16,7 @@
   ].filter(Boolean).join(' '));
   const findButton=(names,scope=document)=>[...scope.querySelectorAll('button,[role="button"],a')].filter(el=>!root.contains(el)&&visible(el)).find(el=>names.some(name=>label(el)===name||semantics(el).split(' ').includes(name)));
   async function waitFor(fn,ms=10000,interval=250){const end=Date.now()+ms;while(Date.now()<end){const result=fn();if(result)return result;await sleep(interval)}return null}
+  function activate(el){if(!el)return;const init={bubbles:true,cancelable:true,view:window,button:0,buttons:1};try{el.dispatchEvent(new PointerEvent('pointerdown',init));el.dispatchEvent(new MouseEvent('mousedown',init));el.dispatchEvent(new PointerEvent('pointerup',{...init,buttons:0}));el.dispatchEvent(new MouseEvent('mouseup',{...init,buttons:0}));el.dispatchEvent(new MouseEvent('click',{...init,buttons:0}))}catch(_){el.click?.()}}
   function threadsComposerScope(){
     const titles=['新串文','New thread'];
     const headings=[...document.querySelectorAll('h1,h2,h3,[role="heading"],div,span')].filter(el=>!root.contains(el)&&visible(el)&&titles.includes(clean(el.textContent)));
@@ -34,12 +35,18 @@
       opener=prompt?.closest('button,[role="button"],a')||prompt||null;
     }
     if(!opener&&platform==='threads'){
+      const stacked=document.elementsFromPoint?.(30,Math.round(innerHeight*.52))||[];
+      const point=stacked.find(el=>!root.contains(el));
+      opener=point?.closest?.('button,[role="button"],a')||point||null;
+      if(opener)note('threads-create-fallback','left-center-hit-test '+Math.round(innerHeight*.52));
+    }
+    if(!opener&&platform==='threads'){
       const rail=candidates().filter(el=>{const r=el.getBoundingClientRect();return r.left<90&&r.width<100&&r.height<100&&!!el.querySelector('svg')});
       opener=rail.sort((a,b)=>Math.abs((a.getBoundingClientRect().top+a.getBoundingClientRect().height/2)-innerHeight*.52)-Math.abs((b.getBoundingClientRect().top+b.getBoundingClientRect().height/2)-innerHeight*.52))[0]||null;
       if(opener)note('threads-create-fallback','left-rail-position');
     }
     if(!opener)return false;
-    button.textContent=platform==='threads'?'正在開啟 Threads 新串文':'步驟 1/6：開啟建立';say(platform==='threads'?'已找到 Threads 發文入口，正在開啟「新串文」…':'已找到左側「建立」，正在開啟貼文選單…');opener.click();note('open-composer',semantics(opener));await sleep(700);
+    button.textContent=platform==='threads'?'正在開啟 Threads 新串文':'步驟 1/6：開啟建立';say(platform==='threads'?'已找到 Threads 發文入口，正在開啟「新串文」…':'已找到左側「建立」，正在開啟貼文選單…');platform==='threads'?activate(opener):opener.click();note('open-composer',semantics(opener));await sleep(700);
     if(platform==='instagram'){
       button.textContent='步驟 2/6：等待貼文';say('已點擊「建立」，正在等待第二層「貼文」…');
       const post=await waitFor(()=>findButton(['貼文','Post']),7000);
