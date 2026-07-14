@@ -68,8 +68,18 @@ scanBtn.onclick=async()=>{
  const word=keyword.value.trim();if(!word){setTrack('請輸入要尋找的關鍵字。','bad');keyword.focus();return}
  const max=Math.min(30,Math.max(0,Number.parseInt(rounds.value,10)||0)),all=new Map();
  stopRequested=false;scanBtn.disabled=true;stopBtn.hidden=false;results.innerHTML='';
+ let pausedOnMatch=false;
  for(let round=0;round<=max;round++){
-   findMatches(word).forEach(item=>all.set(item.text.slice(0,220),item));
+   const foundNow=findMatches(word);
+   foundNow.forEach(item=>all.set(item.text.slice(0,220),item));
+   if(foundNow.length){
+     const first=foundNow[0];
+     first.el.scrollIntoView({behavior:'smooth',block:'center'});
+     first.el.style.outline='3px solid #38bdf8';
+     setTimeout(()=>first.el.style.outline='',3500);
+     pausedOnMatch=true;
+     break;
+   }
    if(stopRequested||round===max)break;
    setTrack('第 '+(round+1)+' / '+max+' 次滑動後掃描中…','');
    window.scrollBy({top:Math.max(500,Math.floor(window.innerHeight*.82)),behavior:'smooth'});
@@ -77,5 +87,6 @@ scanBtn.onclick=async()=>{
  }
  scanBtn.disabled=false;stopBtn.hidden=true;
  renderMatches([...all.values()],word);
+ if(pausedOnMatch)setTrack('找到候選貼文，已停止滑動並定位在畫面中央。確認後可再按一次繼續找下一則。','ok');
 };
 stopBtn.onclick=()=>{stopRequested=true;setTrack('收到停止指令，將在本輪掃描後結束。','')};})();
