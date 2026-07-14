@@ -1,3 +1,12 @@
+19:  function threadsComposerScope(){
+26:    const existing=platform==='threads'?threadsComposerScope():(findFileInput()||findEditor(platform));if(existing)return true;
+95:        button.textContent='Threads 1/3：等待新串文';const scope=await waitFor(threadsComposerScope,10000);if(!scope)throw new Error('已點擊建立，但找不到前景「新串文」視窗');
+96:        button.textContent='Threads 2/3：填入文字';const editor=findEditor(platform,scope);if(!editor)throw new Error('找不到 Threads 新串文文字輸入區');setEditor(editor,draft.text);note('write-text','threads');
+97:        button.textContent='Threads 3/3：放入媒體';const fileInput=await waitFor(()=>findFileInput(scope)||findFileInput(),10000);if(!fileInput)throw new Error('找不到 Threads 新串文媒體欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);await sleep(draft.media.kind==='video'?2500:1200);
+115:  function threadsShareScope(){
+116:    const scope=threadsComposerScope();if(!scope)return null;
+126:    const scope=await waitFor(platform==='instagram'?instagramShareScope:threadsShareScope,15000,400),share=scope&&findButton(platform==='instagram'?['分享','Share']:['發佈','發布','Post'],scope);
+128:    share.focus?.();share.click();note('scheduled-share',platform);readyToShare=false;writtenDraft=null;button.textContent='已送出發佈指令';say('預定時間已到，已點擊 '+(platform==='instagram'?'Instagram「分享」':'Threads「發佈」')+'。','ok');
 (()=>{
   'use strict';
   const root=document.getElementById('fb-ad-alpha-local-scheduler'),button=root?.querySelector('#s-now'),status=root?.querySelector('#s-status');
@@ -16,8 +25,14 @@
   ].filter(Boolean).join(' '));
   const findButton=(names,scope=document)=>[...scope.querySelectorAll('button,[role="button"],a')].filter(el=>!root.contains(el)&&visible(el)).find(el=>names.some(name=>label(el)===name||semantics(el).split(' ').includes(name)));
   async function waitFor(fn,ms=10000,interval=250){const end=Date.now()+ms;while(Date.now()<end){const result=fn();if(result)return result;await sleep(interval)}return null}
+  function threadsComposerScope(){
+    const titles=['新串文','New thread'];
+    const headings=[...document.querySelectorAll('h1,h2,h3,[role="heading"],div,span')].filter(el=>!root.contains(el)&&visible(el)&&titles.includes(clean(el.textContent)));
+    for(const heading of headings){let scope=heading;for(let depth=0;scope&&depth<10;depth++,scope=scope.parentElement){const rect=scope.getBoundingClientRect?.();if(rect&&rect.width>450&&rect.height>220&&findEditor('threads',scope))return scope}}
+    return [...document.querySelectorAll('[role="dialog"]')].filter(el=>!root.contains(el)&&visible(el)).find(el=>titles.some(name=>clean(el.textContent).includes(name))&&findEditor('threads',el))||null;
+  }
   async function openComposer(platform){
-    const existing=findFileInput()||findEditor(platform);if(existing)return true;
+    const existing=platform==='threads'?threadsComposerScope():(findFileInput()||findEditor(platform));if(existing)return true;
     const names=platform==='instagram'?['建立','新增貼文','Create','New post']:['建立','新增串文','開始新串文','New thread','Create'];
     let opener=findButton(names);
     if(!opener)opener=candidates().find(el=>platform==='instagram'?/建立|新增貼文|建立新貼文|Create|New post/i.test(semantics(el)):/建立|新增串文|開始新串文|New thread|Create/i.test(semantics(el)));
@@ -33,9 +48,9 @@
     }
     return true;
   }
-  function findFileInput(){return [...document.querySelectorAll('input[type="file"]')].find(el=>!root.contains(el)&&(/image|video/.test(el.accept||'')||!el.accept))||null}
-  function findEditor(platform){const fields=[...document.querySelectorAll('textarea,[contenteditable="true"]')].filter(el=>!root.contains(el)&&visible(el));const preferred=fields.find(el=>{const hint=clean(el.getAttribute('aria-label')||el.getAttribute('placeholder'));return platform==='instagram'?/caption|說明|撰寫/i.test(hint):/thread|串文|有什麼新鮮事|開始/i.test(hint)});return preferred||fields[0]||null}
-  function setEditor(editor,text){editor.focus();if(editor.matches('textarea,input')){const proto=editor.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;setter?setter.call(editor,text):editor.value=text}else{editor.textContent=text}editor.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));editor.dispatchEvent(new Event('change',{bubbles:true}))}
+  function findFileInput(scope=document){return [...scope.querySelectorAll('input[type="file"]')].find(el=>!root.contains(el)&&(/image|video/.test(el.accept||'')||!el.accept))||null}
+  function findEditor(platform,scope=document){const fields=[...scope.querySelectorAll('textarea,[contenteditable="true"]')].filter(el=>!root.contains(el)&&visible(el));const preferred=fields.find(el=>{const hint=clean(el.getAttribute('aria-label')||el.getAttribute('placeholder'));return platform==='instagram'?/caption|說明|撰寫/i.test(hint):/thread|串文|有什麼新鮮事|開始/i.test(hint)});return preferred||fields[0]||null}
+  function setEditor(editor,text){editor.focus();if(editor.matches('textarea,input')){const proto=editor.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;setter?setter.call(editor,text):editor.value=text}else{const selection=getSelection(),range=document.createRange();range.selectNodeContents(editor);selection.removeAllRanges();selection.addRange(range);if(!document.execCommand('insertText',false,text))editor.textContent=text}editor.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));editor.dispatchEvent(new Event('change',{bubbles:true}))}
   function setFile(input,file){const transfer=new DataTransfer();transfer.items.add(file);input.files=transfer.files;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))}
   async function dismissInstagramReelNotice(){
     const dialog=await waitFor(()=>[...document.querySelectorAll('[role="dialog"]')].find(el=>!root.contains(el)&&visible(el)&&/Reel/i.test(clean(el.textContent))),3500);
@@ -86,8 +101,9 @@
     try{
       if(!await openComposer(platform))throw new Error(platform==='instagram'?'找不到左側「建立」，或第二層「貼文」按鈕':'找不到建立串文按鈕');
       if(platform==='threads'){
-        const editor=await waitFor(()=>findEditor(platform),8000);if(!editor)throw new Error('找不到 Threads 文字輸入區');setEditor(editor,draft.text);note('write-text','threads');
-        const fileInput=await waitFor(findFileInput,8000);if(!fileInput)throw new Error('找不到 Threads 媒體選擇欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);
+        button.textContent='Threads 1/3：等待新串文';const scope=await waitFor(threadsComposerScope,10000);if(!scope)throw new Error('已點擊建立，但找不到前景「新串文」視窗');
+        button.textContent='Threads 2/3：填入文字';const editor=findEditor(platform,scope);if(!editor)throw new Error('找不到 Threads 新串文文字輸入區');setEditor(editor,draft.text);note('write-text','threads');
+        button.textContent='Threads 3/3：放入媒體';const fileInput=await waitFor(()=>findFileInput(scope)||findFileInput(),10000);if(!fileInput)throw new Error('找不到 Threads 新串文媒體欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);await sleep(draft.media.kind==='video'?2500:1200);
       }else{
         const fileInput=await waitFor(findFileInput,10000);if(!fileInput)throw new Error('已開啟 Instagram 貼文視窗，但找不到媒體選擇欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);button.textContent='步驟 4/6：處理媒體';
         const mediaWait=draft.media.kind==='video'?75000:30000;
@@ -96,7 +112,7 @@
         await clickInstagramNext('編輯',mediaWait);
         button.textContent='步驟 6/6：填入文字';const editor=await waitFor(()=>findEditor(platform),mediaWait);if(!editor)throw new Error('媒體已放入，但找不到 Instagram 說明文字欄位');setEditor(editor,draft.text);note('write-text','instagram');
       }
-      readyToShare=true;writtenDraft=draft;say('已把媒體與文字放入原生發文視窗；請人工確認並保持此視窗開啟，時間到會按「分享」。','ok');button.textContent='已寫入，等待預定時間';
+      readyToShare=true;writtenDraft=draft;say('已把媒體與文字放入原生發文視窗；請人工確認並保持此視窗開啟，時間到會按「'+(platform==='instagram'?'分享':'發佈')+'」。','ok');button.textContent='已寫入，等待預定時間';
     }catch(error){report.error=String(error.message||error);note('failed',report.error);say('寫入測試停止：'+report.error+'。草稿仍保留，可回報此訊息修正。','bad');button.textContent='重試寫入平台（不送出）';button.disabled=false}
   }
   function instagramShareScope(){
@@ -105,14 +121,20 @@
     for(const heading of headings){let scope=heading;for(let depth=0;scope&&depth<10;depth++,scope=scope.parentElement){const rect=scope.getBoundingClientRect?.(),share=findButton(['分享','Share'],scope);if(rect&&rect.width>400&&rect.height>250&&share&&!share.disabled&&share.getAttribute('aria-disabled')!=='true')return scope}}
     return null;
   }
+  function threadsShareScope(){
+    const scope=threadsComposerScope();if(!scope)return null;
+    const publish=findButton(['發佈','發布','Post'],scope);
+    return publish&&!publish.disabled&&publish.getAttribute('aria-disabled')!=='true'?scope:null;
+  }
   async function shareWhenDue(event){
     const draft=event.detail?.draft||root.__singleDraft;
     if(!readyToShare||!draft||writtenDraft!==draft){say('時間已到，但原生貼文尚未完成寫入；已停止，沒有送出。','bad');return}
-    if(!/instagram\.com/i.test(location.hostname)){say('時間已到，但目前尚未完成 Threads 的自動分享流程；已停止。','bad');return}
+    const platform=/instagram\.com/i.test(location.hostname)?'instagram':/threads\.net/i.test(location.hostname)?'threads':'';
+    if(!platform){say('時間已到，但目前不是 Instagram 或 Threads 頁面；已停止。','bad');return}
     button.disabled=true;button.textContent='時間到：正在分享';
-    const scope=await waitFor(instagramShareScope,15000,400),share=scope&&findButton(['分享','Share'],scope);
-    if(!share){say('時間已到，但找不到前景發文視窗的「分享」；已停止，請人工確認。','bad');button.textContent='找不到分享，請人工處理';return}
-    share.focus?.();share.click();note('scheduled-share','instagram');readyToShare=false;writtenDraft=null;button.textContent='已送出分享指令';say('預定時間已到，已點擊 Instagram 原生「分享」。','ok');
+    const scope=await waitFor(platform==='instagram'?instagramShareScope:threadsShareScope,15000,400),share=scope&&findButton(platform==='instagram'?['分享','Share']:['發佈','發布','Post'],scope);
+    if(!share){say('時間已到，但找不到前景發文視窗的「'+(platform==='instagram'?'分享':'發佈')+'」；已停止，請人工確認。','bad');button.textContent='找不到送出按鈕，請人工處理';return}
+    share.focus?.();share.click();note('scheduled-share',platform);readyToShare=false;writtenDraft=null;button.textContent='已送出發佈指令';say('預定時間已到，已點擊 '+(platform==='instagram'?'Instagram「分享」':'Threads「發佈」')+'。','ok');
   }
   button.textContent='寫入平台（不送出）';button.disabled=!root.__singleDraft;button.onclick=writeDraft;
   root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;button.disabled=false;button.textContent='寫入平台（不送出）'});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;button.disabled=true;button.textContent='寫入平台（不送出）'});root.addEventListener('33:schedule-due',shareWhenDue);
