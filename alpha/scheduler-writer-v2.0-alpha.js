@@ -35,6 +35,10 @@
       opener=prompt?.closest('button,[role="button"],a')||prompt||null;
     }
     if(!opener&&platform==='threads'){
+      const controls=candidates().filter(el=>{const r=el.getBoundingClientRect();const cy=r.top+r.height/2;return r.left<90&&r.right<120&&r.width>15&&r.height>15&&r.height<110&&cy>innerHeight*.2&&cy<innerHeight*.8}).sort((a,b)=>a.getBoundingClientRect().top-b.getBoundingClientRect().top);
+      if(controls.length>=3){opener=controls[Math.floor(controls.length/2)];note('threads-create-fallback','left-rail-median '+controls.length+' controls')}
+    }
+    if(!opener&&platform==='threads'){
       const stacked=document.elementsFromPoint?.(30,Math.round(innerHeight*.52))||[];
       const point=stacked.find(el=>!root.contains(el));
       opener=point?.closest?.('button,[role="button"],a')||point||null;
