@@ -37,7 +37,12 @@
     confirm.click();note('instagram-reel-notice','confirmed');await sleep(700);return true;
   }
   async function clickInstagramNext(step,waitMs=30000){
-    const next=await waitFor(()=>findButton(['下一步','Next']),waitMs,350);
+    const next=await waitFor(()=>{
+      const reelDialog=[...document.querySelectorAll('[role="dialog"]')].find(el=>!root.contains(el)&&visible(el)&&/Reel/i.test(clean(el.textContent)));
+      const confirm=reelDialog&&findButton(['確定','OK'],reelDialog);
+      if(confirm){confirm.click();note('instagram-reel-notice','confirmed-during-'+step);return null}
+      return findButton(['下一步','Next']);
+    },waitMs,350);
     if(!next)throw new Error('媒體已放入，但找不到 Instagram「'+step+'」畫面的下一步');
     next.click();note('instagram-next',step);await sleep(step==='編輯'?1600:1100);
   }
