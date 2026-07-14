@@ -9,7 +9,7 @@
   const note=(step,detail='')=>report.steps.push({time:new Date().toISOString(),step,detail});
   const candidates=()=>[...document.querySelectorAll('button,[role="button"],a')].filter(el=>!root.contains(el)&&visible(el));
   const label=el=>clean(el.getAttribute('aria-label')||el.innerText||el.textContent);
-  const findButton=names=>candidates().find(el=>names.some(name=>label(el)===name||label(el).startsWith(name)));
+  const findButton=(names,scope=document)=>[...scope.querySelectorAll('button,[role="button"],a')].filter(el=>!root.contains(el)&&visible(el)).find(el=>names.some(name=>label(el)===name));
   async function waitFor(fn,ms=10000,interval=250){const end=Date.now()+ms;while(Date.now()<end){const result=fn();if(result)return result;await sleep(interval)}return null}
   async function openComposer(platform){
     const existing=findFileInput()||findEditor(platform);if(existing)return true;
@@ -17,13 +17,30 @@
     let opener=findButton(names);
     if(!opener&&platform==='instagram'){const icon=[...document.querySelectorAll('svg[aria-label]')].find(svg=>/建立|新增貼文|New post|Create/i.test(svg.getAttribute('aria-label')||''));opener=icon?.closest('button,[role="button"],a')||null}
     if(!opener&&platform==='threads'){const icon=[...document.querySelectorAll('svg[aria-label]')].find(svg=>/建立|新增|New thread|Create/i.test(svg.getAttribute('aria-label')||''));opener=icon?.closest('button,[role="button"],a')||null}
-    if(!opener)return false;opener.click();note('open-composer',label(opener));await sleep(900);return true;
+    if(!opener)return false;opener.click();note('open-composer',label(opener));await sleep(700);
+    if(platform==='instagram'){
+      const post=await waitFor(()=>findButton(['貼文','Post']),7000);
+      if(!post)return false;
+      post.click();note('instagram-post-menu',label(post));await sleep(700);
+    }
+    return true;
   }
   function findFileInput(){return [...document.querySelectorAll('input[type="file"]')].find(el=>!root.contains(el)&&(/image|video/.test(el.accept||'')||!el.accept))||null}
   function findEditor(platform){const fields=[...document.querySelectorAll('textarea,[contenteditable="true"]')].filter(el=>!root.contains(el)&&visible(el));const preferred=fields.find(el=>{const hint=clean(el.getAttribute('aria-label')||el.getAttribute('placeholder'));return platform==='instagram'?/caption|說明|撰寫/i.test(hint):/thread|串文|有什麼新鮮事|開始/i.test(hint)});return preferred||fields[0]||null}
   function setEditor(editor,text){editor.focus();if(editor.matches('textarea,input')){const proto=editor.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;setter?setter.call(editor,text):editor.value=text}else{editor.textContent=text}editor.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));editor.dispatchEvent(new Event('change',{bubbles:true}))}
   function setFile(input,file){const transfer=new DataTransfer();transfer.items.add(file);input.files=transfer.files;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))}
-  async function clickInstagramNext(waitMs=15000){for(let round=0;round<2;round++){const next=await waitFor(()=>findButton(['下一步','Next']),waitMs);if(!next)break;next.click();note('instagram-next',String(round+1));await sleep(1100)}}
+  async function dismissInstagramReelNotice(){
+    const dialog=await waitFor(()=>[...document.querySelectorAll('[role="dialog"]')].find(el=>!root.contains(el)&&visible(el)&&/Reel/i.test(clean(el.textContent))),3500);
+    if(!dialog)return false;
+    const confirm=findButton(['確定','OK'],dialog);
+    if(!confirm)return false;
+    confirm.click();note('instagram-reel-notice','confirmed');await sleep(700);return true;
+  }
+  async function clickInstagramNext(step,waitMs=30000){
+    const next=await waitFor(()=>findButton(['下一步','Next']),waitMs,350);
+    if(!next)throw new Error('媒體已放入，但找不到 Instagram「'+step+'」畫面的下一步');
+    next.click();note('instagram-next',step);await sleep(step==='編輯'?1600:1100);
+  }
   async function writeDraft(){
     const draft=root.__singleDraft;if(!draft){say('請先建立一則單筆預排草稿。','bad');return}
     const platform=/instagram\.com/i.test(location.hostname)?'instagram':/threads\.net/i.test(location.hostname)?'threads':'';report.platform=platform;report.steps=[];report.error='';
@@ -35,7 +52,11 @@
         const editor=await waitFor(()=>findEditor(platform),8000);if(!editor)throw new Error('找不到 Threads 文字輸入區');setEditor(editor,draft.text);note('write-text','threads');
         const fileInput=await waitFor(findFileInput,8000);if(!fileInput)throw new Error('找不到 Threads 媒體選擇欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);
       }else{
-        const fileInput=await waitFor(findFileInput,8000);if(!fileInput)throw new Error('找不到 Instagram 媒體選擇欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);const mediaWait=draft.media.kind==='video'?60000:15000;await sleep(draft.media.kind==='video'?2500:1800);await clickInstagramNext(mediaWait);
+        const fileInput=await waitFor(findFileInput,10000);if(!fileInput)throw new Error('已開啟 Instagram 貼文視窗，但找不到媒體選擇欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);
+        const mediaWait=draft.media.kind==='video'?75000:30000;
+        await dismissInstagramReelNotice();
+        await clickInstagramNext('裁切',mediaWait);
+        await clickInstagramNext('編輯',mediaWait);
         const editor=await waitFor(()=>findEditor(platform),mediaWait);if(!editor)throw new Error('媒體已放入，但找不到 Instagram 說明文字欄位');setEditor(editor,draft.text);note('write-text','instagram');
       }
       say('已把媒體與文字放入原生發文視窗；目前不會按「分享／發佈」，請人工確認。','ok');button.textContent='已寫入，等待人工確認';
