@@ -8,7 +8,7 @@ diagnoseBtn.onclick=async()=>{
  const word=keyword.value.trim();
  if(!word){setTrack('先輸入要診斷的關鍵字。','bad');keyword.focus();return}
  const pick=el=>({tag:el.tagName,role:el.getAttribute('role')||'',dir:el.getAttribute('dir')||'',pagelet:el.getAttribute('data-pagelet')||'',aria:el.getAttribute('aria-label')||'',className:String(el.className||'').slice(0,160),text:String(el.innerText||'').replace(/\s+/g,' ').trim().slice(0,160)});
- const all=[...document.querySelectorAll('[role="main"] [dir="auto"],[role="feed"] [dir="auto"],article,[role="article"],[data-pagelet^="FeedUnit_"]')].filter(el=>!root.contains(el)&&visible(el));
+ const isVisible=el=>{const box=el.getBoundingClientRect();return box.width>0&&box.height>0&&getComputedStyle(el).visibility!=='hidden'};const all=[...document.querySelectorAll('[role="main"] [dir="auto"],[role="feed"] [dir="auto"],article,[role="article"],[data-pagelet^="FeedUnit_"]')].filter(el=>!root.contains(el)&&isVisible(el));
  const hits=all.filter(el=>String(el.innerText||'').includes(word)).slice(0,12).map(pick);
  const report={keyword:word,location:location.href,checked:all.length,hits};
  const text=JSON.stringify(report,null,2);
