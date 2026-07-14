@@ -20,7 +20,7 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#16396c,#081225 55%);co
 <section class="card">
 <h2>Threads／Instagram 排程面板</h2>
 <p>同一個本機草稿排程 Bookmarklet。進入 Threads 或 Instagram 的發文畫面後直接啟動，面板會自動辨識目前平台。</p>
-<a class="drag" href="alpha/scheduler-bookmarklet.html">拖曳開啟排程面板</a>
+<a id="scheduler-bookmarklet" class="drag" href="#">拖曳開啟排程面板</a>
 </section>
 </div>
 <p class="warn">此為獨立測試入口，Facebook 面板只載入 <code>/fbauto/alpha/</code>，不修改舊版正式入口。Threads 與 Instagram 已可使用獨立的本機草稿排程；目標分頁、電腦與瀏覽器必須在倒數期間保持開啟。</p>
@@ -29,5 +29,8 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#16396c,#081225 55%);co
 </main></div>
 <script>
 (()=>{const raw=`(()=>{const O='https://dw5000tw-33.github.io',n=Math.random().toString(36).slice(2)+Date.now();let w;const inject=c=>{const b=new Blob([c],{type:'text/javascript'}),u=URL.createObjectURL(b),s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s)};function m(e){if(e.origin!==O||e.source!==w)return;const d=e.data||{};if(d.type==='FB_AD_ALPHA_READY'&&d.nonce===n)w.postMessage({type:'FB_AD_ALPHA_GIMME_CODE',nonce:n},O);if(d.type==='FB_AD_ALPHA_CODE'&&d.nonce===n&&typeof d.code==='string'){removeEventListener('message',m);inject(d.code);try{w.close()}catch{}}if(d.type==='FB_AD_ALPHA_ERROR'&&d.nonce===n)alert('Alpha 面板載入失敗：'+d.message)}addEventListener('message',m);w=open(O+'/fbauto/alpha/panel-bootstrap.html?nonce='+encodeURIComponent(n),'_blank','width=480,height=320');if(!w)alert('請允許彈出式視窗')})();`;document.getElementById('facebook-bookmarklet').href='javascript:'+raw})()
+</script>
+<script>
+(()=>{const raw="(()=>{const O='https://dw5000tw-33.github.io',n=Math.random().toString(36).slice(2)+Date.now();let w;const inject=c=>{const b=new Blob([c],{type:'text/javascript'}),u=URL.createObjectURL(b),s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s)};function m(e){if(e.origin!==O||e.source!==w)return;const d=e.data||{};if(d.type==='FB_AD_SCHED_READY'&&d.nonce===n)w.postMessage({type:'FB_AD_SCHED_GIMME_CODE',nonce:n},O);if(d.type==='FB_AD_SCHED_CODE'&&d.nonce===n&&typeof d.code==='string'){removeEventListener('message',m);inject(d.code);try{w.close()}catch{}}if(d.type==='FB_AD_SCHED_ERROR'&&d.nonce===n)alert('排程面板載入失敗：'+d.message)}addEventListener('message',m);w=open(O+'/fbauto/alpha/scheduler-bootstrap.html?nonce='+encodeURIComponent(n),'_blank','width=480,height=260');if(!w)alert('請允許彈出式視窗')})();";document.getElementById('scheduler-bookmarklet').href='javascript:'+raw})()
 </script>
 </html>
