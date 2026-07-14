@@ -35,14 +35,16 @@ const marketplaceListingFromButton=button=>{
   return best;
 };
 const scanMarketplace=()=>{
-  const cards=new Map();
-  for(const button of document.querySelectorAll('button,[role="button"]')){
-    if(root.contains(button)||!visible(button))continue;
-    const label=String(button.innerText||button.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim();
-    if(label!=='立即推廣')continue;
-    const card=marketplaceListingFromButton(button);if(!card)continue;
-    const text=String(card.innerText||'').replace(/\s+/g,' ').trim();
-    cards.set(text.slice(0,260),{card,text});
+  const cards=new Map(),scope=document.querySelector('[role="main"]')||document.body;
+  // Marketplace 的按鈕在不同帳號／版面可能不是 button；以商品卡內穩定可見的文字組合反向找卡片。
+  const candidates=[...scope.querySelectorAll('div,section,article,[role="article"]')].filter(el=>{
+    if(root.contains(el)||!visible(el))return false;
+    const text=String(el.innerText||'').replace(/\s+/g,' ').trim();
+    return text.includes('立即推廣')&&(text.includes('Marketplace 上架')||/NT\$\s*[\d,]+/.test(text))&&text.length>=20&&text.length<700;
+  }).sort((a,b)=>String(a.innerText||'').length-String(b.innerText||'').length);
+  for(const card of candidates){
+    const text=String(card.innerText||'').replace(/\s+/g,' ').trim(),key=text.slice(0,260);
+    if(!cards.has(key))cards.set(key,{card,text});
   }
   marketplaceResults.innerHTML='';
   if(!cards.size){setMarketplaceStatus('沒有找到商品卡片。請確認目前位於 Marketplace「你的商品」頁面。','bad');return}
