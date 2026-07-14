@@ -30,7 +30,7 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#16396c,#081225 55%);co
 </div>
 <p class="warn">此為獨立測試入口，Facebook 面板只載入 <code>/fbauto/alpha/</code>，不修改舊版正式入口。Threads 與 Instagram 將使用各自獨立的面板程式。</p>
 <a class="support" href="https://p.ecpay.com.tw/304E8B5" target="_blank" rel="noopener noreferrer">❤️ 透過綠界支持 33 Works</a>
-<p class="note">支持完全自願，不影響工具的免費使用。</p>
+<p class="note">作者需要你的支持，讓工具能持續維護與開發。是否支持完全由你決定；工具目前仍免費使用。</p>
 </main></div>
 <script>
 (()=>{const raw=`(()=>{const O='https://dw5000tw-33.github.io',n=Math.random().toString(36).slice(2)+Date.now();let w;const inject=c=>{const b=new Blob([c],{type:'text/javascript'}),u=URL.createObjectURL(b),s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s)};function m(e){if(e.origin!==O||e.source!==w)return;const d=e.data||{};if(d.type==='FB_AD_ALPHA_READY'&&d.nonce===n)w.postMessage({type:'FB_AD_ALPHA_GIMME_CODE',nonce:n},O);if(d.type==='FB_AD_ALPHA_CODE'&&d.nonce===n&&typeof d.code==='string'){removeEventListener('message',m);inject(d.code);try{w.close()}catch{}}if(d.type==='FB_AD_ALPHA_ERROR'&&d.nonce===n)alert('Alpha 面板載入失敗：'+d.message)}addEventListener('message',m);w=open(O+'/fbauto/alpha/panel-bootstrap.html?nonce='+encodeURIComponent(n),'_blank','width=480,height=320');if(!w)alert('請允許彈出式視窗')})();`;document.getElementById('facebook-bookmarklet').href='javascript:'+raw})()
