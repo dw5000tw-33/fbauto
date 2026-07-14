@@ -45,7 +45,7 @@ const waitForPageToSettle=async()=>{
 };
 let stopRequested=false;
 const visible=el=>{const box=el.getBoundingClientRect();return box.width>0&&box.height>0&&getComputedStyle(el).visibility!=='hidden'};
-const inFeed=el=>{const box=el.getBoundingClientRect();return box.left>180&&box.left<Math.max(520,window.innerWidth-390)&&box.width>80};
+const inFeed=el=>{if(el.closest?.('nav,aside,[role="navigation"],[role="complementary"]'))return false;return Boolean(el.closest?.('[role="main"]'))};
 const closestPost=node=>{let cur=node;while(cur&&cur!==document.body){if(cur.matches?.('article,[role="article"],[data-pagelet^="FeedUnit_"]')||cur.hasAttribute?.('aria-posinset'))return cur;cur=cur.parentElement}return node};
 const findMatches=word=>{
  const seen=new Set(),found=[];
@@ -83,6 +83,7 @@ scanBtn.onclick=async()=>{
  for(let round=0;round<=max;round++){
    const foundNow=findMatches(word);
    foundNow.forEach(item=>all.set(item.text.slice(0,220),item));
+   setTrack('第 '+(round+1)+' 輪已完成搜尋：目前找到 '+all.size+' 則。','');
    if(foundNow.length){
      const first=foundNow[0];
      first.el.scrollIntoView({behavior:'smooth',block:'center'});
