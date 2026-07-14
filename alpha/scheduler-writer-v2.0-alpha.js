@@ -20,7 +20,7 @@
   function threadsComposerScope(){
     const titles=['新串文','New thread'];
     const headings=[...document.querySelectorAll('h1,h2,h3,[role="heading"],div,span')].filter(el=>!root.contains(el)&&visible(el)&&titles.includes(clean(el.textContent)));
-    for(const heading of headings){let scope=heading;for(let depth=0;scope&&depth<10;depth++,scope=scope.parentElement){const rect=scope.getBoundingClientRect?.();if(rect&&rect.width>450&&rect.height>220&&findEditor('threads',scope))return scope}}
+    for(const heading of headings){let scope=heading;for(let depth=0;scope&&depth<10;depth++,scope=scope.parentElement){const rect=scope.getBoundingClientRect?.();if(rect&&rect.width>320&&rect.height>180&&findEditor('threads',scope))return scope}}
     return [...document.querySelectorAll('[role="dialog"]')].filter(el=>!root.contains(el)&&visible(el)).find(el=>titles.some(name=>clean(el.textContent).includes(name))&&findEditor('threads',el))||null;
   }
   async function openComposer(platform){
@@ -30,6 +30,12 @@
     if(!opener)opener=candidates().find(el=>platform==='instagram'?/建立|新增貼文|建立新貼文|Create|New post/i.test(semantics(el)):/建立|新增串文|開始新串文|New thread|Create/i.test(semantics(el)));
     if(!opener&&platform==='instagram'){const icon=[...document.querySelectorAll('svg[aria-label]')].find(svg=>/建立|新增貼文|New post|Create/i.test(svg.getAttribute('aria-label')||''));opener=icon?.closest('button,[role="button"],a')||null}
     if(!opener&&platform==='threads'){const icon=[...document.querySelectorAll('svg[aria-label]')].find(svg=>/建立|新增|New thread|Create/i.test(svg.getAttribute('aria-label')||''));opener=icon?.closest('button,[role="button"],a')||null}
+    if(!opener&&platform==='threads'){
+      const stacked=document.elementsFromPoint?.(Math.max(1,innerWidth-58),Math.max(1,innerHeight-58))||[];
+      const point=stacked.find(el=>!root.contains(el)&&el!==document.documentElement&&el!==document.body);
+      opener=point?.closest?.('button,[role="button"],a')||point||null;
+      if(opener)note('threads-create-fallback','bottom-right-hit-test');
+    }
     if(!opener&&platform==='threads'){
       const prompt=[...document.querySelectorAll('div,span,p')].find(el=>!root.contains(el)&&visible(el)&&/^(有什麼新鮮事？?|What's new\??)$/i.test(clean(el.textContent)));
       opener=prompt?.closest('button,[role="button"],a')||prompt||null;
