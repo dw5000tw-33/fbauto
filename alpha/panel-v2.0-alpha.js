@@ -73,9 +73,9 @@ const scanMarketplace=()=>{
   return marketplaceItems;
 };
 const applyMarketplaceFilters=()=>{
-  const terms=parseTerms(marketplaceKeyword.value),hasDate=Boolean(marketplaceDate.value);
+  const terms=parseTerms(marketplaceKeyword.value),dateValue=getMarketplaceDate(),hasDate=Boolean(dateValue);
   if(!hasDate&&!terms.length)return {error:'請至少填入關鍵字或刪除截止日期，避免未篩選就刪除全部商品。'};
-  const cutoff=hasDate?new Date(marketplaceDate.value+'T23:59:59'):null;
+  const cutoff=hasDate?new Date(dateValue+'T23:59:59'):null;
   marketplaceItems.forEach(item=>{
     const keywordMatches=!terms.length||terms.some(term=>item.text.includes(term));
     const dateMatches=!hasDate||Boolean(item.date&&item.date<=cutoff);
@@ -90,9 +90,11 @@ const mergeMarketplaceItems=found=>{
 };
 let marketplaceCalendarMonth=null;
 const formatDateValue=date=>date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+const setMarketplaceDate=value=>{marketplaceDate.value=value;marketplaceDate.dataset.selectedDate=value};
+const getMarketplaceDate=()=>marketplaceDate.dataset.selectedDate||marketplaceDate.value||'';
 const openMarketplaceCalendar=()=>{
   const existing=root.querySelector('.calendar');if(existing){existing.remove();return}
-  const selected=/^\d{4}-\d{2}-\d{2}$/.test(marketplaceDate.value)?new Date(marketplaceDate.value+'T12:00:00'):new Date();
+  const selectedValue=getMarketplaceDate(),selected=/^\d{4}-\d{2}-\d{2}$/.test(selectedValue)?new Date(selectedValue+'T12:00:00'):new Date();
   if(!marketplaceCalendarMonth)marketplaceCalendarMonth=new Date(selected.getFullYear(),selected.getMonth(),1);
   const draw=()=>{
     root.querySelector('.calendar')?.remove();
@@ -107,13 +109,13 @@ const openMarketplaceCalendar=()=>{
     names.forEach(name=>{const h=document.createElement('span');h.textContent=name;grid.appendChild(h)});
     const start=new Date(year,month,1).getDay(),days=new Date(year,month+1,0).getDate(),today=formatDateValue(new Date());
     for(let n=0;n<start;n++){const empty=document.createElement('span');grid.appendChild(empty)}
-    for(let day=1;day<=days;day++){const d=new Date(year,month,day),value=formatDateValue(d),button=document.createElement('button');button.textContent=String(day);if(value===today)button.classList.add('today');if(value===marketplaceDate.value)button.classList.add('selected');button.onclick=()=>{marketplaceDate.value=value;marketplaceCalendarMonth=new Date(d.getFullYear(),d.getMonth(),1);box.remove();marketplaceDate.focus()};grid.appendChild(button)}
+    for(let day=1;day<=days;day++){const d=new Date(year,month,day),value=formatDateValue(d),button=document.createElement('button');button.textContent=String(day);if(value===today)button.classList.add('today');if(value===getMarketplaceDate())button.classList.add('selected');button.onclick=()=>{setMarketplaceDate(value);marketplaceCalendarMonth=new Date(d.getFullYear(),d.getMonth(),1);box.remove();marketplaceDate.focus()};grid.appendChild(button)}
     box.appendChild(grid);marketplaceDate.closest('.marketplace').insertBefore(box,marketplaceStatus);
   };
   draw();
 };
 marketplaceDate.onclick=openMarketplaceCalendar;
-marketplaceToday.onclick=()=>{const now=new Date();marketplaceDate.value=formatDateValue(now);marketplaceCalendarMonth=new Date(now.getFullYear(),now.getMonth(),1);root.querySelector('.calendar')?.remove();marketplaceDate.focus()};
+marketplaceToday.onclick=()=>{const now=new Date();setMarketplaceDate(formatDateValue(now));marketplaceCalendarMonth=new Date(now.getFullYear(),now.getMonth(),1);root.querySelector('.calendar')?.remove();marketplaceDate.focus()};
 const waitForVisibleText=async(text,ms=5000)=>{
   const end=Date.now()+ms;while(Date.now()<end){const found=[...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="radio"],label')].find(el=>!root.contains(el)&&visible(el)&&String(el.innerText||el.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim()===text);if(found)return found;await sleep(180)}return null;
 };
@@ -143,7 +145,7 @@ marketplaceDelete.onclick=async()=>{
   const found=await collectAllMarketplace();if(!found.length){setMarketplaceStatus('沒有找到商品卡片。請確認目前位於 Marketplace「你的商品」頁面。','bad');marketplaceDelete.disabled=false;return}
   const rules=applyMarketplaceFilters();if(rules.error){setMarketplaceStatus(rules.error,'bad');marketplaceDelete.disabled=false;return}
   renderMarketplace();if(!rules.count){setMarketplaceStatus('沒有符合目前關鍵字與日期條件的商品。','');marketplaceDelete.disabled=false;return}
-  const ruleText=[rules.terms.length?'關鍵字：'+rules.terms.join('、'):'',rules.hasDate?'截止：'+marketplaceDate.value:''].filter(Boolean).join('＋');
+  const ruleText=[rules.terms.length?'關鍵字：'+rules.terms.join('、'):'',rules.hasDate?'截止：'+getMarketplaceDate():''].filter(Boolean).join('＋');
   if(!window.confirm('即將刪除 '+rules.count+' 個商品（'+ruleText+'）。\n每筆將依序選擇「刪除商品 → 刪除 → 不便回答 → 繼續」。是否開始？')){marketplaceDelete.disabled=false;return;}
   let done=0;
   for(const item of marketplaceItems.filter(item=>item.eligible)){
