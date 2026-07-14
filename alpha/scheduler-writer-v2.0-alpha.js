@@ -1,12 +1,3 @@
-19:  function threadsComposerScope(){
-26:    const existing=platform==='threads'?threadsComposerScope():(findFileInput()||findEditor(platform));if(existing)return true;
-95:        button.textContent='Threads 1/3：等待新串文';const scope=await waitFor(threadsComposerScope,10000);if(!scope)throw new Error('已點擊建立，但找不到前景「新串文」視窗');
-96:        button.textContent='Threads 2/3：填入文字';const editor=findEditor(platform,scope);if(!editor)throw new Error('找不到 Threads 新串文文字輸入區');setEditor(editor,draft.text);note('write-text','threads');
-97:        button.textContent='Threads 3/3：放入媒體';const fileInput=await waitFor(()=>findFileInput(scope)||findFileInput(),10000);if(!fileInput)throw new Error('找不到 Threads 新串文媒體欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);await sleep(draft.media.kind==='video'?2500:1200);
-115:  function threadsShareScope(){
-116:    const scope=threadsComposerScope();if(!scope)return null;
-126:    const scope=await waitFor(platform==='instagram'?instagramShareScope:threadsShareScope,15000,400),share=scope&&findButton(platform==='instagram'?['分享','Share']:['發佈','發布','Post'],scope);
-128:    share.focus?.();share.click();note('scheduled-share',platform);readyToShare=false;writtenDraft=null;button.textContent='已送出發佈指令';say('預定時間已到，已點擊 '+(platform==='instagram'?'Instagram「分享」':'Threads「發佈」')+'。','ok');
 (()=>{
   'use strict';
   const root=document.getElementById('fb-ad-alpha-local-scheduler'),button=root?.querySelector('#s-now'),status=root?.querySelector('#s-status');
