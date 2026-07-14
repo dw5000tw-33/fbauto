@@ -2,21 +2,37 @@
 <html lang="zh-Hant">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>33 Facebook 廣告管理助手 · v2.0-alpha 測試入口</title>
+<title>33 廣告管理助手 · v2.0-alpha 測試入口</title>
 <style>
 body{margin:0;background:radial-gradient(circle at 20% 0,#16396c,#081225 55%);color:#eaf2ff;font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif}
-.wrap{max-width:760px;margin:48px auto;padding:0 20px}.card{background:#101e38e8;border:1px solid #31517e;border-radius:20px;padding:26px;box-shadow:0 20px 50px #0006}
-.badge{display:inline-block;background:#075985;color:#dff6ff;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}.drag{display:inline-block;margin:18px 0;padding:15px 22px;background:#38bdf8;color:#06203a;border-radius:12px;text-decoration:none;font-weight:800;font-size:17px}.note{color:#b9c8e3;line-height:1.7}.warn{border-left:3px solid #fbbf24;padding-left:12px;color:#d6e0f0;font-size:13px}.support{display:inline-block;margin-top:16px;padding:11px 15px;border-radius:10px;background:#f8b400;color:#2e2100;text-decoration:none;font-weight:800}code{color:#7dd3fc}
+.wrap{max-width:900px;margin:48px auto;padding:0 20px}.shell{background:#101e38e8;border:1px solid #31517e;border-radius:20px;padding:26px;box-shadow:0 20px 50px #0006}.badge{display:inline-block;background:#075985;color:#dff6ff;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}.note{color:#b9c8e3;line-height:1.7}.warn{border-left:3px solid #fbbf24;padding-left:12px;color:#d6e0f0;font-size:13px}.panels{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}.card{min-height:220px;padding:18px;border:1px solid #31517e;border-radius:15px;background:#0b172c}.card h2{margin:0 0 8px;font-size:19px}.card p{font-size:13px;line-height:1.6;color:#b9c8e3}.drag,.coming{display:inline-block;margin-top:12px;padding:12px 14px;border-radius:10px;text-decoration:none;font-weight:800}.drag{background:#38bdf8;color:#06203a}.coming{background:#1e3a5f;color:#a7c7eb}.support{display:inline-block;margin-top:20px;padding:11px 15px;border-radius:10px;background:#f8b400;color:#2e2100;text-decoration:none;font-weight:800}code{color:#7dd3fc}@media(max-width:720px){.panels{grid-template-columns:1fr}}
 </style>
-<div class="wrap"><div class="card">
+<div class="wrap"><main class="shell">
 <span class="badge">v2.0-alpha · 測試環境</span>
-<h1>33 Facebook 廣告管理助手</h1>
-<p class="note">請將下方按鈕拖曳至瀏覽器書籤列；在 Facebook 網頁版開啟後點擊，即可載入 Alpha 面板。</p>
-<a id="bookmarklet" class="drag" href="#">開啟 Alpha 面板</a>
-<p class="warn">這是獨立測試入口，只載入 <code>/fbauto/alpha/</code>。目前只驗證通行碼與顯示功能骨架，不會執行刪文或任何 Facebook 自動操作。</p>
-<a class="support" href="https://p.ecpay.com.tw/304E8B5" target="_blank" rel="noopener noreferrer">❤️ 透過綠界支持 33 Works</a><p class="note">支持完全自願，不影響工具的免費使用。</p>
-</div></div>
+<h1>33 廣告管理助手</h1>
+<p class="note">以同一個公開入口管理 Facebook、Threads 與 Instagram。三者共用「追蹤標記」的概念；Facebook 的 Marketplace 與社團整理則維持 Facebook 專用。</p>
+<div class="panels">
+<section class="card">
+<h2>Facebook Alpha 面板</h2>
+<p>追蹤標記、Marketplace 商品刪除、社團清單整理。</p>
+<a id="facebook-bookmarklet" class="drag" href="#">拖曳開啟 FB 面板</a>
+</section>
+<section class="card">
+<h2>Threads 面板</h2>
+<p>下一步建立：關鍵字追蹤、定位貼文、複製自訂留言；不自動發文。</p>
+<span class="coming">追蹤標記建置中</span>
+</section>
+<section class="card">
+<h2>Instagram 面板</h2>
+<p>下一步建立：關鍵字追蹤、定位貼文、複製自訂留言；不自動發文。</p>
+<span class="coming">追蹤標記建置中</span>
+</section>
+</div>
+<p class="warn">此為獨立測試入口，Facebook 面板只載入 <code>/fbauto/alpha/</code>，不修改舊版正式入口。Threads 與 Instagram 將使用各自獨立的面板程式。</p>
+<a class="support" href="https://p.ecpay.com.tw/304E8B5" target="_blank" rel="noopener noreferrer">❤️ 透過綠界支持 33 Works</a>
+<p class="note">支持完全自願，不影響工具的免費使用。</p>
+</main></div>
 <script>
-(()=>{const raw=`(()=>{const O='https://dw5000tw-33.github.io',n=Math.random().toString(36).slice(2)+Date.now();let w;const inject=c=>{const b=new Blob([c],{type:'text/javascript'}),u=URL.createObjectURL(b),s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s)};function m(e){if(e.origin!==O||e.source!==w)return;const d=e.data||{};if(d.type==='FB_AD_ALPHA_READY'&&d.nonce===n)w.postMessage({type:'FB_AD_ALPHA_GIMME_CODE',nonce:n},O);if(d.type==='FB_AD_ALPHA_CODE'&&d.nonce===n&&typeof d.code==='string'){removeEventListener('message',m);inject(d.code);try{w.close()}catch{}}if(d.type==='FB_AD_ALPHA_ERROR'&&d.nonce===n)alert('Alpha 面板載入失敗：'+d.message)}addEventListener('message',m);w=open(O+'/fbauto/alpha/panel-bootstrap.html?nonce='+encodeURIComponent(n),'_blank','width=480,height=320');if(!w)alert('請允許彈出式視窗')})();`;document.getElementById('bookmarklet').href='javascript:'+raw})()
+(()=>{const raw=`(()=>{const O='https://dw5000tw-33.github.io',n=Math.random().toString(36).slice(2)+Date.now();let w;const inject=c=>{const b=new Blob([c],{type:'text/javascript'}),u=URL.createObjectURL(b),s=document.createElement('script');s.src=u;s.onload=()=>URL.revokeObjectURL(u);document.documentElement.appendChild(s)};function m(e){if(e.origin!==O||e.source!==w)return;const d=e.data||{};if(d.type==='FB_AD_ALPHA_READY'&&d.nonce===n)w.postMessage({type:'FB_AD_ALPHA_GIMME_CODE',nonce:n},O);if(d.type==='FB_AD_ALPHA_CODE'&&d.nonce===n&&typeof d.code==='string'){removeEventListener('message',m);inject(d.code);try{w.close()}catch{}}if(d.type==='FB_AD_ALPHA_ERROR'&&d.nonce===n)alert('Alpha 面板載入失敗：'+d.message)}addEventListener('message',m);w=open(O+'/fbauto/alpha/panel-bootstrap.html?nonce='+encodeURIComponent(n),'_blank','width=480,height=320');if(!w)alert('請允許彈出式視窗')})();`;document.getElementById('facebook-bookmarklet').href='javascript:'+raw})()
 </script>
 </html>
