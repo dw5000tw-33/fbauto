@@ -32,6 +32,17 @@ diagnoseBtn.onclick=async()=>{
  results.innerHTML='';const row=document.createElement('div');row.className='result';row.textContent='診斷結果：檢查 '+all.length+' 個可見元素，命中 '+hits.length+' 個。'+(ok?' 已複製到剪貼簿，請直接貼回這個聊天室。':' 請手動複製下方內容。');const pre=document.createElement('pre');pre.style.whiteSpace='pre-wrap';pre.style.fontSize='10px';pre.textContent=text;results.append(row,pre);setTrack('診斷僅在本頁執行，不會傳送到伺服器。','ok');
 };
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const waitForPageToSettle=async()=>{
+ let last=window.scrollY,stable=0;
+ for(let tick=0;tick<32;tick++){
+   await sleep(250);
+   const now=window.scrollY;
+   stable=Math.abs(now-last)<2?stable+1:0;
+   last=now;
+   if(stable>=3)break;
+ }
+ await sleep(700);
+};
 let stopRequested=false;
 const visible=el=>{const box=el.getBoundingClientRect();return box.width>0&&box.height>0&&getComputedStyle(el).visibility!=='hidden'};
 const inFeed=el=>{const box=el.getBoundingClientRect();return box.left>180&&box.left<Math.max(520,window.innerWidth-390)&&box.width>80};
@@ -81,9 +92,9 @@ scanBtn.onclick=async()=>{
      break;
    }
    if(stopRequested||round===max)break;
-   setTrack('第 '+(round+1)+' / '+max+' 次滑動後掃描中…','');
-   window.scrollBy({top:Math.max(500,Math.floor(window.innerHeight*.82)),behavior:'smooth'});
-   await sleep(1200);
+   setTrack('第 '+(round+1)+' / '+max+' 次滑動：等待畫面與新內容穩定…','');
+   window.scrollBy(0,Math.max(500,Math.floor(window.innerHeight*.82)));
+   await waitForPageToSettle();
  }
  scanBtn.disabled=false;stopBtn.hidden=true;
  renderMatches([...all.values()],word);
