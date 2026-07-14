@@ -119,11 +119,17 @@ marketplaceAuto.onclick=async()=>{
 marketplaceStop.onclick=()=>{marketplaceAutoRunning=false;setMarketplaceStatus('已要求停止掃描，將在本輪後結束。','')};
 marketplaceMark.onclick=()=>{
   if(!marketplaceItems.length){setMarketplaceStatus('請先掃描我的商品。','bad');return}
-  if(!marketplaceDate.value){setMarketplaceStatus('請選擇刪除截止日期。','bad');marketplaceDate.focus();return}
-  const cutoff=new Date(marketplaceDate.value+'T23:59:59'),terms=parseTerms(marketplaceKeyword.value),unknown=marketplaceItems.filter(item=>!item.date).length;
-  marketplaceItems.forEach(item=>{const matches=!terms.length||terms.some(term=>item.text.includes(term));item.eligible=Boolean(matches&&item.date&&item.date<=cutoff)});renderMarketplace();
+  const terms=parseTerms(marketplaceKeyword.value),hasDate=Boolean(marketplaceDate.value);
+  if(!hasDate&&!terms.length){setMarketplaceStatus('請至少填入關鍵字或刪除截止日期，避免未篩選就刪除全部商品。','bad');return}
+  const cutoff=hasDate?new Date(marketplaceDate.value+'T23:59:59'):null,unknown=marketplaceItems.filter(item=>!item.date).length;
+  marketplaceItems.forEach(item=>{
+    const keywordMatches=!terms.length||terms.some(term=>item.text.includes(term));
+    const dateMatches=!hasDate||Boolean(item.date&&item.date<=cutoff);
+    item.eligible=Boolean(keywordMatches&&dateMatches);
+  });renderMarketplace();
   const count=marketplaceItems.filter(item=>item.eligible).length;
-  setMarketplaceStatus('已標記 '+count+' 個到期候選'+(terms.length?'（關鍵字：'+terms.join('、')+'）':'')+(unknown?'；'+unknown+' 個無法辨識刊登日期。':'')+'。尚未刪除。','ok');
+  const rules=[terms.length?'關鍵字：'+terms.join('、'):'',hasDate?'截止：'+marketplaceDate.value:''].filter(Boolean).join('＋');
+  setMarketplaceStatus('已標記 '+count+' 個刪除候選（'+rules+'）'+(hasDate&&unknown?'；'+unknown+' 個無法辨識刊登日期。':'')+'。尚未刪除。','ok');
 };
 marketplaceCard.onclick=()=>{if(!verified){setStatus('請先完成通行碼驗證，再使用 Marketplace。','bad');return}marketplacePanel.hidden=!marketplacePanel.hidden;if(!marketplacePanel.hidden)marketplaceScan.focus()};
 marketplaceScan.onclick=scanMarketplace;
