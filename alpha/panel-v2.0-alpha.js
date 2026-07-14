@@ -21,7 +21,7 @@ const setTrack=(text,kind='')=>{trackStatus.textContent=text;trackStatus.classNa
 trackCard.onclick=()=>{if(!verified){setStatus('請先完成通行碼驗證，再使用追蹤標記。','bad');return}tracker.hidden=!tracker.hidden;if(!tracker.hidden)keyword.focus()};
 const copyText=async text=>{try{await navigator.clipboard.writeText(text);return true}catch{const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();const ok=document.execCommand('copy');area.remove();return ok}};
 diagnoseBtn.onclick=async()=>{
- const word=keyword.value.trim();
+ const word=keyword.value.trim().replace(/[，,。！？!?]+$/g,'');
  if(!word){setTrack('先輸入要診斷的關鍵字。','bad');keyword.focus();return}
  const pick=el=>({tag:el.tagName,role:el.getAttribute('role')||'',dir:el.getAttribute('dir')||'',pagelet:el.getAttribute('data-pagelet')||'',aria:el.getAttribute('aria-label')||'',className:String(el.className||'').slice(0,160),text:String(el.innerText||'').replace(/\s+/g,' ').trim().slice(0,160)});
  const isVisible=el=>{const box=el.getBoundingClientRect();return box.width>0&&box.height>0&&getComputedStyle(el).visibility!=='hidden'};const all=[...document.querySelectorAll('[role="main"] [dir="auto"],[role="feed"] [dir="auto"],article,[role="article"],[data-pagelet^="FeedUnit_"]')].filter(el=>!root.contains(el)&&isVisible(el));
@@ -76,7 +76,7 @@ const renderMatches=(matches,word)=>{
  });
 };
 scanBtn.onclick=async()=>{
- const word=keyword.value.trim();if(!word){setTrack('請輸入要尋找的關鍵字。','bad');keyword.focus();return}
+ const word=keyword.value.trim().replace(/[，,。！？!?]+$/g,'');if(!word){setTrack('請輸入要尋找的關鍵字。','bad');keyword.focus();return}
  const max=Math.min(30,Math.max(0,Number.parseInt(rounds.value,10)||0)),all=new Map();
  stopRequested=false;scanBtn.disabled=true;stopBtn.hidden=false;results.innerHTML='';
  let pausedOnMatch=false;
