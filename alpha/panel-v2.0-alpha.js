@@ -62,13 +62,19 @@ const downloadGroups=()=>{
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='fb-ad-manager-groups-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),500);
 };
 groupsCard.onclick=()=>{if(!verified){setStatus('請先完成通行碼驗證，再使用社團整理。','bad');return}groupsPanel.hidden=!groupsPanel.hidden;if(!groupsPanel.hidden)renderGroups()};
+const groupAnchorInfo=anchor=>{
+  if(root.contains(anchor)||!visible(anchor))return null;
+  const rect=anchor.getBoundingClientRect();
+  // Facebook 的「加入的社團」固定在左欄；排除中間動態牆與右側面板的同名連結。
+  if(rect.left>Math.min(window.innerWidth*.42,360))return null;
+  let url='';try{const parsed=new URL(anchor.href);const match=parsed.pathname.match(/^\/groups\/([^/?#]+)/);if(!match||['feed','discover','joins','create','your-groups'].includes(match[1]))return null;url='https://www.facebook.com/groups/'+match[1]+'/'}catch{return null}
+  const name=String(anchor.innerText||anchor.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim();
+  return name.length>=2?{name,url,rect}:null;
+};
 const collectVisibleGroups=()=>{
   const found=new Map();
   for(const anchor of document.querySelectorAll('a[href*="/groups/"]')){
-    if(root.contains(anchor)||!visible(anchor))continue;
-    let url='';try{const parsed=new URL(anchor.href);const match=parsed.pathname.match(/^\/groups\/([^/?#]+)/);if(!match||['feed','discover','joins','create','your-groups'].includes(match[1]))continue;url='https://www.facebook.com/groups/'+match[1]+'/'}catch{continue}
-    const name=String(anchor.innerText||anchor.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim();
-    if(name.length<2)continue;found.set(url,{name,url,enabled:false});
+    const info=groupAnchorInfo(anchor);if(info)found.set(info.url,{name:info.name,url:info.url,enabled:false});
   }
   const oldByUrl=new Map(groupList.map(group=>[group.url,group]));let added=0;
   for(const group of found.values())if(!oldByUrl.has(group.url)){groupList.push(group);oldByUrl.set(group.url,group);added++}
@@ -77,11 +83,13 @@ const collectVisibleGroups=()=>{
 const findGroupScroller=()=>{
   const scores=new Map();
   for(const anchor of document.querySelectorAll('a[href*="/groups/"]')){
-    if(root.contains(anchor)||!visible(anchor))continue;
-    let el=anchor.parentElement;
-    while(el&&el!==document.body){
-      const style=getComputedStyle(el),scrollable=el.scrollHeight>el.clientHeight+40&&/(auto|scroll)/.test(style.overflowY);
-      if(scrollable)scores.set(el,(scores.get(el)||0)+1);
+    if(!groupAnchorInfo(anchor))continue;
+    let el=anchor.parentElement,depth=0;
+    while(el&&el!==document.body&&depth++<14){
+      const rect=el.getBoundingClientRect();
+      // 深色版 Facebook 有時把 overflow 設成 hidden；只要內容高度確實超出就列入候選。
+      const scrollable=el.scrollHeight>el.clientHeight+40&&rect.left<Math.min(window.innerWidth*.42,360)&&rect.width>100;
+      if(scrollable){const style=getComputedStyle(el);const bonus=/(auto|scroll)/.test(style.overflowY)?20:0;scores.set(el,(scores.get(el)||0)+1+bonus)}
       el=el.parentElement;
     }
   }
@@ -94,19 +102,21 @@ if(groupScan)groupScan.onclick=()=>{
 };
 groupAuto.onclick=async()=>{
   const scroller=findGroupScroller();
-  if(!scroller){setGroupStatus('找不到左側可滑動的社團清單。請先開啟 Facebook「社團」頁面。','bad');return}
-  groupCollectRunning=true;groupAuto.disabled=true;groupStop.hidden=false;let stagnant=0,round=0;
+  if(!scroller){setGroupStatus('找不到左側可滑動的社團清單。請先開啟 Facebook「社團」頁面，並讓左側「加入的社團」清單至少顯示一列。','bad');return}
+  groupCollectRunning=true;groupAuto.disabled=true;groupStop.hidden=false;let stagnant=0,round=0,stoppedAtBottom=false;
   while(groupCollectRunning&&round<200){
     const result=collectVisibleGroups();round++;
     if(result.added){stagnant=0;renderGroups()}else stagnant++;
     const before=scroller.scrollTop,max=Math.max(0,scroller.scrollHeight-scroller.clientHeight);
     setGroupStatus('自動收集第 '+round+' 輪：共 '+groupList.length+' 個，新加入 '+result.added+' 個。','');
-    if(before>=max-3||stagnant>=4)break;
-    scroller.scrollTop=Math.min(max,before+Math.max(240,Math.floor(scroller.clientHeight*.8)));
-    await sleep(800);
+    if(before>=max-3||stagnant>=5){stoppedAtBottom=true;break}
+    scroller.scrollTop=Math.min(max,before+Math.max(240,Math.floor(scroller.clientHeight*.72)));
+    await sleep(1100);
+    // 若 Facebook 尚未完成渲染，不計入「沒有新增」；避免副機較慢時過早結束。
+    if(scroller.scrollTop<=before+2){await sleep(900);if(scroller.scrollTop<=before+2){stoppedAtBottom=true;break}}
   }
   groupCollectRunning=false;groupAuto.disabled=false;groupStop.hidden=true;groupPage=0;renderGroups();
-  setGroupStatus('自動收集完成：共 '+groupList.length+' 個社團。請分批確認、勾選後再下載清單。','ok');
+  setGroupStatus((groupCollectRunning?'已停止收集':'自動收集完成')+'：共 '+groupList.length+' 個社團'+(stoppedAtBottom?'（已到左側清單底部）':'')+'。請分批確認、勾選後再下載清單。','ok');
 };
 groupStop.onclick=()=>{groupCollectRunning=false;setGroupStatus('已要求停止收集，將在本輪後結束。','')};
 groupAll.onclick=()=>{groupList.forEach(group=>group.enabled=true);renderGroups();setGroupStatus('已全選 '+selectedGroups()+' 個社團；請逐批確認後可取消不需要的社團。','ok')};
