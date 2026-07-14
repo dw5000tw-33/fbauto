@@ -154,8 +154,7 @@ marketplaceDelete.onclick=async()=>{
   }
   marketplaceDelete.disabled=false;setMarketplaceStatus('刪除完成：已處理 '+done+' 個商品。','ok');marketplaceItems=[];marketplaceResults.innerHTML='';
 };
-marketplaceCard.onclick=()=>{if(!verified){setStatus('請先完成通行碼驗證，再使用 Marketplace。','bad');return}marketplacePanel.hidden=!marketplacePanel.hidden;if(!marketplacePanel.hidden)marketplaceScan.focus()};
-marketplaceScan.onclick=scanMarketplace;
+marketplaceCard.onclick=()=>{if(!verified){setStatus('請先完成通行碼驗證，再使用 Marketplace。','bad');return}marketplacePanel.hidden=!marketplacePanel.hidden;if(!marketplacePanel.hidden)marketplaceKeyword.focus()};
 trackCard.onclick=()=>{if(!verified){setStatus('請先完成通行碼驗證，再使用追蹤標記。','bad');return}tracker.hidden=!tracker.hidden;if(!tracker.hidden)keyword.focus()};
 const copyText=async text=>{try{await navigator.clipboard.writeText(text);return true}catch{const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();const ok=document.execCommand('copy');area.remove();return ok}};
 diagnoseBtn.onclick=async()=>{
