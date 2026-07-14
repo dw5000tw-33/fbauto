@@ -112,7 +112,7 @@
   }
   async function writeDraft(){
     const draft=root.__singleDraft;if(!draft){say('請先建立一則單筆預排草稿。','bad');return}
-    const platform=/instagram\.com/i.test(location.hostname)?'instagram':/threads\.net/i.test(location.hostname)?'threads':'';report.platform=platform;report.steps=[];report.error='';
+    const platform=/instagram\.com$/i.test(location.hostname)?'instagram':/threads\.(com|net)$/i.test(location.hostname)?'threads':'';report.platform=platform;report.steps=[];report.error='';
     if(!platform){say('目前不是 Threads 或 Instagram 頁面。','bad');return}
     button.disabled=true;say('正在尋找 '+(platform==='instagram'?'Instagram':'Threads')+' 原生發文視窗…');
     try{
@@ -146,7 +146,7 @@
   async function shareWhenDue(event){
     const draft=event.detail?.draft||root.__singleDraft;
     if(!readyToShare||!draft||writtenDraft!==draft){say('時間已到，但原生貼文尚未完成寫入；已停止，沒有送出。','bad');return}
-    const platform=/instagram\.com/i.test(location.hostname)?'instagram':/threads\.net/i.test(location.hostname)?'threads':'';
+    const platform=/instagram\.com$/i.test(location.hostname)?'instagram':/threads\.(com|net)$/i.test(location.hostname)?'threads':'';
     if(!platform){say('時間已到，但目前不是 Instagram 或 Threads 頁面；已停止。','bad');return}
     button.disabled=true;button.textContent='時間到：正在分享';
     const scope=await waitFor(platform==='instagram'?instagramShareScope:threadsShareScope,15000,400),share=scope&&findButton(platform==='instagram'?['分享','Share']:['發佈','發布','Post'],scope);
