@@ -88,7 +88,7 @@ const findGroupScroller=()=>{
   return [...scores.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0]||null;
 };
 let groupCollectRunning=false;
-groupScan.onclick=()=>{
+if(groupScan)groupScan.onclick=()=>{
   const result=collectVisibleGroups();groupPage=0;renderGroups();
   setGroupStatus(result.visible?'掃描到 '+result.visible+' 個可見社團；新加入 '+result.added+' 個。':'沒有掃描到社團。請先前往 Facebook「社團」頁面再試。',result.visible?'ok':'bad');
 };
