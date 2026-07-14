@@ -43,12 +43,25 @@
     if(!confirm)return false;
     confirm.click();note('instagram-reel-notice','confirmed');await sleep(700);return true;
   }
+  function instagramStageScope(stage){
+    const names=stage==='裁切'?['裁切','Crop']:['編輯','Edit'];
+    const headings=[...document.querySelectorAll('h1,h2,h3,[role="heading"],div,span')].filter(el=>!root.contains(el)&&visible(el)&&names.includes(clean(el.textContent)));
+    for(const heading of headings){
+      let scope=heading;
+      for(let depth=0;scope&&depth<10;depth++,scope=scope.parentElement){
+        const rect=scope.getBoundingClientRect?.();
+        if(rect&&rect.width>400&&rect.height>250&&findButton(['下一步','Next'],scope))return scope;
+      }
+    }
+    return [...document.querySelectorAll('[role="dialog"]')].filter(el=>!root.contains(el)&&visible(el)).find(el=>names.some(name=>clean(el.textContent).includes(name))&&findButton(['下一步','Next'],el))||null;
+  }
   async function clickInstagramNext(step,waitMs=30000){
     const findNext=()=>{
       const reelDialog=[...document.querySelectorAll('[role="dialog"]')].find(el=>!root.contains(el)&&visible(el)&&/Reel/i.test(clean(el.textContent)));
       const confirm=reelDialog&&findButton(['確定','OK'],reelDialog);
       if(confirm){confirm.click();note('instagram-reel-notice','confirmed-during-'+step);return null}
-      return findButton(['下一步','Next']);
+      const stage=instagramStageScope(step);
+      return stage&&findButton(['下一步','Next'],stage);
     };
     const next=await waitFor(findNext,waitMs,350);
     if(!next)throw new Error('媒體已放入，但找不到 Instagram「'+step+'」畫面的下一步');
@@ -59,7 +72,7 @@
     };
     for(let attempt=1;attempt<=3;attempt++){
       button.textContent='步驟 '+(step==='裁切'?'5/6：裁切下一步':'5/6：編輯下一步');
-      next.click();note('instagram-next',step+' attempt '+attempt);
+      next.scrollIntoView?.({block:'center',inline:'center'});next.focus?.();next.click();note('instagram-next',step+' foreground attempt '+attempt);
       if(await waitFor(screenChanged,step==='裁切'?12000:18000,400))return true;
     }
     throw new Error('已找到「'+step+'」的下一步，但 Instagram 畫面沒有切換');
