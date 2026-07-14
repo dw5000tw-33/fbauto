@@ -43,6 +43,8 @@ const scanMarketplace=()=>{
     return text.includes('立即推廣')&&(text.includes('Marketplace 上架')||/NT\$\s*[\d,]+/.test(text))&&text.length>=20&&text.length<700;
   }).sort((a,b)=>String(a.innerText||'').length-String(b.innerText||'').length);
   for(const card of candidates){
+    // candidates 已由小到大排序；外層容器若包住已接受的商品卡，直接略過。
+    if([...cards.values()].some(item=>card.contains(item.card)))continue;
     const text=String(card.innerText||'').replace(/\s+/g,' ').trim(),key=text.slice(0,260);
     if(!cards.has(key))cards.set(key,{card,text});
   }
