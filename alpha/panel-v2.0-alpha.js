@@ -127,13 +127,25 @@ const deleteMarketplaceItem=async item=>{
   skip.click();const continueBtn=await waitForVisibleText('繼續');if(!continueBtn)throw new Error('找不到「繼續」按鈕');
   continueBtn.click();await sleep(900);
 };
+const collectAllMarketplace=async()=>{
+  marketplaceItems=[];let idle=0;
+  for(let round=1;round<=250;round++){
+    const added=mergeMarketplaceItems(discoverMarketplaceItems());
+    setMarketplaceStatus('正在收集商品 '+round+' 輪：已找到 '+marketplaceItems.length+' 個。','');
+    idle=added?0:idle+1;if(idle>=5)break;
+    const before=window.scrollY;window.scrollBy(0,Math.max(420,Math.floor(window.innerHeight*.78)));await sleep(1100);
+    if(window.scrollY<=before+2)break;
+  }
+  renderMarketplace();return marketplaceItems;
+};
 marketplaceDelete.onclick=async()=>{
-  const found=scanMarketplace();if(!found.length){setMarketplaceStatus('沒有找到商品卡片。請確認目前位於 Marketplace「你的商品」頁面。','bad');return}
-  const rules=applyMarketplaceFilters();if(rules.error){setMarketplaceStatus(rules.error,'bad');return}
-  renderMarketplace();if(!rules.count){setMarketplaceStatus('沒有符合目前關鍵字與日期條件的商品。','');return}
+  marketplaceDelete.disabled=true;
+  const found=await collectAllMarketplace();if(!found.length){setMarketplaceStatus('沒有找到商品卡片。請確認目前位於 Marketplace「你的商品」頁面。','bad');marketplaceDelete.disabled=false;return}
+  const rules=applyMarketplaceFilters();if(rules.error){setMarketplaceStatus(rules.error,'bad');marketplaceDelete.disabled=false;return}
+  renderMarketplace();if(!rules.count){setMarketplaceStatus('沒有符合目前關鍵字與日期條件的商品。','');marketplaceDelete.disabled=false;return}
   const ruleText=[rules.terms.length?'關鍵字：'+rules.terms.join('、'):'',rules.hasDate?'截止：'+marketplaceDate.value:''].filter(Boolean).join('＋');
-  if(!window.confirm('即將刪除 '+rules.count+' 個商品（'+ruleText+'）。\n每筆將依序選擇「刪除商品 → 刪除 → 不便回答 → 繼續」。是否開始？'))return;
-  marketplaceDelete.disabled=true;let done=0;
+  if(!window.confirm('即將刪除 '+rules.count+' 個商品（'+ruleText+'）。\n每筆將依序選擇「刪除商品 → 刪除 → 不便回答 → 繼續」。是否開始？')){marketplaceDelete.disabled=false;return;}
+  let done=0;
   for(const item of marketplaceItems.filter(item=>item.eligible)){
     setMarketplaceStatus('正在刪除 '+(done+1)+' / '+rules.count+'：'+item.title,'');
     try{await deleteMarketplaceItem(item);done++}catch(error){setMarketplaceStatus('刪除流程已停止：'+(error.message||error)+'。目前已完成 '+done+' / '+rules.count+'。','bad');marketplaceDelete.disabled=false;return}
