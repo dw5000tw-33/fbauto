@@ -83,17 +83,27 @@
     if(mode==='manual'){const wanted=clean(topic.value);choice=items.find(el=>clean(el.textContent)===wanted)||items.find(el=>clean(el.textContent).startsWith(wanted));if(!choice)throw new Error('Threads 主題清單中找不到「'+wanted+'」')}
     else choice=items[0]||null;
     if(!choice){if(mode==='auto'){note('threads-topic','no suggestion item');return}throw new Error('Threads 主題清單沒有可選項目')}
-    const chosen=clean(choice.textContent);activate(choice);note('threads-topic',mode+': '+chosen);await sleep(500);
+    const chosen=clean(choice.textContent),topicName=clean(String(choice.innerText||choice.textContent).split('\n')[0]);activate(choice);note('threads-topic',mode+': '+chosen);
+    const applied=await waitFor(()=>{const value=clean(scope.innerText);return value.includes(mode==='manual'?clean(topic.value):topicName)&&!/社群或主題/.test(value)},5000,250);
+    if(!applied)throw new Error('已點選 Threads 主題「'+(mode==='manual'?clean(topic.value):topicName)+'」，但原生新串文沒有套用');
   }
   async function addThreadsAiLabel(scope){
     button.textContent='Threads 5/5：新增 AI 標籤';
     const box=scope.getBoundingClientRect(),topButtons=[...scope.querySelectorAll('button,[role="button"]')].filter(el=>!root.contains(el)&&visible(el)).filter(el=>{const r=el.getBoundingClientRect();return r.top<box.top+90&&r.left>box.right-140}).sort((a,b)=>b.getBoundingClientRect().right-a.getBoundingClientRect().right);
     const more=topButtons.find(el=>/更多|選項|more|options|⋯|\.\.\./i.test(semantics(el)))||topButtons[0];
     if(!more)throw new Error('找不到 Threads 新串文右上角「⋯」選單');
-    activate(more);note('threads-more-menu',semantics(more));
-    const ai=await waitFor(()=>findButton(['新增 AI 標籤','Add AI label']),6000,250);
-    if(!ai)throw new Error('已開啟 Threads 選單，但找不到「新增 AI 標籤」');
-    activate(ai);note('threads-ai-label','enabled');await sleep(500);
+    const enabled=()=>findButton(['移除 AI 標籤','Remove AI label'])||[...document.querySelectorAll('[role="menuitem"],[role="option"]')].find(el=>!root.contains(el)&&visible(el)&&/AI 標籤|AI label/i.test(semantics(el))&&(el.getAttribute('aria-checked')==='true'||el.getAttribute('aria-selected')==='true'));
+    for(let attempt=1;attempt<=2;attempt++){
+      activate(more);note('threads-more-menu','attempt '+attempt);await sleep(350);
+      if(enabled()){activate(more);note('threads-ai-label','already enabled');return}
+      const ai=await waitFor(()=>findButton(['新增 AI 標籤','Add AI label']),3500,250);
+      if(!ai)continue;
+      activate(ai);note('threads-ai-label','click attempt '+attempt);await waitFor(()=>!visible(ai),2500,200);
+      activate(more);await sleep(350);
+      if(enabled()){activate(more);note('threads-ai-label','verified');return}
+      activate(more);await sleep(250);
+    }
+    throw new Error('已點擊「新增 AI 標籤」，但 Threads 沒有顯示已啟用狀態');
   }
   async function dismissInstagramReelNotice(){
     const dialog=await waitFor(()=>[...document.querySelectorAll('[role="dialog"]')].find(el=>!root.contains(el)&&visible(el)&&/Reel/i.test(clean(el.textContent))),3500);
@@ -155,7 +165,7 @@
         await clickInstagramNext('編輯',mediaWait);
         button.textContent='步驟 6/6：填入文字';const editor=await waitFor(()=>findEditor(platform),mediaWait);if(!editor)throw new Error('媒體已放入，但找不到 Instagram 說明文字欄位');setEditor(editor,draft.text);note('write-text','instagram');
       }
-      readyToShare=true;writtenDraft=draft;say('已把媒體與文字放入原生發文視窗；請人工確認並保持此視窗開啟，時間到會按「'+(platform==='instagram'?'分享':'發佈')+'」。','ok');button.textContent='已寫入，等待預定時間';
+      readyToShare=true;writtenDraft=draft;say('已完整寫入原生發文視窗；可立即測試發佈，或保持視窗開啟等待預定時間。','ok');button.disabled=false;button.textContent='立即完整測試發佈';button.onclick=()=>{if(confirm('將立即點擊平台原生發佈按鈕，確定執行完整測試？'))shareWhenDue({detail:{draft:root.__singleDraft}})};
     }catch(error){report.error=String(error.message||error);note('failed',report.error);say('寫入測試停止：'+report.error+'。草稿仍保留，可回報此訊息修正。','bad');button.textContent='重試寫入平台（不送出）';button.disabled=false}
   }
   function instagramShareScope(){
@@ -180,5 +190,5 @@
     share.focus?.();share.click();note('scheduled-share',platform);readyToShare=false;writtenDraft=null;root.dispatchEvent(new CustomEvent('33:share-complete',{detail:{platform}}));button.textContent='已送出發佈指令';say('預定時間已到，已點擊 '+(platform==='instagram'?'Instagram「分享」':'Threads「發佈」')+'；面板草稿已清空。','ok');
   }
   button.textContent='寫入平台（不送出）';button.disabled=!root.__singleDraft;button.onclick=writeDraft;
-  root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;button.disabled=false;button.textContent='正在自動寫入平台';setTimeout(()=>{if(root.isConnected&&root.__singleDraft)writeDraft()},50)});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;button.disabled=true;button.textContent='寫入平台（不送出）'});root.addEventListener('33:schedule-due',shareWhenDue);
+  root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;button.disabled=false;button.textContent='正在自動寫入平台';button.onclick=writeDraft;setTimeout(()=>{if(root.isConnected&&root.__singleDraft)writeDraft()},50)});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;button.disabled=true;button.textContent='寫入平台（不送出）';button.onclick=writeDraft});root.addEventListener('33:schedule-due',shareWhenDue);
 })();
