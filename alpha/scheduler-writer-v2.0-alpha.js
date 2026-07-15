@@ -6,8 +6,12 @@
   const sleep=ms=>new Promise(r=>setTimeout(r,ms)),visible=el=>{const r=el?.getBoundingClientRect?.();return !!r&&r.width>1&&r.height>1&&getComputedStyle(el).visibility!=='hidden'},clean=s=>String(s||'').replace(/\s+/g,' ').trim();
   const say=(text,kind='')=>{status.textContent=text;status.className='status '+kind};
   const report={platform:'',steps:[],error:''};root.__writerReport=report;
+  const diagnostic=document.createElement('button');diagnostic.type='button';diagnostic.textContent='複製主題診斷';diagnostic.hidden=true;diagnostic.style.cssText='width:100%;margin-top:7px;border-color:#b94c54;background:#302b2d';status.after(diagnostic);
   let readyToShare=false,writtenDraft=null;
   const note=(step,detail='')=>report.steps.push({time:new Date().toISOString(),step,detail});
+  const describe=el=>{if(!el)return null;const attrs={};['role','contenteditable','tabindex','aria-label','aria-controls','aria-owns','aria-expanded','aria-haspopup','data-lexical-editor'].forEach(name=>{const value=el.getAttribute?.(name);if(value!==null&&value!=='')attrs[name]=value});return {tag:el.tagName||'',attrs,text:clean(el.textContent).slice(0,80)}};
+  const captureTopic=(stage,values={})=>{report.topicDom={stage,...values,active:describe(document.activeElement)}};
+  diagnostic.onclick=async()=>{const payload=JSON.stringify({platform:report.platform,error:report.error,steps:report.steps,topicDom:report.topicDom},null,2);try{await navigator.clipboard.writeText(payload);diagnostic.textContent='診斷已複製，請貼回聊天室'}catch(_){prompt('請複製以下診斷內容',payload)}};
   const candidates=()=>[...document.querySelectorAll('button,[role="button"],a')].filter(el=>!root.contains(el)&&visible(el));
   const label=el=>clean(el.getAttribute('aria-label')||el.innerText||el.textContent);
   const semantics=el=>clean([
@@ -75,9 +79,11 @@
     const text=[...scope.querySelectorAll('div,span,p,[role="textbox"]')].find(el=>!root.contains(el)&&visible(el)&&/^(社群或主題|Community or topic)$/i.test(clean(el.textContent)));
     const topicEditor=text?.closest('[role="textbox"],[contenteditable="true"],input,textarea')||null;
     const trigger=topicEditor||text?.closest('button,[role="button"],a')||text;
+    captureTopic('anchor-found',{text:describe(text),topicEditor:describe(topicEditor),trigger:describe(trigger),parents:[describe(text?.parentElement),describe(text?.parentElement?.parentElement),describe(text?.parentElement?.parentElement?.parentElement)]});
     if(!trigger)throw new Error('找不到 Threads「社群或主題」入口')
     const triggerRect=trigger.getBoundingClientRect(),topicHost=trigger.parentElement,controlledId=trigger.getAttribute?.('aria-controls')||trigger.getAttribute?.('aria-owns')||'';activate(trigger);note('threads-topic-menu','opened '+(topicEditor?'textbox-anchor':'text-anchor'));await sleep(450);
     const popup=await waitFor(()=>{const linked=controlledId&&document.getElementById(controlledId);if(linked&&visible(linked))return linked;const active=document.activeElement,activeId=active?.getAttribute?.('aria-controls')||active?.getAttribute?.('aria-owns'),activeLinked=activeId&&document.getElementById(activeId);if(activeLinked&&visible(activeLinked))return activeLinked;const direct=[...document.querySelectorAll('[role="menu"],[role="listbox"]')].find(el=>!root.contains(el)&&visible(el));if(direct)return direct;const boxes=[...document.querySelectorAll('div')].filter(el=>!root.contains(el)&&visible(el)&&/最新|Latest/i.test(clean(el.textContent))).filter(el=>{const r=el.getBoundingClientRect();return r.width>140&&r.width<520&&r.height>70&&r.height<520}).sort((a,b)=>{const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();return ar.width*ar.height-br.width*br.height});return boxes[0]||null},5000,250);
+    captureTopic('popup-open',{text:describe(text),topicEditor:describe(topicEditor),trigger:describe(trigger),popup:describe(popup),parents:[describe(text?.parentElement),describe(text?.parentElement?.parentElement),describe(text?.parentElement?.parentElement?.parentElement)]});
     if(!popup)throw new Error('已開啟主題入口，但找不到 Threads 主題清單')
     const placeholder=/^(社群或主題|Community or topic)$/i;
     const appliedName=expected=>{
@@ -101,6 +107,7 @@
       return [...document.querySelectorAll('input,textarea,[contenteditable="true"],[role="textbox"]')].find(el=>!root.contains(el)&&el!==mainEditor&&(popup.contains(el)||scope.contains(el))&&(visible(el)||el===document.activeElement))||null;
     };
     const search=await waitFor(findTopicEditor,2500,150);
+    captureTopic('editor-search',{text:describe(text),topicEditor:describe(topicEditor),search:describe(search),popup:describe(popup),parents:[describe(text?.parentElement),describe(text?.parentElement?.parentElement),describe(text?.parentElement?.parentElement?.parentElement)]});
     if(!search)throw new Error('已開啟 Threads 主題清單，但找不到可輸入主題的前景欄位')
     setEditor(search,wanted);note('threads-topic-search',wanted);await sleep(900);
     const getItems=()=>{
@@ -198,7 +205,7 @@
         button.textContent='步驟 6/6：填入文字';const editor=await waitFor(()=>findEditor(platform),mediaWait);if(!editor)throw new Error('媒體已放入，但找不到 Instagram 說明文字欄位');setEditor(editor,draft.text);note('write-text','instagram');
       }
       readyToShare=true;writtenDraft=draft;say('已完整寫入原生發文視窗，正在等待預定時間；請勿關閉電腦、瀏覽器或目標分頁。','ok');button.disabled=true;button.textContent='已寫入，等待預定時間';
-    }catch(error){report.error=String(error.message||error);note('failed',report.error);say('預排建立失敗：'+report.error+'。已停止且不會送出；請取消排程後修正再建立。','bad');button.textContent='寫入失敗';button.disabled=true}
+    }catch(error){report.error=String(error.message||error);note('failed',report.error);say('預排建立失敗：'+report.error+'。已停止且不會送出；請按「複製主題診斷」回報。','bad');diagnostic.hidden=false;diagnostic.textContent='複製主題診斷';button.textContent='寫入失敗';button.disabled=true}
   }
   function instagramShareScope(){
     const titles=['建立新貼文','新 Reel','Create new post','New reel'];
@@ -222,5 +229,5 @@
     share.focus?.();share.click();note('scheduled-share',platform);readyToShare=false;writtenDraft=null;root.dispatchEvent(new CustomEvent('33:share-complete',{detail:{platform}}));button.textContent='已送出發佈指令';say('預定時間已到，已點擊 '+(platform==='instagram'?'Instagram「分享」':'Threads「發佈」')+'；面板草稿已清空。','ok');
   }
   button.hidden=true;button.textContent='自動寫入平台';button.disabled=true;button.onclick=writeDraft;
-  root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;button.disabled=true;button.textContent='正在自動寫入平台';setTimeout(()=>{if(root.isConnected&&root.__singleDraft)writeDraft()},50)});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;button.disabled=true;button.textContent='自動寫入平台'});root.addEventListener('33:schedule-due',shareWhenDue);
+  root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;diagnostic.hidden=true;button.disabled=true;button.textContent='正在自動寫入平台';setTimeout(()=>{if(root.isConnected&&root.__singleDraft)writeDraft()},50)});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;diagnostic.hidden=true;button.disabled=true;button.textContent='自動寫入平台'});root.addEventListener('33:schedule-due',shareWhenDue);
 })();
