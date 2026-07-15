@@ -74,22 +74,38 @@
     button.textContent='Threads 4/5：設定社群／主題';
     const text=[...scope.querySelectorAll('div,span,p')].find(el=>!root.contains(el)&&visible(el)&&/^(社群或主題|Community or topic)$/i.test(clean(el.textContent)));
     const trigger=text?.closest('button,[role="button"],a')||text;
-    if(!trigger){if(mode==='recent'){note('threads-topic','no recent topic entry');return}throw new Error('找不到 Threads「社群或主題」入口')}
+    if(!trigger)throw new Error('找不到 Threads「社群或主題」入口')
     const triggerRect=trigger.getBoundingClientRect(),topicHost=trigger.parentElement;activate(trigger);note('threads-topic-menu','opened');await sleep(450);
     const popup=await waitFor(()=>{const direct=[...document.querySelectorAll('[role="menu"],[role="listbox"]')].find(el=>!root.contains(el)&&visible(el));if(direct)return direct;const boxes=[...document.querySelectorAll('div')].filter(el=>!root.contains(el)&&visible(el)&&/最新|Latest/i.test(clean(el.textContent))).filter(el=>{const r=el.getBoundingClientRect();return r.width>160&&r.width<430&&r.height>80&&r.height<430&&Math.abs(r.left-triggerRect.left)<520&&Math.abs(r.top-triggerRect.top)<420}).sort((a,b)=>{const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();return ar.width*ar.height-br.width*br.height});return boxes[0]||null},5000,250);
-    if(!popup){if(mode==='recent'){note('threads-topic','recent topic popup absent');return}throw new Error('已開啟主題入口，但找不到 Threads 主題清單')}
-    let items=[...popup.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],a')].filter(el=>visible(el)).filter(el=>{const value=clean(el.textContent);return value&&!/^(最新|Latest)$/i.test(value)});
-    if(!items.length)items=[...popup.querySelectorAll('div')].filter(el=>visible(el)&&/最新貼文|recent posts?/i.test(clean(el.textContent))).filter(el=>{const r=el.getBoundingClientRect();return r.height>28&&r.height<100}).sort((a,b)=>a.getBoundingClientRect().top-b.getBoundingClientRect().top).filter((el,index,list)=>index===0||Math.abs(el.getBoundingClientRect().top-list[index-1].getBoundingClientRect().top)>4);
-    let choice=null;
-    if(mode==='manual'){
-      const wanted=clean(topic.value),search=[...popup.querySelectorAll('input,textarea,[contenteditable="true"]')].find(el=>visible(el));
-      if(search){setEditor(search,wanted);note('threads-topic-search',wanted);await sleep(700);items=[...popup.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],a')].filter(el=>visible(el)&&clean(el.textContent));}
-      choice=items.find(el=>clean(String(el.innerText||el.textContent).split('\n')[0])===wanted)||items.find(el=>clean(el.textContent).startsWith(wanted));
-      if(!choice&&search){search.focus();search.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));search.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));note('threads-topic-create-attempt',wanted);const created=await waitFor(()=>clean(topicHost?.innerText||'').includes(wanted)&&!/社群或主題/.test(clean(topicHost?.innerText||'')),3500,250);if(created){note('threads-topic','manual-created: '+wanted);return}}
-      if(!choice){const available=items.map(el=>clean(String(el.innerText||el.textContent).split('\n')[0])).filter(Boolean).slice(0,6);throw new Error('Threads 沒有套用手動主題「'+wanted+'」；目前候選：'+(available.join('、')||'無'))}
+    if(!popup)throw new Error('已開啟主題入口，但找不到 Threads 主題清單')
+    const appliedName=expected=>{const value=clean(topicHost?.innerText||'');return value&&!/社群或主題|Community or topic/i.test(value)&&(!expected||value.includes(expected))};
+    if(mode==='recent'){
+      say('請在 Threads 原生清單選擇一個最近使用的社群／主題；選好後會自動繼續。','ok');
+      const selected=await waitFor(()=>appliedName('')&&clean(topicHost?.innerText||''),120000,300);
+      if(!selected)throw new Error('等待最近使用主題逾時，沒有偵測到使用者選擇')
+      note('threads-topic','recent-user-selected: '+clean(selected));return;
     }
-    else choice=items[0]||null;
-    if(!choice){if(mode==='recent'){note('threads-topic','no recent item');return}throw new Error('Threads 主題清單沒有可選項目')}
+    const wanted=clean(topic.value),mainEditor=findEditor('threads',scope);
+    const findTopicEditor=()=>{
+      const active=document.activeElement;
+      if(active&&!root.contains(active)&&active!==mainEditor&&active.matches?.('input,textarea,[contenteditable="true"]'))return active;
+      return [...document.querySelectorAll('input,textarea,[contenteditable="true"]')].find(el=>!root.contains(el)&&el!==mainEditor&&(popup.contains(el)||scope.contains(el))&&(visible(el)||el===document.activeElement))||null;
+    };
+    const search=await waitFor(findTopicEditor,2500,150);
+    if(!search)throw new Error('已開啟 Threads 主題清單，但找不到可輸入主題的前景欄位')
+    setEditor(search,wanted);note('threads-topic-search',wanted);await sleep(900);
+    const getItems=()=>{
+      let list=[...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],a')].filter(el=>!root.contains(el)&&visible(el)&&clean(el.textContent));
+      list=list.filter(el=>{const r=el.getBoundingClientRect();return Math.abs(r.left-triggerRect.left)<560&&Math.abs(r.top-triggerRect.top)<520});
+      return list;
+    };
+    const items=getItems(),firstLine=el=>clean(String(el.innerText||el.textContent).split('\n')[0]);
+    let choice=items.find(el=>firstLine(el)===wanted)||items.find(el=>firstLine(el).startsWith(wanted));
+    if(!choice){
+      search.focus();search.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));search.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));note('threads-topic-create-attempt',wanted);
+      if(await waitFor(()=>appliedName(wanted),4500,250)){note('threads-topic','manual-created: '+wanted);return}
+      const available=items.map(firstLine).filter(Boolean).slice(0,6);throw new Error('已輸入「'+wanted+'」，但 Threads 沒有套用主題；目前候選：'+(available.join('、')||'無'))
+    }
     const chosen=clean(choice.textContent),topicName=clean(String(choice.innerText||choice.textContent).split('\n')[0]);activate(choice);note('threads-topic',mode+': '+chosen);
     const applied=await waitFor(()=>{const value=clean(topicHost?.innerText||'');return value.includes(mode==='manual'?clean(topic.value):topicName)&&!/社群或主題/.test(value)},5000,250);
     if(!applied)throw new Error('已點選 Threads 主題「'+(mode==='manual'?clean(topic.value):topicName)+'」，但原生新串文沒有套用');
