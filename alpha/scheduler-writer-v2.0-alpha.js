@@ -72,17 +72,19 @@
   async function applyThreadsTopic(scope,topic={}){
     const mode=topic.mode==='auto'?'recent':(topic.mode||'none');if(mode==='none'){note('threads-topic','none');return}
     button.textContent='Threads 4/5：設定社群／主題';
-    const text=[...scope.querySelectorAll('div,span,p')].find(el=>!root.contains(el)&&visible(el)&&/^(社群或主題|Community or topic)$/i.test(clean(el.textContent)));
-    const trigger=text?.closest('button,[role="button"],a')||text;
+    const text=[...scope.querySelectorAll('div,span,p,[role="textbox"]')].find(el=>!root.contains(el)&&visible(el)&&/^(社群或主題|Community or topic)$/i.test(clean(el.textContent)));
+    const topicEditor=text?.closest('[role="textbox"],[contenteditable="true"],input,textarea')||null;
+    const trigger=topicEditor||text?.closest('button,[role="button"],a')||text;
     if(!trigger)throw new Error('找不到 Threads「社群或主題」入口')
-    const triggerRect=trigger.getBoundingClientRect(),topicHost=trigger.parentElement;activate(trigger);note('threads-topic-menu','opened');await sleep(450);
-    const popup=await waitFor(()=>{const direct=[...document.querySelectorAll('[role="menu"],[role="listbox"]')].find(el=>!root.contains(el)&&visible(el));if(direct)return direct;const boxes=[...document.querySelectorAll('div')].filter(el=>!root.contains(el)&&visible(el)&&/最新|Latest/i.test(clean(el.textContent))).filter(el=>{const r=el.getBoundingClientRect();return r.width>160&&r.width<430&&r.height>80&&r.height<430&&Math.abs(r.left-triggerRect.left)<520&&Math.abs(r.top-triggerRect.top)<420}).sort((a,b)=>{const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();return ar.width*ar.height-br.width*br.height});return boxes[0]||null},5000,250);
+    const triggerRect=trigger.getBoundingClientRect(),topicHost=trigger.parentElement,controlledId=trigger.getAttribute?.('aria-controls')||trigger.getAttribute?.('aria-owns')||'';activate(trigger);note('threads-topic-menu','opened '+(topicEditor?'textbox-anchor':'text-anchor'));await sleep(450);
+    const popup=await waitFor(()=>{const linked=controlledId&&document.getElementById(controlledId);if(linked&&visible(linked))return linked;const active=document.activeElement,activeId=active?.getAttribute?.('aria-controls')||active?.getAttribute?.('aria-owns'),activeLinked=activeId&&document.getElementById(activeId);if(activeLinked&&visible(activeLinked))return activeLinked;const direct=[...document.querySelectorAll('[role="menu"],[role="listbox"]')].find(el=>!root.contains(el)&&visible(el));if(direct)return direct;const boxes=[...document.querySelectorAll('div')].filter(el=>!root.contains(el)&&visible(el)&&/最新|Latest/i.test(clean(el.textContent))).filter(el=>{const r=el.getBoundingClientRect();return r.width>140&&r.width<520&&r.height>70&&r.height<520}).sort((a,b)=>{const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();return ar.width*ar.height-br.width*br.height});return boxes[0]||null},5000,250);
     if(!popup)throw new Error('已開啟主題入口，但找不到 Threads 主題清單')
     const placeholder=/^(社群或主題|Community or topic)$/i;
     const appliedName=expected=>{
       const direct=clean(text?.textContent||'');
-      if(text?.isConnected&&direct&&!placeholder.test(direct)&&(!expected||direct.includes(expected)))return direct;
-      const headerValue=[...scope.querySelectorAll('div,span,p,[role="textbox"]')].filter(el=>!root.contains(el)&&visible(el)).find(el=>{const r=el.getBoundingClientRect(),value=clean(el.textContent);return Math.abs(r.left-triggerRect.left)<40&&Math.abs(r.top-triggerRect.top)<35&&value&&!placeholder.test(value)&&(!expected||value===expected)});
+      if(text?.isConnected){if(direct&&!placeholder.test(direct)&&(!expected||direct.includes(expected)))return direct;return ''}
+      const scopeRect=scope.getBoundingClientRect();
+      const headerValue=[...scope.querySelectorAll('div,span,p,[role="textbox"]')].filter(el=>!root.contains(el)&&visible(el)).find(el=>{const r=el.getBoundingClientRect(),value=clean(el.textContent);return r.top<scopeRect.top+Math.min(180,scopeRect.height*.3)&&value&&!placeholder.test(value)&&(!expected||value===expected)});
       return headerValue?clean(headerValue.textContent):'';
     };
     if(mode==='recent'){
@@ -93,6 +95,7 @@
     }
     const wanted=clean(topic.value),mainEditor=findEditor('threads',scope);
     const findTopicEditor=()=>{
+      if(topicEditor?.isConnected)return topicEditor;
       const active=document.activeElement;
       if(active&&!root.contains(active)&&active!==mainEditor&&active.matches?.('input,textarea,[contenteditable="true"],[role="textbox"]'))return active;
       return [...document.querySelectorAll('input,textarea,[contenteditable="true"],[role="textbox"]')].find(el=>!root.contains(el)&&el!==mainEditor&&(popup.contains(el)||scope.contains(el))&&(visible(el)||el===document.activeElement))||null;
@@ -101,9 +104,8 @@
     if(!search)throw new Error('已開啟 Threads 主題清單，但找不到可輸入主題的前景欄位')
     setEditor(search,wanted);note('threads-topic-search',wanted);await sleep(900);
     const getItems=()=>{
-      let list=[...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],a')].filter(el=>!root.contains(el)&&visible(el)&&clean(el.textContent));
-      list=list.filter(el=>{const r=el.getBoundingClientRect();return Math.abs(r.left-triggerRect.left)<560&&Math.abs(r.top-triggerRect.top)<520});
-      if(!list.length)list=[...document.querySelectorAll('div')].filter(el=>!root.contains(el)&&visible(el)&&clean(el.textContent)).filter(el=>{const r=el.getBoundingClientRect();return r.height>=28&&r.height<90&&r.width>120&&r.width<460&&Math.abs(r.left-triggerRect.left)<560&&Math.abs(r.top-triggerRect.top)<520});
+      let list=[...popup.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],a')].filter(el=>visible(el)&&clean(el.textContent));
+      if(!list.length)list=[...popup.querySelectorAll('div')].filter(el=>visible(el)&&clean(el.textContent)).filter(el=>{const r=el.getBoundingClientRect();return r.height>=28&&r.height<90});
       return list;
     };
     const items=getItems(),firstLine=el=>clean(String(el.innerText||el.textContent).split('\n')[0]);
