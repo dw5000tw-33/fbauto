@@ -17,6 +17,12 @@
 #fb-ad-alpha-local-scheduler .draft-summary b{display:block;margin-bottom:6px;color:#fff}
 #fb-ad-alpha-local-scheduler .draft-summary .text{max-height:76px;overflow:auto;color:#eee5e1;white-space:pre-wrap;font-size:11px}
 #fb-ad-alpha-local-scheduler .draft-summary .when{margin-top:7px;color:#ffb8be;font-size:10px}
+#fb-ad-alpha-local-scheduler .topic-options{margin-top:10px;padding:10px;border:1px solid #5a4d4f;border-radius:8px;background:#111113}
+#fb-ad-alpha-local-scheduler .topic-options .topic-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+#fb-ad-alpha-local-scheduler .topic-options .topic-manual[hidden]{display:none}
+#fb-ad-alpha-local-scheduler .topic-options .check-row{display:flex;align-items:flex-start;gap:8px;margin-top:9px;color:#eee7e2;font-size:11px;line-height:1.4}
+#fb-ad-alpha-local-scheduler .topic-options .check-row input{width:auto;margin-top:2px}
+#fb-ad-alpha-local-scheduler .topic-options .topic-hint{margin-top:7px;color:#b9aaa7;font-size:10px;line-height:1.45}
 `;
   root.append(style);
   const holder=document.createElement('div');holder.className='draft-file';
@@ -24,6 +30,9 @@
   preview.before(holder);preview.hidden=true;
   const image=holder.querySelector('#s-image'),media=holder.querySelector('.draft-media'),mediaPreview=holder.querySelector('.media-preview'),meta=holder.querySelector('.meta');
   const summary=document.createElement('div');summary.className='draft-summary';summary.hidden=true;summary.innerHTML='<b>單筆預排草稿</b><div class="text"></div><div class="when"></div>';holder.after(summary);
+  const topicBox=document.createElement('div');topicBox.className='topic-options';topicBox.innerHTML='<label style="margin-top:0">Threads 社群／主題</label><div class="topic-row"><select class="topic-mode"><option value="auto">平台建議（預設）</option><option value="manual">手動指定</option><option value="none">不加主題</option></select><input class="topic-manual" placeholder="輸入主題名稱" hidden></div><div class="topic-hint">平台建議會採用 Threads 原生選單最前面的建議；不加主題則交由一般推薦系統分發。</div><label class="check-row"><input class="ai-label" type="checkbox" checked><span>內容包含 AI 生成或修改，發佈前新增 AI 標籤</span></label>';summary.after(topicBox);
+  const topicMode=topicBox.querySelector('.topic-mode'),topicManual=topicBox.querySelector('.topic-manual'),aiLabel=topicBox.querySelector('.ai-label');topicBox.hidden=root.querySelector('#s-platform')?.value!=='threads';root.querySelector('#s-platform')?.addEventListener('change',e=>topicBox.hidden=e.target.value!=='threads');topicMode.onchange=()=>topicManual.hidden=topicMode.value!=='manual';
+  draft.style.minHeight='42px';draft.style.height='42px';draft.style.overflowY='hidden';const growDraft=()=>{draft.style.height='42px';draft.style.height=Math.min(150,Math.max(42,draft.scrollHeight))+'px';draft.style.overflowY=draft.scrollHeight>150?'auto':'hidden'};draft.addEventListener('input',growDraft);growDraft();
   let file=null,objectUrl='',timer=null,scheduledAt=0,snapshot=null;
   const say=(text,kind='')=>{status.textContent=text;status.className='status '+kind};
   const clearUrl=()=>{if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=''};
@@ -36,7 +45,7 @@
   check.onclick=()=>{const form=readForm();if(!validate(form))return;render(form);say('時間、文字與媒體已組成一則完整預覽。','ok')};
   const stopTimer=()=>{if(timer)clearTimeout(timer);timer=null;scheduledAt=0;cancel.disabled=true;start.disabled=false};
   const tick=()=>{const remain=scheduledAt-Date.now();if(remain<=0){timer=null;cancel.disabled=true;start.disabled=false;say('預排時間已到，正在執行原生分享…','ok');root.dispatchEvent(new CustomEvent('33:schedule-due',{detail:{draft:snapshot}}));return}const sec=Math.ceil(remain/1000),h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;say('單筆草稿已建立，倒數 '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'；請保持原生發文視窗開啟。','ok');timer=setTimeout(tick,Math.min(1000,remain))};
-  start.onclick=()=>{const form=readForm();if(!validate(form))return;stopTimer();snapshot={schema:'33-single-post-draft-v2',platform:root.querySelector('#s-platform')?.value||'',text:form.text,scheduledAt:new Date(form.timeMs).toISOString(),media:{name:form.file.name,type:form.file.type,size:form.file.size,kind:form.file.type.startsWith('video/')?'video':'image'},file:form.file};root.__singleDraft=snapshot;root.dispatchEvent(new CustomEvent('33:draft-ready'));render(form);scheduledAt=form.timeMs;cancel.disabled=false;start.disabled=true;tick()};
+  start.onclick=()=>{const form=readForm();if(!validate(form))return;if(root.querySelector('#s-platform')?.value==='threads'&&topicMode.value==='manual'&&!topicManual.value.trim()){say('請輸入要手動指定的 Threads 主題名稱。','bad');topicManual.focus();return}stopTimer();snapshot={schema:'33-single-post-draft-v2',platform:root.querySelector('#s-platform')?.value||'',text:form.text,scheduledAt:new Date(form.timeMs).toISOString(),media:{name:form.file.name,type:form.file.type,size:form.file.size,kind:form.file.type.startsWith('video/')?'video':'image'},topic:{mode:topicMode.value,value:topicManual.value.trim(),aiLabel:aiLabel.checked},file:form.file};root.__singleDraft=snapshot;root.dispatchEvent(new CustomEvent('33:draft-ready'));render(form);scheduledAt=form.timeMs;cancel.disabled=false;start.disabled=true;tick()};
   cancel.onclick=()=>{stopTimer();snapshot=null;root.__singleDraft=null;root.dispatchEvent(new CustomEvent('33:draft-cancelled'));summary.hidden=true;say('已取消單筆預排；文字與媒體仍保留在面板中。')};
   root.addEventListener('33:share-complete',()=>{stopTimer();snapshot=null;root.__singleDraft=null;draft.value='';draft.dispatchEvent(new Event('input',{bubbles:true}));clearUrl();file=null;image.value='';media.hidden=true;mediaPreview.innerHTML='';meta.textContent='';summary.hidden=true;send.disabled=true});
   window.addEventListener('beforeunload',clearUrl,{once:true});
