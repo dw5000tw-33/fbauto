@@ -75,16 +75,17 @@
     const text=[...scope.querySelectorAll('div,span,p')].find(el=>!root.contains(el)&&visible(el)&&/^(社群或主題|Community or topic)$/i.test(clean(el.textContent)));
     const trigger=text?.closest('button,[role="button"],a')||text;
     if(!trigger){if(mode==='auto'){note('threads-topic','no platform suggestion');return}throw new Error('找不到 Threads「社群或主題」入口')}
-    activate(trigger);note('threads-topic-menu','opened');await sleep(450);
-    const popup=await waitFor(()=>{const direct=[...document.querySelectorAll('[role="menu"],[role="listbox"]')].find(el=>!root.contains(el)&&visible(el));if(direct)return direct;const latest=[...document.querySelectorAll('div,span')].find(el=>!root.contains(el)&&visible(el)&&/^(最新|Latest)$/i.test(clean(el.textContent)));if(!latest)return null;let el=latest;for(let i=0;el&&i<7;i++,el=el.parentElement){const r=el.getBoundingClientRect?.();if(r&&r.width>170&&r.height>90)return el}return null},5000,250);
+    const triggerRect=trigger.getBoundingClientRect(),topicHost=trigger.parentElement;activate(trigger);note('threads-topic-menu','opened');await sleep(450);
+    const popup=await waitFor(()=>{const direct=[...document.querySelectorAll('[role="menu"],[role="listbox"]')].find(el=>!root.contains(el)&&visible(el));if(direct)return direct;const boxes=[...document.querySelectorAll('div')].filter(el=>!root.contains(el)&&visible(el)&&/最新|Latest/i.test(clean(el.textContent))).filter(el=>{const r=el.getBoundingClientRect();return r.width>160&&r.width<430&&r.height>80&&r.height<430&&Math.abs(r.left-triggerRect.left)<520&&Math.abs(r.top-triggerRect.top)<420}).sort((a,b)=>{const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();return ar.width*ar.height-br.width*br.height});return boxes[0]||null},5000,250);
     if(!popup){if(mode==='auto'){note('threads-topic','suggestion popup absent');return}throw new Error('已開啟主題入口，但找不到 Threads 主題清單')}
-    const items=[...popup.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],a')].filter(el=>visible(el)).filter(el=>{const value=clean(el.textContent);return value&&!/^(最新|Latest)$/i.test(value)});
+    let items=[...popup.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],a')].filter(el=>visible(el)).filter(el=>{const value=clean(el.textContent);return value&&!/^(最新|Latest)$/i.test(value)});
+    if(!items.length)items=[...popup.querySelectorAll('div')].filter(el=>visible(el)&&/最新貼文|recent posts?/i.test(clean(el.textContent))).filter(el=>{const r=el.getBoundingClientRect();return r.height>28&&r.height<100}).sort((a,b)=>a.getBoundingClientRect().top-b.getBoundingClientRect().top).filter((el,index,list)=>index===0||Math.abs(el.getBoundingClientRect().top-list[index-1].getBoundingClientRect().top)>4);
     let choice=null;
-    if(mode==='manual'){const wanted=clean(topic.value);choice=items.find(el=>clean(el.textContent)===wanted)||items.find(el=>clean(el.textContent).startsWith(wanted));if(!choice)throw new Error('Threads 主題清單中找不到「'+wanted+'」')}
+    if(mode==='manual'){const wanted=clean(topic.value);choice=items.find(el=>clean(el.textContent)===wanted)||items.find(el=>clean(el.textContent).startsWith(wanted));if(!choice){const available=items.map(el=>clean(String(el.innerText||el.textContent).split('\n')[0])).filter(Boolean).slice(0,6);throw new Error('Threads 主題清單中找不到「'+wanted+'」；目前可選：'+(available.join('、')||'無'))}}
     else choice=items[0]||null;
     if(!choice){if(mode==='auto'){note('threads-topic','no suggestion item');return}throw new Error('Threads 主題清單沒有可選項目')}
     const chosen=clean(choice.textContent),topicName=clean(String(choice.innerText||choice.textContent).split('\n')[0]);activate(choice);note('threads-topic',mode+': '+chosen);
-    const applied=await waitFor(()=>{const value=clean(scope.innerText);return value.includes(mode==='manual'?clean(topic.value):topicName)&&!/社群或主題/.test(value)},5000,250);
+    const applied=await waitFor(()=>{const value=clean(topicHost?.innerText||'');return value.includes(mode==='manual'?clean(topic.value):topicName)&&!/社群或主題/.test(value)},5000,250);
     if(!applied)throw new Error('已點選 Threads 主題「'+(mode==='manual'?clean(topic.value):topicName)+'」，但原生新串文沒有套用');
   }
   async function addThreadsAiLabel(scope){
