@@ -151,7 +151,7 @@
     button.disabled=true;button.textContent='時間到：正在分享';
     const scope=await waitFor(platform==='instagram'?instagramShareScope:threadsShareScope,15000,400),share=scope&&findButton(platform==='instagram'?['分享','Share']:['發佈','發布','Post'],scope);
     if(!share){say('時間已到，但找不到前景發文視窗的「'+(platform==='instagram'?'分享':'發佈')+'」；已停止，請人工確認。','bad');button.textContent='找不到送出按鈕，請人工處理';return}
-    share.focus?.();share.click();note('scheduled-share',platform);readyToShare=false;writtenDraft=null;button.textContent='已送出發佈指令';say('預定時間已到，已點擊 '+(platform==='instagram'?'Instagram「分享」':'Threads「發佈」')+'。','ok');
+    share.focus?.();share.click();note('scheduled-share',platform);readyToShare=false;writtenDraft=null;root.dispatchEvent(new CustomEvent('33:share-complete',{detail:{platform}}));button.textContent='已送出發佈指令';say('預定時間已到，已點擊 '+(platform==='instagram'?'Instagram「分享」':'Threads「發佈」')+'；面板草稿已清空。','ok');
   }
   button.textContent='寫入平台（不送出）';button.disabled=!root.__singleDraft;button.onclick=writeDraft;
   root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;button.disabled=false;button.textContent='寫入平台（不送出）'});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;button.disabled=true;button.textContent='寫入平台（不送出）'});root.addEventListener('33:schedule-due',shareWhenDue);
