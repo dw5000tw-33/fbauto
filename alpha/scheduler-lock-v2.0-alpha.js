@@ -17,6 +17,7 @@
 #fb-ad-alpha-local-scheduler .verify label{margin-top:0}
 #fb-ad-alpha-local-scheduler .verify .row input{flex:1.7}
 #fb-ad-alpha-local-scheduler .verify-note{margin-top:7px;color:#8f8885;font-size:10px}
+#fb-ad-alpha-local-scheduler .platform-info{margin:10px 0;padding:9px 10px;border:1px solid #68484c;border-radius:8px;background:#241b1d;color:#fff;font-size:11px;line-height:1.45}
 #fb-ad-alpha-local-scheduler .card{background:#242427!important;border-color:#6c5558!important;color:#fff!important}
 #fb-ad-alpha-local-scheduler .card span{color:#ddd4d0!important}
 #fb-ad-alpha-local-scheduler .card.active{background:#2b2426!important;border-color:#e23f52!important;box-shadow:inset 4px 0 #e23f52!important}
@@ -39,12 +40,13 @@
   const verify=document.createElement('div');verify.className='verify';
   verify.innerHTML='<label for="m-code">使用通行碼</label><div class="row"><input id="m-code" type="password" autocomplete="one-time-code" placeholder="輸入官方 LINE 取得的通行碼"><button class="primary" id="m-verify">解鎖面板</button></div><div class="status" id="m-verify-status">尚未驗證；功能目前為灰階鎖定。</div><div class="verify-note">通行碼由 33 廣告管理助手官方 LINE 提供。</div>';
   cards.before(verify);
+  const platformInfo=document.createElement('div');platformInfo.className='platform-info';platformInfo.hidden=true;verify.after(platformInfo);
   const message=root.querySelector('#t-message'),messageLabel=root.querySelector('label[for="t-message"]');
   if(messageLabel)messageLabel.textContent='預備留言（選填）';
   if(message){message.placeholder='選填；定位後可自行按愛心，或需要時再複製留言';message.addEventListener('input',()=>{message.style.height='40px';message.style.height=Math.min(84,Math.max(40,message.scrollHeight))+'px'})}
   const input=verify.querySelector('#m-code'),button=verify.querySelector('#m-verify'),status=verify.querySelector('#m-verify-status'),ORIGIN='https://dw5000tw-33.github.io';
   const say=(text,kind='')=>{status.textContent=text;status.className='status '+kind};
-  const unlock=()=>{track.disabled=false;schedule.disabled=false;track.classList.add('active');if(trackPanel)trackPanel.hidden=false;say('✓ 通行碼驗證成功，功能已解鎖。','ok')};
+  const unlock=()=>{const platform=root.dataset.platform||'';track.disabled=false;schedule.disabled=platform==='threads';track.classList.add('active');schedule.classList.remove('active');if(trackPanel)trackPanel.hidden=false;if(schedulePanel)schedulePanel.hidden=true;platformInfo.hidden=false;if(platform==='threads'){platformInfo.textContent='目前平台：Threads｜追蹤標記可用；預排貼文請使用 Threads 原生排程服務。';schedule.title='Threads 已提供原生排程，請使用平台服務'}else if(platform==='instagram'){platformInfo.textContent='目前平台：Instagram｜追蹤標記與預排貼文皆可使用。';schedule.title=''}else{platformInfo.textContent='目前平台：未偵測｜請在 Threads 或 Instagram 頁面開啟。';schedule.disabled=true}say('✓ 通行碼驗證成功，已完成平台偵測。','ok')};
   const begin=()=>{
     const code=input.value.trim();if(!code){say('請先輸入通行碼。','bad');input.focus();return}
     const nonce=crypto.getRandomValues(new Uint32Array(3)).join('-')+'-'+Date.now(),w=window.open(ORIGIN+'/fbauto/alpha/verify-loader.html?nonce='+encodeURIComponent(nonce),'fb-ad-alpha-verify','width=440,height=260');
