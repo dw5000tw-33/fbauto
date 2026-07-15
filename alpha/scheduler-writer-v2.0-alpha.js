@@ -69,8 +69,24 @@
   function findEditor(platform,scope=document){const fields=[...scope.querySelectorAll('textarea,[contenteditable="true"]')].filter(el=>!root.contains(el)&&visible(el));const preferred=fields.find(el=>{const hint=clean(el.getAttribute('aria-label')||el.getAttribute('placeholder'));return platform==='instagram'?/caption|說明|撰寫/i.test(hint):/thread|串文|有什麼新鮮事|開始/i.test(hint)});return preferred||fields[0]||null}
   function setEditor(editor,text){editor.focus();if(editor.matches('textarea,input')){const proto=editor.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;setter?setter.call(editor,text):editor.value=text}else{const selection=getSelection(),range=document.createRange();range.selectNodeContents(editor);selection.removeAllRanges();selection.addRange(range);if(!document.execCommand('insertText',false,text))editor.textContent=text}editor.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));editor.dispatchEvent(new Event('change',{bubbles:true}))}
   function setFile(input,file){const transfer=new DataTransfer();transfer.items.add(file);input.files=transfer.files;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))}
+  async function applyThreadsTopic(scope,topic={}){
+    const mode=topic.mode||'none';if(mode==='none'){note('threads-topic','none');return}
+    button.textContent='Threads 4/5：設定社群／主題';
+    const text=[...scope.querySelectorAll('div,span,p')].find(el=>!root.contains(el)&&visible(el)&&/^(社群或主題|Community or topic)$/i.test(clean(el.textContent)));
+    const trigger=text?.closest('button,[role="button"],a')||text;
+    if(!trigger){if(mode==='auto'){note('threads-topic','no platform suggestion');return}throw new Error('找不到 Threads「社群或主題」入口')}
+    activate(trigger);note('threads-topic-menu','opened');await sleep(450);
+    const popup=await waitFor(()=>{const direct=[...document.querySelectorAll('[role="menu"],[role="listbox"]')].find(el=>!root.contains(el)&&visible(el));if(direct)return direct;const latest=[...document.querySelectorAll('div,span')].find(el=>!root.contains(el)&&visible(el)&&/^(最新|Latest)$/i.test(clean(el.textContent)));if(!latest)return null;let el=latest;for(let i=0;el&&i<7;i++,el=el.parentElement){const r=el.getBoundingClientRect?.();if(r&&r.width>170&&r.height>90)return el}return null},5000,250);
+    if(!popup){if(mode==='auto'){note('threads-topic','suggestion popup absent');return}throw new Error('已開啟主題入口，但找不到 Threads 主題清單')}
+    const items=[...popup.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],a')].filter(el=>visible(el)).filter(el=>{const value=clean(el.textContent);return value&&!/^(最新|Latest)$/i.test(value)});
+    let choice=null;
+    if(mode==='manual'){const wanted=clean(topic.value);choice=items.find(el=>clean(el.textContent)===wanted)||items.find(el=>clean(el.textContent).startsWith(wanted));if(!choice)throw new Error('Threads 主題清單中找不到「'+wanted+'」')}
+    else choice=items[0]||null;
+    if(!choice){if(mode==='auto'){note('threads-topic','no suggestion item');return}throw new Error('Threads 主題清單沒有可選項目')}
+    const chosen=clean(choice.textContent);activate(choice);note('threads-topic',mode+': '+chosen);await sleep(500);
+  }
   async function addThreadsAiLabel(scope){
-    button.textContent='Threads 4/4：新增 AI 標籤';
+    button.textContent='Threads 5/5：新增 AI 標籤';
     const box=scope.getBoundingClientRect(),topButtons=[...scope.querySelectorAll('button,[role="button"]')].filter(el=>!root.contains(el)&&visible(el)).filter(el=>{const r=el.getBoundingClientRect();return r.top<box.top+90&&r.left>box.right-140}).sort((a,b)=>b.getBoundingClientRect().right-a.getBoundingClientRect().right);
     const more=topButtons.find(el=>/更多|選項|more|options|⋯|\.\.\./i.test(semantics(el)))||topButtons[0];
     if(!more)throw new Error('找不到 Threads 新串文右上角「⋯」選單');
@@ -128,9 +144,9 @@
     try{
       if(!await openComposer(platform))throw new Error(platform==='instagram'?'找不到左側「建立」，或第二層「貼文」按鈕':'找不到建立串文按鈕');
       if(platform==='threads'){
-        button.textContent='Threads 1/4：等待新串文';const scope=await waitFor(threadsComposerScope,10000);if(!scope)throw new Error('已點擊建立，但找不到前景「新串文」視窗');
-        button.textContent='Threads 2/4：填入文字';const editor=findEditor(platform,scope);if(!editor)throw new Error('找不到 Threads 新串文文字輸入區');setEditor(editor,draft.text);note('write-text','threads');
-        button.textContent='Threads 3/4：放入媒體';const fileInput=await waitFor(()=>findFileInput(scope)||findFileInput(),10000);if(!fileInput)throw new Error('找不到 Threads 新串文媒體欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);await sleep(draft.media.kind==='video'?2500:1200);await addThreadsAiLabel(scope);
+        button.textContent='Threads 1/5：等待新串文';const scope=await waitFor(threadsComposerScope,10000);if(!scope)throw new Error('已點擊建立，但找不到前景「新串文」視窗');
+        button.textContent='Threads 2/5：填入文字';const editor=findEditor(platform,scope);if(!editor)throw new Error('找不到 Threads 新串文文字輸入區');setEditor(editor,draft.text);note('write-text','threads');
+        button.textContent='Threads 3/5：放入媒體';const fileInput=await waitFor(()=>findFileInput(scope)||findFileInput(),10000);if(!fileInput)throw new Error('找不到 Threads 新串文媒體欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);await sleep(draft.media.kind==='video'?2500:1200);await applyThreadsTopic(scope,draft.topic);if(draft.topic?.aiLabel!==false)await addThreadsAiLabel(scope);else note('threads-ai-label','disabled by user');
       }else{
         const fileInput=await waitFor(findFileInput,10000);if(!fileInput)throw new Error('已開啟 Instagram 貼文視窗，但找不到媒體選擇欄位');setFile(fileInput,draft.file);note('write-media',draft.media.kind);button.textContent='步驟 4/6：處理媒體';
         const mediaWait=draft.media.kind==='video'?75000:30000;
