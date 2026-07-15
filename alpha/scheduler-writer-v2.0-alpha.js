@@ -154,5 +154,5 @@
     share.focus?.();share.click();note('scheduled-share',platform);readyToShare=false;writtenDraft=null;root.dispatchEvent(new CustomEvent('33:share-complete',{detail:{platform}}));button.textContent='已送出發佈指令';say('預定時間已到，已點擊 '+(platform==='instagram'?'Instagram「分享」':'Threads「發佈」')+'；面板草稿已清空。','ok');
   }
   button.textContent='寫入平台（不送出）';button.disabled=!root.__singleDraft;button.onclick=writeDraft;
-  root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;button.disabled=false;button.textContent='寫入平台（不送出）'});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;button.disabled=true;button.textContent='寫入平台（不送出）'});root.addEventListener('33:schedule-due',shareWhenDue);
+  root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;button.disabled=false;button.textContent='正在自動寫入平台';setTimeout(()=>{if(root.isConnected&&root.__singleDraft)writeDraft()},50)});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;button.disabled=true;button.textContent='寫入平台（不送出）'});root.addEventListener('33:schedule-due',shareWhenDue);
 })();
