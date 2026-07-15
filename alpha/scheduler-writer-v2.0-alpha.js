@@ -7,6 +7,7 @@
   const say=(text,kind='')=>{status.textContent=text;status.className='status '+kind};
   const report={platform:'',steps:[],error:''};root.__writerReport=report;
   const diagnostic=document.createElement('button');diagnostic.type='button';diagnostic.textContent='複製主題診斷';diagnostic.hidden=true;diagnostic.style.cssText='width:100%;margin-top:7px;border-color:#b94c54;background:#302b2d';status.after(diagnostic);
+  const actionNotice=document.createElement('div');actionNotice.hidden=true;actionNotice.setAttribute('role','alert');actionNotice.style.cssText='margin-top:8px;padding:10px;border:2px solid #f0b64a;border-radius:8px;background:#4a2c08;color:#fff3ce;font-size:12px;font-weight:800;line-height:1.5;box-shadow:0 0 0 2px #f0b64a33';diagnostic.before(actionNotice);
   let readyToShare=false,writtenDraft=null;
   const note=(step,detail='')=>report.steps.push({time:new Date().toISOString(),step,detail});
   const describe=el=>{if(!el)return null;const attrs={};['role','contenteditable','tabindex','aria-label','aria-controls','aria-owns','aria-expanded','aria-haspopup','data-lexical-editor'].forEach(name=>{const value=el.getAttribute?.(name);if(value!==null&&value!=='')attrs[name]=value});return {tag:el.tagName||'',attrs,text:clean(el.textContent).slice(0,80)}};
@@ -86,7 +87,7 @@
     const findTopicPopup=()=>{const linked=controlledId&&document.getElementById(controlledId);if(linked&&visible(linked))return linked;const active=document.activeElement,activeId=active?.getAttribute?.('aria-controls')||active?.getAttribute?.('aria-owns'),activeLinked=activeId&&document.getElementById(activeId);if(activeLinked&&visible(activeLinked))return activeLinked;const direct=[...document.querySelectorAll('[role="menu"],[role="listbox"]')].find(el=>!root.contains(el)&&visible(el));if(direct)return direct;const boxes=[...document.querySelectorAll('div')].filter(el=>!root.contains(el)&&visible(el)&&/最新|Latest/i.test(clean(el.textContent))).filter(el=>{const r=el.getBoundingClientRect();return r.width>140&&r.width<520&&r.height>70&&r.height<520}).sort((a,b)=>{const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();return ar.width*ar.height-br.width*br.height});return boxes[0]||null};
     activateAtCenter(trigger);note('threads-topic-menu','automatic center attempt '+(topicEditor?'textbox-anchor':'text-anchor'));await sleep(450);
     let popup=await waitFor(findTopicPopup,1800,200);
-    if(!popup){say('請在 Threads 原生「新串文」視窗，親自點一下帳號旁的「社群或主題」；開啟後程式會自動繼續。','ok');note('threads-topic-menu','waiting for one user click');popup=await waitFor(findTopicPopup,120000,250)}
+    if(!popup){actionNotice.hidden=false;actionNotice.textContent='需要你完成一步：請現在親自點一下 Threads 原生「新串文」內、帳號旁的「社群或主題」。點開後程式會自動輸入並繼續。';actionNotice.scrollIntoView?.({block:'nearest'});note('threads-topic-menu','waiting for one user click');popup=await waitFor(findTopicPopup,120000,250);actionNotice.hidden=true}
     captureTopic('popup-open',{text:describe(text),topicEditor:describe(topicEditor),trigger:describe(trigger),popup:describe(popup),parents:[describe(text?.parentElement),describe(text?.parentElement?.parentElement),describe(text?.parentElement?.parentElement?.parentElement)]});
     if(!popup)throw new Error('已開啟主題入口，但找不到 Threads 主題清單')
     const placeholder=/^(社群或主題|Community or topic)$/i;
@@ -208,8 +209,8 @@
         await clickInstagramNext('編輯',mediaWait);
         button.textContent='步驟 6/6：填入文字';const editor=await waitFor(()=>findEditor(platform),mediaWait);if(!editor)throw new Error('媒體已放入，但找不到 Instagram 說明文字欄位');setEditor(editor,draft.text);note('write-text','instagram');
       }
-      readyToShare=true;writtenDraft=draft;say('已完整寫入原生發文視窗，正在等待預定時間；請勿關閉電腦、瀏覽器或目標分頁。','ok');button.disabled=true;button.textContent='已寫入，等待預定時間';
-    }catch(error){report.error=String(error.message||error);note('failed',report.error);say('預排建立失敗：'+report.error+'。已停止且不會送出；請按「複製主題診斷」回報。','bad');diagnostic.hidden=false;diagnostic.textContent='複製主題診斷';button.textContent='寫入失敗';button.disabled=true}
+      actionNotice.hidden=true;readyToShare=true;writtenDraft=draft;say('已完整寫入原生發文視窗，正在等待預定時間；請勿關閉電腦、瀏覽器或目標分頁。','ok');button.disabled=true;button.textContent='已寫入，等待預定時間';
+    }catch(error){actionNotice.hidden=true;report.error=String(error.message||error);note('failed',report.error);say('預排建立失敗：'+report.error+'。已停止且不會送出；請按「複製主題診斷」回報。','bad');diagnostic.hidden=false;diagnostic.textContent='複製主題診斷';button.textContent='寫入失敗';button.disabled=true}
   }
   function instagramShareScope(){
     const titles=['建立新貼文','新 Reel','Create new post','New reel'];
@@ -233,5 +234,5 @@
     share.focus?.();share.click();note('scheduled-share',platform);readyToShare=false;writtenDraft=null;root.dispatchEvent(new CustomEvent('33:share-complete',{detail:{platform}}));button.textContent='已送出發佈指令';say('預定時間已到，已點擊 '+(platform==='instagram'?'Instagram「分享」':'Threads「發佈」')+'；面板草稿已清空。','ok');
   }
   button.hidden=true;button.textContent='自動寫入平台';button.disabled=true;button.onclick=writeDraft;
-  root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;diagnostic.hidden=true;button.disabled=true;button.textContent='正在自動寫入平台';setTimeout(()=>{if(root.isConnected&&root.__singleDraft)writeDraft()},50)});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;diagnostic.hidden=true;button.disabled=true;button.textContent='自動寫入平台'});root.addEventListener('33:schedule-due',shareWhenDue);
+  root.addEventListener('33:draft-ready',()=>{readyToShare=false;writtenDraft=null;diagnostic.hidden=true;actionNotice.hidden=true;button.disabled=true;button.textContent='正在自動寫入平台';setTimeout(()=>{if(root.isConnected&&root.__singleDraft)writeDraft()},50)});root.addEventListener('33:draft-cancelled',()=>{readyToShare=false;writtenDraft=null;diagnostic.hidden=true;actionNotice.hidden=true;button.disabled=true;button.textContent='自動寫入平台'});root.addEventListener('33:schedule-due',shareWhenDue);
 })();
