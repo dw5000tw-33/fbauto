@@ -9,6 +9,32 @@
 
 /* 紫彤小組・華麗跟跳：紫色花草視覺 */
 :root{color:#352052;background:#f6f0fa}body{background:linear-gradient(135deg,#f8f0fb 0%,#ede2f4 48%,#f8f0fb 100%);position:relative;overflow-x:hidden}body::before,body::after{content:"";position:fixed;z-index:-1;pointer-events:none;opacity:.68;background-repeat:repeat;background-size:180px 180px}body::before{width:380px;height:100vh;left:0;top:0;background-image:radial-gradient(circle at 35px 35px,#b77ac8 0 7px,transparent 8px),radial-gradient(circle at 48px 24px,#dfb6e4 0 8px,transparent 9px),radial-gradient(circle at 55px 45px,#a95dbb 0 7px,transparent 8px),radial-gradient(circle at 35px 55px,#e8c9ea 0 8px,transparent 9px),radial-gradient(circle at 22px 45px,#9c4eaa 0 7px,transparent 8px),radial-gradient(ellipse at 104px 104px,#9a6f61 0 2px,transparent 3px),radial-gradient(ellipse at 115px 116px,#84a58b 0 4px,transparent 5px);background-position:0 0,0 0,0 0,0 0,0 0,0 0,0 0}body::after{width:320px;height:100vh;right:0;top:100px;transform:scaleX(-1);background-image:radial-gradient(circle at 35px 35px,#b77ac8 0 7px,transparent 8px),radial-gradient(circle at 48px 24px,#dfb6e4 0 8px,transparent 9px),radial-gradient(circle at 55px 45px,#a95dbb 0 7px,transparent 8px),radial-gradient(circle at 35px 55px,#e8c9ea 0 8px,transparent 9px),radial-gradient(circle at 22px 45px,#9c4eaa 0 7px,transparent 8px),radial-gradient(ellipse at 104px 104px,#9a6f61 0 2px,transparent 3px),radial-gradient(ellipse at 115px 116px,#84a58b 0 4px,transparent 5px)}header{background:linear-gradient(105deg,#fff 0%,#fcf8ff 60%,#f1dff4 100%);border-bottom-color:#d9c0e0}h1{color:#5b267d;letter-spacing:.06em}.subtitle,.help{color:#77548b}.panel{border-color:#dec9e5;box-shadow:0 12px 28px rgba(88,40,113,.10)}.lesson{background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(251,242,253,.90))}.tag{color:#8b4ca3}.actionbox{border-left-color:#b363bb}.primary{background:linear-gradient(135deg,#75318d,#a3489e);border-color:#75318d}.primary:hover{background:linear-gradient(135deg,#602576,#8c3789)}button{border-color:#d7bedf;color:#56276e;background:#fffaff}button:hover{background:#f4e8f7}.source-picker{border-bottom-color:#e2cfe7}.source-picker input[type=text],textarea{border-color:#cba9d6;color:#432158}.video-info{background:#fffaff}.count{color:#7d4b8c}details{border-color:#d7c0df;background:#fffaff}#feedback{color:#6a3c7f}body.teaching{background:linear-gradient(135deg,#f8f0fb,#eadcf2)}@media(max-width:850px){body::before,body::after{opacity:.38;width:110px}}
+
+/* 連續紫色薄霧背景：不再重複拼接成色塊 */
+body{isolation:isolate;background:
+  radial-gradient(900px 560px at -12% 12%,rgba(201,145,216,.24),transparent 70%),
+  radial-gradient(820px 620px at 108% 78%,rgba(179,118,199,.20),transparent 70%),
+  radial-gradient(680px 420px at 52% 105%,rgba(235,205,240,.58),transparent 72%),
+  linear-gradient(135deg,#fcf9fd 0%,#f5edf9 48%,#fbf6fd 100%);
+  background-attachment:fixed}
+body::before,body::after{z-index:0;opacity:1;background-repeat:no-repeat;filter:blur(2px)}
+body::before{width:480px;height:620px;left:-180px;top:190px;background:
+  radial-gradient(ellipse at 61% 23%,rgba(175,88,186,.18) 0 7%,transparent 7.6%),
+  radial-gradient(ellipse at 72% 17%,rgba(220,166,226,.22) 0 8%,transparent 8.7%),
+  radial-gradient(ellipse at 78% 30%,rgba(156,69,171,.15) 0 7%,transparent 7.7%),
+  radial-gradient(ellipse at 67% 36%,rgba(233,197,236,.26) 0 8%,transparent 8.7%),
+  radial-gradient(ellipse at 56% 32%,rgba(166,82,179,.16) 0 7%,transparent 7.7%),
+  linear-gradient(38deg,transparent 48%,rgba(113,137,104,.17) 48.5% 49.2%,transparent 50%)}
+body::after{width:520px;height:600px;right:-230px;top:80px;transform:none;background:
+  radial-gradient(ellipse at 30% 50%,rgba(186,109,198,.15) 0 7%,transparent 7.7%),
+  radial-gradient(ellipse at 40% 42%,rgba(231,186,235,.25) 0 8%,transparent 8.7%),
+  radial-gradient(ellipse at 49% 54%,rgba(148,64,165,.14) 0 7%,transparent 7.7%),
+  radial-gradient(ellipse at 39% 64%,rgba(232,201,238,.26) 0 8%,transparent 8.7%),
+  radial-gradient(ellipse at 23% 60%,rgba(177,91,188,.15) 0 7%,transparent 7.7%),
+  linear-gradient(148deg,transparent 48%,rgba(113,137,104,.15) 48.5% 49.2%,transparent 50%)}
+header,main{position:relative;z-index:1}
+@media(max-width:850px){body::before{left:-270px;opacity:.55}body::after{right:-310px;opacity:.48}}
+
 </style></head><body>
 <header><img class="logo" src="45AAD19F-AD9D-4918-9D76-8F5E46AF402D.png" alt="東海靈糧堂"><div><h1>紫彤小組 華麗跟跳</h1><div class="subtitle">手部分解 → 跟著音樂 → 一起完成</div></div><button id="full" aria-pressed="false">全螢幕教學</button></header>
 <main><p id="screenStatus" role="status" aria-live="polite"></p><div class="layout"><section class="panel lesson" aria-live="polite"><div class="tag">字幕／帶領提示</div><div class="caption" id="caption"></div><div class="actionbox"><div class="tag">動作說明</div><div class="action" id="action"></div></div></section>
