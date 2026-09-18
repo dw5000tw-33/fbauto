@@ -35,6 +35,12 @@ body::after{width:520px;height:600px;right:-230px;top:80px;transform:none;backgr
 header,main{position:relative;z-index:1}
 @media(max-width:850px){body::before{left:-270px;opacity:.55}body::after{right:-310px;opacity:.48}}
 
+
+/* 標頭融入同一個教學畫面，不再像分開的白色色塊 */
+header{background:transparent;border-bottom:0;padding:18px 3vw 12px}
+main{padding-top:12px}
+body.teaching header{background:rgba(252,249,253,.78);backdrop-filter:blur(12px);border-bottom:1px solid rgba(186,132,201,.20)}
+
 </style></head><body>
 <header><img class="logo" src="45AAD19F-AD9D-4918-9D76-8F5E46AF402D.png" alt="東海靈糧堂"><div><h1>紫彤小組 華麗跟跳</h1><div class="subtitle">手部分解 → 跟著音樂 → 一起完成</div></div><button id="full" aria-pressed="false">全螢幕教學</button></header>
 <main><p id="screenStatus" role="status" aria-live="polite"></p><div class="layout"><section class="panel lesson" aria-live="polite"><div class="tag">字幕／帶領提示</div><div class="caption" id="caption"></div><div class="actionbox"><div class="tag">動作說明</div><div class="action" id="action"></div></div></section>
