@@ -1,0 +1,10 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>33 Works 本機模擬驗證</title>
+<style>body{font:16px system-ui;background:#f2f5f9;margin:0;padding:24px}aside{max-width:600px;padding:16px;background:#fff3cd;border:2px solid #b58100}article{background:white;padding:16px;margin:20px 0;max-width:500px}</style>
+<aside><b>本機測試頁｜模擬授權</b><p>這裡沒有連接 Facebook、LINE 或 Notion。測試碼可任意輸入；所有資料均為測試資料。整理功能維持預覽模式。</p></aside>
+<main role="main"><article role="article"><h3><a>Fixture User</a></h3><a href="/groups/fixture/posts/1/">測試貼文</a><time datetime="2020-01-01">2020/01/01</time><p>這是用於預覽介面與停止機制的測試貼文。</p></article></main>
+<script>
+const fixturePopup={postMessage(){}};
+window.fetch=async()=>({ok:true,json:async()=>({version:'本機模擬'})});
+window.open=url=>{const nonce=new URL(url).searchParams.get('nonce');setTimeout(()=>(()=>{const e=new Event('message');Object.assign(e,{origin:'https://dw5000tw-33.github.io',source:fixturePopup,data:{type:'FB_AD_ALPHA_VERIFY_RESULT',nonce,ok:true,user:{name:'本機模擬'}}});window.dispatchEvent(e)})(),100);return fixturePopup};
+</script>
+<script src="../alpha/panel-v2.0-alpha.js"></script><script src="../alpha/cleanup-runner.js"></script><script src="../alpha/group-cleanup-v2.0-alpha.js"></script></html>

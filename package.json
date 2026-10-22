@@ -1,0 +1,6 @@
+{
+  "name": "33works-social-panel-tests",
+  "private": true,
+  "scripts": { "test": "node --test test/*.test.js", "check": "node test/check-syntax.js" },
+  "devDependencies": { "jsdom": "^26.1.0" }
+}

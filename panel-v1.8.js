@@ -210,8 +210,8 @@
   };
   $('#close').onclick=()=>{ try{clearInterval(clock);}catch{} wrap.remove(); };
   $('#openLine').onclick=()=>{
-    try{ window.location.href='line://ti/p/@307momvl'; }
-    catch{ window.open('https://line.me/R/ti/p/@307momvl','_blank'); }
+    try{ window.location.href='line://ti/p/@791gqyyp'; }
+    catch{ window.open('https://line.me/R/ti/p/@791gqyyp','_blank'); }
   };
 
   // 可拖曳（桌機/手機）
