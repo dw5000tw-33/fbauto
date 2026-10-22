@@ -62,7 +62,7 @@ const wrap=document.createElement('div');wrap.id=PANEL_ID;wrap.innerHTML=`
     <div class="nowRow">現在時間：<span id="nowTime">--:--:--</span></div>
 
     <!-- 新增：官方 LINE 按鈕（藍底白字，置於開始/停止上方，寬度同下方按鈕區） -->
-    <button id="openLineBtn" class="btnPrimary btnWide">官方 LINE：@307momvl</button>
+    <button id="openLineBtn" class="btnPrimary btnWide">官方 LINE：@791gqyyp</button>
 
     <div class="btns"><button class="btn green" id="start">開始</button><button class="btn yellow" id="stop">停止</button><button class="btn dark" id="close">關閉</button></div>
     <div class="log" id="log"></div>
@@ -104,7 +104,7 @@ $('#verifyBtn').onclick=()=>{if(!verify.state){verify.state=(crypto?.randomUUID?
 const back=location.href;const u=new URL(VERIFY_PAGE, location.origin);u.searchParams.set('state', verify.state);u.searchParams.set('back', back);const uid=getUid();if(uid)u.searchParams.set('uid', uid);window.open(u.toString(),'_blank','noopener');setVerifyUI(false);log('🔐 已開啟核實頁，完成後回來本頁會自動偵測');};
 
 // 官方 LINE 按鈕（藍底白字）
-$('#openLineBtn').onclick=()=>{window.open('https://page.line.me/307momvl','_blank');};
+$('#openLineBtn').onclick=()=>{window.open('https://page.line.me/791gqyyp','_blank');};
 
 // 其他 UI
 $('#minBtn').onclick=()=>{const b=$('#bodyBox');const hide=b.style.display!=='none';b.style.display=hide?'none':'block';$('#minBtn').textContent=hide?'展開':'最小化';};

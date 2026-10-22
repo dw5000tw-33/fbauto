@@ -8,7 +8,7 @@
   const PANEL_ID   = 'fb_del_flagship_panel_v17_fallback';
   const API_BASE   = 'https://verify-web.onrender.com'; // 你的 Render 服務
   const TITLE_TXT  = '刪文助手 v1.7（fallback）';
-  const LINE_LINK  = 'https://line.me/R/ti/p/@307momvl';
+  const LINE_LINK  = 'https://line.me/R/ti/p/@791gqyyp';
 
   // 你的 Loader（會 postMessage 把 code 傳回來）
   // ★ 若你沿用舊 loader-panel.html：請改成本回覆下方的「微調版」以支援 passcode 留空。
@@ -101,7 +101,7 @@
       <div class="now" id="nowTime"></div>
 
       <div class="lineRow">
-        <div class="lineTag">官方 LINE：@307momvl</div>
+        <div class="lineTag">官方 LINE：@791gqyyp</div>
         <button class="lineBtn" id="openLine">開啟</button>
       </div>
 
