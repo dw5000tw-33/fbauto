@@ -53,8 +53,8 @@
     if(!w){say('請允許彈出式視窗後再試。','bad');return}
     button.disabled=true;say('正在驗證通行碼…');
     const timer=setTimeout(()=>finish({ok:false,reason:'TIMEOUT'}),45000);
-    const onMessage=e=>{if(e.origin!==ORIGIN||e.source!==w||!e.data||e.data.nonce!==nonce)return;if(e.data.type==='FB_AD_ALPHA_VERIFY_READY')w.postMessage({type:'FB_AD_ALPHA_VERIFY_CODE',nonce,code},ORIGIN);if(e.data.type==='FB_AD_ALPHA_VERIFY_RESULT')finish(e.data)};
-    const finish=data=>{clearTimeout(timer);window.removeEventListener('message',onMessage);button.disabled=false;input.value='';if(data.ok)unlock();else{const words={CODE_REQUIRED:'請輸入通行碼。',CODE_NOT_FOUND:'找不到此通行碼。',NETWORK_ERROR:'驗證服務暫時無法連線。',TIMEOUT:'驗證逾時，請再試一次。'};say(words[data.reason]||'驗證未通過，請確認通行碼。','bad')}};
+    const onMessage=e=>{if(e.origin!==ORIGIN||e.source!==w||!e.data||e.data.nonce!==nonce)return;if(e.data.type==='FB_AD_ALPHA_VERIFY_READY')w.postMessage({type:'FB_AD_ALPHA_VERIFY_CODE',nonce,code,product:'SOCIAL_PANEL'},ORIGIN);if(e.data.type==='FB_AD_ALPHA_VERIFY_RESULT')finish(e.data)};
+    const finish=data=>{clearTimeout(timer);window.removeEventListener('message',onMessage);button.disabled=false;input.value='';if(data.ok)unlock();else{const words={INVALID_PRODUCT:'面板驗證格式不符，請重新載入最新版。',DEVICE_MISMATCH:'此授權已綁定其他瀏覽器或裝置。',DEVICE_REQUIRED:'缺少裝置識別。',PRODUCT_NOT_ALLOWED:'此授權未包含社群面板權限。',EXPIRED:'授權已到期。',DISABLED:'授權已停用。',RATE_LIMITED:'嘗試次數過多，請五分鐘後再試。',VERIFY_SERVICE_ERROR:'授權服務處理失敗。',NETWORK_OR_STORAGE_ERROR:'網路或瀏覽器儲存權限異常。',INVALID_RESPONSE:'授權服務回傳格式不符。',CODE_REQUIRED:'請輸入通行碼。',CODE_NOT_FOUND:'找不到此通行碼。',NETWORK_ERROR:'驗證服務暫時無法連線。',TIMEOUT:'驗證逾時，請再試一次。'};say(words[data.reason]||'驗證未通過，請確認通行碼。','bad')}};
     window.addEventListener('message',onMessage);
   };
   button.onclick=begin;input.onkeydown=e=>{if(e.key==='Enter')begin()};
