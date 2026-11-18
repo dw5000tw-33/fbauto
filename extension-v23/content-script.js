@@ -75,7 +75,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.4</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.1</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -416,9 +416,11 @@ async function ensureMoreDetails() {
   }
 }
 
-async function selectCombo(label, option) {
-  const combos = [...document.querySelectorAll('[role="combobox"]')].filter(visible);
-  const combo = combos.find(element => clean(element.innerText).startsWith(label));
+async function selectCombo(label, option, limits = {page: 45000, pause: 800}) {
+  const findCombo = () => [...document.querySelectorAll('[role="combobox"]')]
+    .filter(visible)
+    .find(element => clean(element.innerText).startsWith(label));
+  const combo = findCombo();
   if (!combo) throw new Error(`找不到「${label}」選單。`);
   if (clean(combo.innerText).includes(option)) return;
   combo.click();
@@ -431,9 +433,13 @@ async function selectCombo(label, option) {
       return ![...element.children].some(child => clean(child.innerText) === option);
     });
     return textChoice?.closest('[role="option"],[role="menuitem"],[role="radio"],[role="button"]') || textChoice;
-  }, 10000);
+  }, limits.page);
   choice.click();
-  await waitFor(() => clean(combo.innerText).includes(option), 5000);
+  await sleep(limits.pause);
+  await waitFor(() => {
+    const current = findCombo();
+    return current && clean(current.innerText).includes(option);
+  }, limits.page);
 }
 
 async function uploadPhotos(job, limits = timing(job)) {
@@ -519,9 +525,9 @@ async function runMarketplaceJob(job) {
     await progress(job, `正在上傳 ${job.photos.length} 張照片`);
     try { await uploadPhotos(job, limits); } catch (error) { stageErrors.push('照片：' + error.message); }
     await progress(job, '正在設定類別、狀況、庫存與地點');
-    try { await selectCombo('類別', job.category || '其他商品'); } catch (error) { stageErrors.push('類別：' + error.message); }
-    try { await selectCombo('狀況', job.condition || '二手 - 良好'); } catch (error) { stageErrors.push('狀況：' + error.message); }
-    try { await selectCombo('存貨狀況', job.stock || '列為有存貨'); } catch (error) { stageErrors.push('存貨：' + error.message); }
+    try { await selectCombo('類別', job.category || '其他商品', limits); } catch (error) { stageErrors.push('類別：' + error.message); }
+    try { await selectCombo('狀況', job.condition || '二手 - 良好', limits); } catch (error) { stageErrors.push('狀況：' + error.message); }
+    try { await selectCombo('存貨狀況', job.stock || '列為有存貨', limits); } catch (error) { stageErrors.push('存貨：' + error.message); }
     const locationField = findField(['地點', 'Location'], false);
     if (locationField && clean(locationField.value) !== clean(job.location)) nativeSetter(locationField, job.location);
     for (const label of ['發佈後推廣商品資訊', '對朋友隱藏']) {

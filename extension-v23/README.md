@@ -1,4 +1,4 @@
-# 33 Marketplace 自動上架助手 v2.4.0
+# 33 Marketplace 自動上架助手 v2.4.1
 
 這是 Chrome Manifest V3 擴充功能原型，將房屋商品、文案、照片、固定社團與上架時間儲存在擴充功能中，時間到後依序開啟 Facebook Marketplace 一般「出售商品」頁面。
 
