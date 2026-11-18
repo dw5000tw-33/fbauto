@@ -17,7 +17,8 @@ function send(message) {
 function statusText(status) {
   return ({
     scheduled: '已排程', running: '執行中', published: '已發布', ready_review: '已填入，等待確認',
-    failed: '失敗', pending: '待補發', queued: '排隊中', cancelled: '已取消'
+    failed: '失敗', pending: '待補發', queued: '排隊中', cancelled: '已取消',
+    deleting: '刪除中', deleted: '已刪除'
   })[status] || status;
 }
 
@@ -75,7 +76,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.6</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.0</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -415,7 +416,7 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
   box.replaceChildren();
   for (const job of result.jobs || []) {
     const card = document.createElement('article');
-    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-open-listing class="secondary">開啟剛上架商品</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除排程</button></div>`;
+    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-open-listing class="secondary">開啟剛上架商品</button><button data-delete-listing class="danger">刪除剛上架商品</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除排程</button></div>`;
     card.querySelector('b').textContent = job.title;
     card.querySelectorAll('p')[0].textContent = `${localDateTime(job.scheduledAt)}｜${statusText(job.status)}`;
     card.querySelectorAll('p')[1].textContent = `NT$${Number(job.price).toLocaleString('en-US')}｜照片 ${job.photoCount || 0} 張｜${job.groupProfile?.name || '只刊登 Marketplace'}｜${job.autoPublish ? '自動發布' : '停在確認頁'}`;
@@ -429,6 +430,13 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
     card.querySelector('[data-open-listing]').onclick = async () => {
       const response = await send({type: 'OPEN_MARKETPLACE_LISTING', id: job.id});
       panel.querySelector('[data-status]').textContent = response.ok ? '已開啟這次上架的 Marketplace 商品。請先不要刪除。' : response.error;
+    };
+    card.querySelector('[data-delete-listing]').hidden = job.status !== 'published' || !job.listingUrl;
+    card.querySelector('[data-delete-listing]').onclick = async () => {
+      if (!confirm(`確定刪除 Facebook 商品「${job.title}」？\n\n系統會選擇「否，未售出」，刪除失敗時不會改動其他同名商品。`)) return;
+      const response = await send({type: 'DELETE_PUBLISHED_MARKETPLACE_LISTING', id: job.id});
+      panel.querySelector('[data-status]').textContent = response.ok ? '正在開啟 Marketplace 並刪除這次的確切刊登…' : response.error;
+      await renderJobs(panel);
     };
     card.querySelector('[data-cancel]').disabled = ['running', 'published', 'ready_review', 'cancelled'].includes(job.status);
     card.querySelector('[data-cancel]').onclick = async () => { const response = await send({type: 'CANCEL_MARKETPLACE_JOB', id: job.id}); panel.querySelector('[data-status]').textContent = response.ok ? '排程已取消。' : response.error; await renderJobs(panel); };
@@ -660,6 +668,72 @@ async function runMarketplaceJob(job) {
   }
 }
 
+function marketplaceItemId(url) {
+  const value = String(url || '');
+  return value.match(/\/marketplace\/item\/(\d+)/)?.[1] || new URL(value, location.origin).searchParams.get('target_id') || '';
+}
+
+function exactListingCard(itemId, title) {
+  const links = [...document.querySelectorAll('a[href]')].filter(link => {
+    const href = link.href || '';
+    return href.includes(`/marketplace/item/${itemId}`) || new URL(href, location.origin).searchParams.get('target_id') === itemId;
+  });
+  for (const link of links) {
+    let node = link;
+    for (let depth = 0; node && depth < 10; depth++, node = node.parentElement) {
+      const more = [...node.querySelectorAll('button')].find(button => /更多選項|More options/i.test(button.getAttribute('aria-label') || ''));
+      if (more && clean(node.innerText).includes(clean(title))) return {card: node, more};
+    }
+  }
+  return null;
+}
+
+function clickExactText(scope, role, names) {
+  const candidates = [...scope.querySelectorAll(`[role="${role}"],button`)].filter(visible);
+  const target = candidates.find(element => names.includes(clean(element.innerText || element.getAttribute('aria-label'))));
+  if (!target) throw new Error(`找不到「${names[0]}」。`);
+  target.click();
+  return target;
+}
+
+async function runMarketplaceDelete(job, expectedItemId) {
+  try {
+    const savedItemId = marketplaceItemId(job.listingUrl);
+    if (!savedItemId || savedItemId !== expectedItemId) throw new Error('刊登 ID 不一致，已停止刪除。');
+    await waitFor(() => location.pathname.startsWith('/marketplace/you/selling'), 60000);
+    await send({type: 'MARKETPLACE_DELETE_PROGRESS', id: job.id, step: '正在尋找這次上架的確切刊登 ID'});
+    const target = await waitFor(() => exactListingCard(savedItemId, job.title), 60000, 500);
+    target.more.click();
+    const menu = await waitFor(() => [...document.querySelectorAll('[role="menu"]')].find(visible), 15000);
+    clickExactText(menu, 'menuitem', ['刪除商品', 'Delete listing']);
+    const firstDialog = await waitFor(() => [...document.querySelectorAll('[role="dialog"]')].find(dialog => visible(dialog) && /確定要刪除此商品|Are you sure/i.test(dialog.innerText)), 15000);
+    clickExactText(firstDialog, 'button', ['刪除', 'Delete']);
+    const soldDialog = await waitFor(() => [...document.querySelectorAll('[role="dialog"]')].find(dialog => visible(dialog) && /是否已售出|sold/i.test(dialog.innerText)), 15000);
+    const unsold = [...soldDialog.querySelectorAll('[role="radio"]')].find(element => {
+      let node = element;
+      for (let depth = 0; node && depth < 4; depth++, node = node.parentElement) {
+        if (/否，未售出|No, not sold/i.test(clean(node.innerText || node.getAttribute?.('aria-label')))) return true;
+      }
+      return false;
+    });
+    if (!unsold) throw new Error('找不到「否，未售出」選項。');
+    unsold.click();
+    await waitFor(() => {
+      const button = [...soldDialog.querySelectorAll('button,[role="button"]')].find(element => ['繼續', 'Continue'].includes(clean(element.innerText)));
+      return button && !button.disabled && elementEnabled(button) ? button : null;
+    }, 10000).then(button => button.click());
+    await waitFor(() => !exactListingCard(savedItemId, job.title), 30000, 500);
+    await send({type: 'MARKETPLACE_DELETE_RESULT', id: job.id, ok: true, itemId: savedItemId});
+  } catch (error) {
+    await send({type: 'MARKETPLACE_DELETE_RESULT', id: job.id, ok: false, error: error.message});
+    buildPanel().querySelector('[data-status]').textContent = '刪除停止：' + error.message;
+  }
+}
+
+function elementEnabled(element) {
+  return element.getAttribute('aria-disabled') !== 'true' && !element.disabled;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'TOGGLE_SCHEDULER_PANEL') {
     const panel = document.getElementById(PANEL_ID);
@@ -667,6 +741,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ok: true});
   } else if (message.type === 'RUN_MARKETPLACE_JOB') {
     runMarketplaceJob(message.job);
+    sendResponse({ok: true});
+  } else if (message.type === 'RUN_MARKETPLACE_DELETE') {
+    runMarketplaceDelete(message.job, message.itemId);
     sendResponse({ok: true});
   }
 });
