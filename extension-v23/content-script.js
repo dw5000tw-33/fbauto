@@ -198,7 +198,7 @@ async function selectCombo(label, option) {
 async function uploadPhotos(job) {
   const scope = document.querySelector('[role="main"]') || document;
   const inputs = [...scope.querySelectorAll('input[type="file"]')].filter(element => String(element.accept || '').toLowerCase().includes('image'));
-  const input = inputs[0] || [...scope.querySelectorAll('input[type="file"]')][0];
+  const input = inputs.find(element => element.multiple) || inputs[0] || [...scope.querySelectorAll('input[type="file"]')].find(element => element.multiple);
   if (!input) throw new Error('找不到照片上傳欄。');
   const transfer = new DataTransfer();
   for (const photo of job.photos.slice(0, MAX_PHOTOS)) transfer.items.add(dataUrlToFile(photo.dataUrl, photo.name));
