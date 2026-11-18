@@ -112,8 +112,17 @@ ${[['code','委託編號'],['title','標題'],['price','價格'],['address','完
     const onMarket=/^\/marketplace\/(create|edit)/.test(location.pathname),onGroup=/^\/groups\//.test(location.pathname);if(!onMarket&&!onGroup)throw Error('請先到Marketplace建立／編輯頁，或手動開啟目標社團的發文框。');
     const dialogs=[...document.querySelectorAll('[role="dialog"]')].filter(el=>!root.contains(el)&&el.getClientRects().length),scope=dialogs.length===1?dialogs[0]:onMarket?document.querySelector('[role="main"]'):null;
     if(!scope)throw Error('原生表單無法唯一確認，請手動填入。');
-    const fields=[...scope.querySelectorAll('input,textarea,[contenteditable="true"]')].filter(el=>!root.contains(el)&&el.getClientRects().length),plans=[];
-    if(onMarket)for(const [labels,value]of [[['標題','Title'],item.title],[['價格','Price'],item.unit==='萬元'&&item.price!==null?String(item.price*10000):String(item.price??'')],[['說明','描述','Description'],item.description]]){const matches=fields.filter(el=>labels.includes(el.getAttribute('aria-label')||el.getAttribute('placeholder')));if(matches.length!==1)throw Error('標題、價格或說明欄位無法唯一辨識，尚未填入。');plans.push([matches[0],value]);}
+    const visibleFields=()=>[...scope.querySelectorAll('input,textarea,[contenteditable="true"]')].filter(el=>!root.contains(el)&&el.getClientRects().length);
+    let fields=visibleFields();
+    if(onMarket&&/^\/marketplace\/create\/item/.test(location.pathname)){
+      const hasDescription=fields.some(el=>['說明','描述','商品說明','Description'].includes(el.getAttribute('aria-label')||el.getAttribute('placeholder')));
+      if(!hasDescription){
+        const more=[...scope.querySelectorAll('button,[role="button"]')].filter(el=>!root.contains(el)&&el.getClientRects().length&&/更多詳情|More details/i.test(String(el.innerText||el.getAttribute('aria-label')||'')));
+        if(more.length===1){more[0].click();await new Promise(resolve=>setTimeout(resolve,350));fields=visibleFields();}
+      }
+    }
+    const plans=[];
+    if(onMarket)for(const [labels,value]of [[['標題','Title'],item.title],[['價格','Price'],item.unit==='萬元'&&item.price!==null?String(item.price*10000):String(item.price??'')],[['說明','描述','商品說明','Description'],item.description]]){const matches=fields.filter(el=>labels.includes(el.getAttribute('aria-label')||el.getAttribute('placeholder')));if(matches.length!==1)throw Error('標題、價格或說明欄位無法唯一辨識，尚未填入。');plans.push([matches[0],value]);}
     else{const editors=fields.filter(el=>el.getAttribute('contenteditable')==='true'&&el.getAttribute('role')==='textbox');if(editors.length!==1)throw Error('請先手動開啟唯一的社團發文框。');plans.push([editors[0],[item.title,`${item.price??''}${item.unit}`,item.description].filter(Boolean).join('\n')]);}
     for(const [el,value]of plans){const old=el.getAttribute('contenteditable')==='true'?el.textContent:el.value;if(cleanText(old)&&cleanText(old)!==cleanText(value))throw Error('原生框已有不同草稿，未覆蓋。');}
     for(const [el,value]of plans){el.focus();if(el.getAttribute('contenteditable')==='true'){el.textContent=value;el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:value}));}else{Object.getOwnPropertyDescriptor(el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));}}
