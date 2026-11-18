@@ -26,7 +26,7 @@
       const timer = setTimeout(() => controller.abort(), 40000);
       let r;
       try {
-        r = await fetch(API + '/api/verify', { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, product: 'SOCIAL_PANEL', deviceId, deviceName: '33 Works 社群瀏覽器', clientVersion: '2.0-alpha-handoff' }) });
+        r = await fetch(API + '/api/verify', { method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, product: 'SOCIAL_PANEL', deviceId, deviceName: '33 Works 社群瀏覽器', clientVersion: '2.2-alpha-marketplace' }) });
       } finally { clearTimeout(timer); }
       const data = await r.json();
       const ok = r.ok && data.ok === true && !!data.user;
