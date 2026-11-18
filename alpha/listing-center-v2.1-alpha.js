@@ -1,7 +1,7 @@
 (()=>{
   'use strict';
   const root=document.getElementById('fb-ad-manager-alpha-v20'),model=window.WorksAlphaListings;
-  if(!root||!model||root.dataset.listingCenter)return;root.dataset.listingCenter='2.1';
+  if(!root||!model||root.dataset.listingCenter)return;root.dataset.listingCenter='2.2';
   const panel=root.querySelector('#fb-ad-alpha-marketplace'),card=root.querySelector('#fb-ad-alpha-marketplace-card');
   let repo=null,records=[],editId=null,detailId=null,disposed=false,working=false,photoDraft=[],photoDirty=false,page=0;
   const selected=new Set(),urls=new Set(),$=s=>panel.querySelector(s),uid=()=>crypto.randomUUID(),now=()=>new Date().toISOString();
@@ -76,9 +76,18 @@ ${[['code','委託編號'],['title','標題'],['price','價格'],['address','完
   });};
   async function addPublications(item,channel){return mutate(async()=>{const targets=channel==='marketplace'?[{}]:root.alphaGroups?.selected()||[];if(!targets.length)throw Error('請先在社團整理勾選目標社團。');const ops=[];for(const target of targets){const candidate=model.publication(item.id,channel,target,item.version,uid());if(publications(item.id).some(p=>p.channel===channel&&p.targetUrl===candidate.targetUrl&&p.status!=='已刪除（人工確認）'))continue;ops.push({put:candidate});}if(!ops.length)throw Error('目標已有刊登紀錄，請使用原紀錄修改。');ops.push({put:log(item.id,'建立刊登紀錄',channel)});await repo.batch(ops);say('已建立獨立通路紀錄，尚未發布。');});}
   const safeFacebook=url=>{try{const u=new URL(url);return u.protocol==='https:'&&/(^|\.)facebook\.com$/.test(u.hostname)?u.href:null;}catch{return null;}};
+  const MARKETPLACE_CREATE_URL='https://www.facebook.com/marketplace/create/item';
+  async function openMarketplaceCreate(item){
+    if(!authorized())return;
+    try{
+      if(repo)await repo.batch([{put:log(item.id,'開啟Marketplace建立頁',MARKETPLACE_CREATE_URL)}]);
+      window.open(MARKETPLACE_CREATE_URL,'_blank','noopener,noreferrer');
+      say('已開啟Marketplace建立頁。請在新分頁重新點Alpha書籤、選擇同一案件，再按「準備Marketplace文字與照片」；最後發布仍由你確認。');
+    }catch(e){say(e.message,true);}
+  }
   async function openNative(item,p){if(!authorized())return;const url=safeFacebook(p.url||p.targetUrl);if(!url){say('沒有可確認的Facebook網址。',true);return;}try{await repo.batch([{put:log(item.id,'開啟原生頁面',url)}]);window.open(url,'_blank','noopener,noreferrer');say('已開啟原生頁面。跨頁後重開Alpha，選同一案件準備填入；發布／儲存由你手動確認。');}catch(e){say(e.message,true);}}
   function showDetail(id){detailId=id;const item=cases().find(c=>c.id===id),box=$('#lc-detail');box.replaceChildren();if(!item){box.hidden=true;detailId=null;return;}box.hidden=false;box.append(text('h3',item.title+'｜刊登管理'),text('p','Marketplace刊登與社團發文各自保存網址及結果。按過按鈕不代表成功。'));
-    const row=document.createElement('div');row.className='row';row.append(button('建立Marketplace紀錄',()=>addPublications(item,'marketplace')),button('加入勾選社團',()=>addPublications(item,'group')),button('準備填入本頁原生表單',()=>prepareNative(item)),button('下載本案照片',()=>downloadPhotos(item)));box.append(row);
+    const row=document.createElement('div');row.className='row';row.append(button('建立Marketplace紀錄',()=>addPublications(item,'marketplace')),button('前往Marketplace建立刊登',()=>openMarketplaceCreate(item)),button('準備Marketplace文字與照片',()=>prepareNative(item)),button('加入勾選社團',()=>addPublications(item,'group')),button('下載本案照片',()=>downloadPhotos(item)));box.append(row);
     for(const p of publications(id)){
       const line=document.createElement('div');line.className='listing-record';line.append(text('strong',`${p.channel==='marketplace'?'Marketplace':'社團發文'}｜${p.targetName}`),text('p',`狀態：${p.status}${model.stale(item,p)?'｜案件已改版，待同步':''}；刊登：${p.publishedAt?new Date(p.publishedAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'未確認'}`));
       const link=document.createElement('input');link.placeholder='原生刊登／貼文網址';link.value=p.url;
@@ -108,7 +117,19 @@ ${[['code','委託編號'],['title','標題'],['price','價格'],['address','完
     else{const editors=fields.filter(el=>el.getAttribute('contenteditable')==='true'&&el.getAttribute('role')==='textbox');if(editors.length!==1)throw Error('請先手動開啟唯一的社團發文框。');plans.push([editors[0],[item.title,`${item.price??''}${item.unit}`,item.description].filter(Boolean).join('\n')]);}
     for(const [el,value]of plans){const old=el.getAttribute('contenteditable')==='true'?el.textContent:el.value;if(cleanText(old)&&cleanText(old)!==cleanText(value))throw Error('原生框已有不同草稿，未覆蓋。');}
     for(const [el,value]of plans){el.focus();if(el.getAttribute('contenteditable')==='true'){el.textContent=value;el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:value}));}else{Object.getOwnPropertyDescriptor(el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));}}
-    say('已準備文字；照片請下載後加入原生上傳框。請核對價格單位與全部欄位，再由你手動發布／儲存。');
+    let photoMessage='';
+    if(onMarket){
+      const media=photos(item.id),uploaders=[...scope.querySelectorAll('input[type="file"]')].filter(el=>!root.contains(el)&&String(el.accept||'').toLowerCase().includes('image'));
+      if(!media.length)photoMessage='；案件尚未加入照片';
+      else if(uploaders.length!==1)photoMessage='；照片上傳欄無法唯一辨識，請使用「下載本案照片」後手動加入';
+      else if(uploaders[0].files?.length)photoMessage='；原生頁面已有照片，未覆蓋';
+      else try{
+        const transfer=new DataTransfer();
+        media.forEach((photo,index)=>transfer.items.add(new File([photo.blob],photo.name||`listing-${index+1}.jpg`,{type:photo.blob.type||'image/jpeg'})));
+        uploaders[0].files=transfer.files;uploaders[0].dispatchEvent(new Event('change',{bubbles:true}));photoMessage=`；已加入 ${media.length} 張照片`;
+      }catch{photoMessage='；照片無法自動加入，請使用「下載本案照片」後手動加入';}
+    }
+    say('已準備文字'+photoMessage+'。請核對分類、刊登類型、地點、價格單位與全部欄位，再由你手動發布／儲存。');
   }catch(e){say(e.message,true);}}
   const cleanText=v=>String(v||'').trim();
   function download(name,blob){const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
