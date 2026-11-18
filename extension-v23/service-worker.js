@@ -178,6 +178,17 @@ async function deleteGroupProfile(id) {
   await chrome.storage.local.set({[GROUP_PROFILES_KEY]: (await listGroupProfiles()).filter(item => item.id !== id)});
 }
 
+async function openMarketplaceListing(id) {
+  const job = await getJob(id);
+  if (!job?.listingUrl) throw new Error('這筆案件還沒有成功上架的網址。');
+  const url = new URL(job.listingUrl);
+  if (url.origin !== 'https://www.facebook.com' || !url.pathname.startsWith('/marketplace/')) {
+    throw new Error('刊登網址格式不正確，已停止開啟。');
+  }
+  const tab = await chrome.tabs.create({url: url.href, active: true});
+  return {tabId: tab.id, url: url.href};
+}
+
 async function importGroupProfiles(input) {
   if (!Array.isArray(input)) throw new Error('備份檔沒有有效的社團組合。');
   const profiles = await listGroupProfiles();
@@ -243,6 +254,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     else if (message.type === 'CANCEL_MARKETPLACE_JOB') sendResponse({ok: true, job: await cancelJob(message.id)});
     else if (message.type === 'DELETE_MARKETPLACE_JOB') { await removeJob(message.id); sendResponse({ok: true}); }
     else if (message.type === 'RUN_MARKETPLACE_JOB_NOW') { await launchJob(message.id, true); sendResponse({ok: true}); }
+    else if (message.type === 'OPEN_MARKETPLACE_LISTING') sendResponse({ok: true, result: await openMarketplaceListing(message.id)});
     else if (message.type === 'MARKETPLACE_JOB_PROGRESS') { await updateJob(message.id, {currentStep: message.step || ''}); sendResponse({ok: true}); }
     else if (message.type === 'LIST_GROUP_PROFILES') sendResponse({ok: true, profiles: await listGroupProfiles()});
     else if (message.type === 'SAVE_GROUP_PROFILE') sendResponse({ok: true, profile: await saveGroupProfile(message.profile)});

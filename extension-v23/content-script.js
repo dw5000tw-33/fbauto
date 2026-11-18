@@ -75,7 +75,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.4</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.5</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -415,7 +415,7 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
   box.replaceChildren();
   for (const job of result.jobs || []) {
     const card = document.createElement('article');
-    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除</button></div>`;
+    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-open-listing class="secondary">開啟剛上架商品</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除排程</button></div>`;
     card.querySelector('b').textContent = job.title;
     card.querySelectorAll('p')[0].textContent = `${localDateTime(job.scheduledAt)}｜${statusText(job.status)}`;
     card.querySelectorAll('p')[1].textContent = `NT$${Number(job.price).toLocaleString('en-US')}｜照片 ${job.photoCount || 0} 張｜${job.groupProfile?.name || '只刊登 Marketplace'}｜${job.autoPublish ? '自動發布' : '停在確認頁'}`;
@@ -425,6 +425,11 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
     card.querySelector('[data-run]').disabled = job.status === 'running';
     card.querySelector('[data-edit]').onclick = () => editJob(panel, job);
     card.querySelector('[data-run]').onclick = async () => { const response = await send({type: 'RUN_MARKETPLACE_JOB_NOW', id: job.id}); panel.querySelector('[data-status]').textContent = response.ok ? '案件已送入執行佇列。' : response.error; await renderJobs(panel); };
+    card.querySelector('[data-open-listing]').hidden = !job.listingUrl;
+    card.querySelector('[data-open-listing]').onclick = async () => {
+      const response = await send({type: 'OPEN_MARKETPLACE_LISTING', id: job.id});
+      panel.querySelector('[data-status]').textContent = response.ok ? '已開啟這次上架的 Marketplace 商品。請先不要刪除。' : response.error;
+    };
     card.querySelector('[data-cancel]').disabled = ['running', 'published', 'ready_review', 'cancelled'].includes(job.status);
     card.querySelector('[data-cancel]').onclick = async () => { const response = await send({type: 'CANCEL_MARKETPLACE_JOB', id: job.id}); panel.querySelector('[data-status]').textContent = response.ok ? '排程已取消。' : response.error; await renderJobs(panel); };
     card.querySelector('[data-delete]').onclick = async () => { if (confirm(`刪除排程「${job.title}」？`)) { await send({type: 'DELETE_MARKETPLACE_JOB', id: job.id}); renderJobs(panel); } };
