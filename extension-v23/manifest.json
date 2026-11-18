@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "33 Marketplace 自動上架助手",
-  "version": "2.4.3",
+  "version": "2.4.4",
   "description": "管理多個房屋商品排程、固定社團名單，並在 Facebook Marketplace 依序上架。",
   "permissions": [
     "alarms",

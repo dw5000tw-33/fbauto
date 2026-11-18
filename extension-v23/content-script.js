@@ -75,7 +75,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.3</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.4</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -96,7 +96,8 @@ function buildPanel() {
         <small data-group-summary>尚未建立固定社團名單。</small>
         <label>新組合名稱<input data-profile-name placeholder="例如：台中買賣固定社團"></label>
         <label class="works-check"><input data-require-all type="checkbox" checked> 固定社團全部勾選成功才允許發布</label>
-        <div class="works-actions"><button type="button" data-capture-groups class="secondary">讀取目前已勾選社團</button><button type="button" data-delete-profile class="danger">刪除組合</button></div>
+        <div class="works-actions"><button type="button" data-capture-groups class="secondary">讀取目前已勾選社團</button><button type="button" data-export-groups class="secondary">匯出社團</button><button type="button" data-import-groups class="secondary">匯入社團</button><button type="button" data-delete-profile class="danger">刪除組合</button></div>
+        <input data-import-file type="file" accept="application/json,.json" hidden>
       </details>
       <div class="works-grid">
         <label>上架日期（台灣時間）<input data-date type="date"></label>
@@ -121,6 +122,9 @@ function buildPanel() {
   panel.querySelectorAll('[data-after]').forEach(button => button.onclick = () => quickTime(panel, Number(button.dataset.after)));
   panel.querySelector('[data-tomorrow]').onclick = () => quickTime(panel, 0, 1);
   panel.querySelector('[data-capture-groups]').onclick = () => captureGroupProfile(panel);
+  panel.querySelector('[data-export-groups]').onclick = () => exportGroupProfiles(panel);
+  panel.querySelector('[data-import-groups]').onclick = () => panel.querySelector('[data-import-file]').click();
+  panel.querySelector('[data-import-file]').onchange = event => importGroupProfilesFile(panel, event.target.files?.[0]);
   panel.querySelector('[data-delete-profile]').onclick = () => deleteSelectedProfile(panel);
   panel.querySelector('[data-group-profile]').onchange = () => renderSelectedProfile(panel);
   quickTime(panel, 10);
@@ -325,6 +329,42 @@ async function deleteSelectedProfile(panel) {
   await send({type: 'DELETE_GROUP_PROFILE', id: profile.id});
   await loadGroupProfiles(panel);
   panel.querySelector('[data-status]').textContent = '社團組合已刪除。';
+}
+
+async function exportGroupProfiles(panel) {
+  const result = await send({type: 'LIST_GROUP_PROFILES'});
+  const profiles = result.profiles || [];
+  if (!profiles.length) { panel.querySelector('[data-status]').textContent = '目前沒有可匯出的社團組合。'; return; }
+  const payload = {
+    format: '33-marketplace-group-profiles', version: 1,
+    exportedAt: new Date().toISOString(), profiles
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `33-marketplace-groups-${new Date().toISOString().slice(0, 10)}.json`;
+  link.style.display = 'none';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  panel.querySelector('[data-status]').textContent = `已匯出 ${profiles.length} 個社團組合。`;
+}
+
+async function importGroupProfilesFile(panel, file) {
+  const input = panel.querySelector('[data-import-file]');
+  try {
+    if (!file) return;
+    const payload = JSON.parse(await file.text());
+    if (payload?.format !== '33-marketplace-group-profiles' || payload?.version !== 1) throw new Error('這不是 33 Marketplace 社團備份檔。');
+    const result = await send({type: 'IMPORT_GROUP_PROFILES', profiles: payload.profiles});
+    if (!result.ok) throw new Error(result.error);
+    await loadGroupProfiles(panel);
+    panel.querySelector('[data-status]').textContent = `已匯入 ${result.result.imported} 個社團組合。`;
+  } catch (error) {
+    panel.querySelector('[data-status]').textContent = '匯入失敗：' + error.message;
+  } finally { input.value = ''; }
 }
 
 async function saveFromPanel(panel) {
