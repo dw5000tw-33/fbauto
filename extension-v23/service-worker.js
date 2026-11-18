@@ -180,6 +180,7 @@ async function deleteGroupProfile(id) {
 
 async function openMarketplaceListing(id) {
   const job = await getJob(id);
+  if (job?.status !== 'published') throw new Error('這筆案件尚未確認發布成功，不能作為刪除目標。');
   if (!job?.listingUrl) throw new Error('這筆案件還沒有成功上架的網址。');
   const url = new URL(job.listingUrl);
   if (url.origin !== 'https://www.facebook.com' || !url.pathname.startsWith('/marketplace/')) {

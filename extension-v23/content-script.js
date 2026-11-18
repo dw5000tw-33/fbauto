@@ -75,7 +75,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.5</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.6</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -425,7 +425,7 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
     card.querySelector('[data-run]').disabled = job.status === 'running';
     card.querySelector('[data-edit]').onclick = () => editJob(panel, job);
     card.querySelector('[data-run]').onclick = async () => { const response = await send({type: 'RUN_MARKETPLACE_JOB_NOW', id: job.id}); panel.querySelector('[data-status]').textContent = response.ok ? '案件已送入執行佇列。' : response.error; await renderJobs(panel); };
-    card.querySelector('[data-open-listing]').hidden = !job.listingUrl;
+    card.querySelector('[data-open-listing]').hidden = job.status !== 'published' || !job.listingUrl;
     card.querySelector('[data-open-listing]').onclick = async () => {
       const response = await send({type: 'OPEN_MARKETPLACE_LISTING', id: job.id});
       panel.querySelector('[data-status]').textContent = response.ok ? '已開啟這次上架的 Marketplace 商品。請先不要刪除。' : response.error;
