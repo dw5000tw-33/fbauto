@@ -122,7 +122,7 @@ ${[['code','委託編號'],['title','標題'],['price','價格'],['address','完
         if(more.length===1){more[0].click();await new Promise(resolve=>setTimeout(resolve,350));fields=visibleFields();}
       }
     }
-    const plans=[],matchField=(labels,required=true)=>{const matches=fields.filter(el=>labels.includes(el.getAttribute('aria-label')||el.getAttribute('placeholder')));if(matches.length===1)return matches[0];if(required||matches.length>1)throw Error('Marketplace 欄位無法唯一辨識：'+labels[0]+'。尚未填入。');return null;};
+    const plans=[],matchField=(labels,required=true)=>{const matches=fields.filter(el=>{const direct=cleanText(el.getAttribute('aria-label')||el.getAttribute('placeholder'));if(labels.includes(direct))return true;let node=el.parentElement;for(let depth=0;node&&depth<4&&!root.contains(node);depth++,node=node.parentElement){const label=cleanText(node.innerText);if(labels.some(target=>label===target||label.startsWith(target+'\\n')))return true;}return false;});if(matches.length===1)return matches[0];if(required||matches.length>1)throw Error('Marketplace 欄位無法唯一辨識：'+labels[0]+'。尚未填入。');return null;};
     if(onMarket){
       if(onRental){
         const room=String(item.layout||'').match(/(\d+)\s*房/),bath=String(item.layout||'').match(/(\d+)\s*衛/),area=Number(item.area),description=[item.title,item.description].filter(Boolean).join('\n\n');
