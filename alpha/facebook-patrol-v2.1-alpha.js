@@ -24,7 +24,7 @@
 #fb-ad-manager-alpha-v20 .hint{font-size:12px;line-height:1.6;margin:10px 0;color:#cbd9e9}
 #fb-ad-manager-alpha-v20 .current{outline:2px solid #59c1ff;border-radius:8px}
 #fb-ad-manager-alpha-v20 button:disabled{opacity:.45;cursor:not-allowed}`;root.append(style);
-  $('.tag').textContent='v2.1-alpha · 社團巡禮';
+  $('.tag').textContent='v2.2-alpha · Marketplace';
   const actions=document.createElement('div');actions.className='header-actions';const close=$('.close'),mini=document.createElement('button');
   mini.className='minimize';mini.textContent='−';mini.setAttribute('aria-label','最小化');close.replaceWith(actions);actions.append(mini,close);
   const fit=()=>{if(disposed||!root.isConnected)return;const r=root.getBoundingClientRect(),h=window.visualViewport?.height||innerHeight,w=window.visualViewport?.width||innerWidth,top=Math.max(8,Math.min(Math.max(8,h-100),r.top));root.style.top=top+'px';root.style.setProperty('--alpha-height',Math.max(80,h-top-12)+'px');if(root.style.left)root.style.left=Math.max(8,Math.min(w-Math.min(r.width,w-16)-8,r.left))+'px';};
