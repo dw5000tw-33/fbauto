@@ -32,6 +32,11 @@ async function listJobs() {
   return ids.map(id => stored[jobKey(id)]).filter(Boolean);
 }
 
+function jobSummary(job) {
+  const {photos, ...summary} = job;
+  return {...summary, photoCount: Array.isArray(photos) ? photos.length : 0};
+}
+
 async function schedule(job) {
   const when = new Date(job.scheduledAt).getTime();
   if (!Number.isFinite(when) || when <= Date.now()) throw new Error('上架時間必須晚於現在。');
@@ -207,7 +212,12 @@ chrome.runtime.onInstalled.addListener(restoreSchedules);
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     if (message.type === 'SAVE_MARKETPLACE_JOB') sendResponse({ok: true, job: await saveJob(message.job)});
-    else if (message.type === 'LIST_MARKETPLACE_JOBS') sendResponse({ok: true, jobs: await listJobs()});
+    else if (message.type === 'LIST_MARKETPLACE_JOBS') sendResponse({ok: true, jobs: (await listJobs()).map(jobSummary)});
+    else if (message.type === 'GET_MARKETPLACE_JOB') {
+      const job = await getJob(message.id);
+      if (!job) throw new Error('找不到排程案件。');
+      sendResponse({ok: true, job});
+    }
     else if (message.type === 'CANCEL_MARKETPLACE_JOB') sendResponse({ok: true, job: await cancelJob(message.id)});
     else if (message.type === 'DELETE_MARKETPLACE_JOB') { await removeJob(message.id); sendResponse({ok: true}); }
     else if (message.type === 'RUN_MARKETPLACE_JOB_NOW') { await launchJob(message.id, true); sendResponse({ok: true}); }
