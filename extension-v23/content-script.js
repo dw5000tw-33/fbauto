@@ -75,7 +75,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.2</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.3</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -112,6 +112,7 @@ function buildPanel() {
       <section><h3>排程案件</h3><div data-jobs></div></section>
     </div>`;
   document.body.append(panel);
+  enablePanelDrag(panel);
   panel.querySelector('[data-close]').onclick = () => { clearInterval(panel._jobsTimer); panel.remove(); };
   panel.querySelector('[data-folder]').onchange = event => loadFolder(event.target.files, panel);
   panel.querySelector('[data-save]').onclick = () => saveFromPanel(panel);
@@ -125,8 +126,46 @@ function buildPanel() {
   quickTime(panel, 10);
   loadGroupProfiles(panel);
   renderJobs(panel);
-  panel._jobsTimer = setInterval(() => { if (panel.isConnected) renderJobs(panel); else clearInterval(panel._jobsTimer); }, 5000);
+  panel._jobsTimer = setInterval(() => {
+    if (!panel.isConnected) clearInterval(panel._jobsTimer);
+    else if (!editingJobId && !panel.matches(':hover')) renderJobs(panel);
+  }, 15000);
   return panel;
+}
+
+function enablePanelDrag(panel) {
+  const header = panel.querySelector('header');
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+  header.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || event.target.closest('button')) return;
+    const rect = panel.getBoundingClientRect();
+    dragging = true;
+    startX = event.clientX; startY = event.clientY;
+    startLeft = rect.left; startTop = rect.top;
+    panel.style.left = `${rect.left}px`;
+    panel.style.top = `${rect.top}px`;
+    panel.style.right = 'auto';
+    header.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+  header.addEventListener('pointermove', event => {
+    if (!dragging) return;
+    const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+    const maxTop = Math.max(0, window.innerHeight - 70);
+    panel.style.left = `${Math.min(maxLeft, Math.max(0, startLeft + event.clientX - startX))}px`;
+    panel.style.top = `${Math.min(maxTop, Math.max(0, startTop + event.clientY - startY))}px`;
+  });
+  const stop = event => {
+    if (!dragging) return;
+    dragging = false;
+    if (header.hasPointerCapture(event.pointerId)) header.releasePointerCapture(event.pointerId);
+  };
+  header.addEventListener('pointerup', stop);
+  header.addEventListener('pointercancel', stop);
 }
 
 async function loadFolder(fileList, panel) {
@@ -339,7 +378,7 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
     card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除</button></div>`;
     card.querySelector('b').textContent = job.title;
     card.querySelectorAll('p')[0].textContent = `${localDateTime(job.scheduledAt)}｜${statusText(job.status)}`;
-    card.querySelectorAll('p')[1].textContent = `NT$${Number(job.price).toLocaleString('en-US')}｜照片 ${job.photos?.length || 0} 張｜${job.groupProfile?.name || '只刊登 Marketplace'}｜${job.autoPublish ? '自動發布' : '停在確認頁'}`;
+    card.querySelectorAll('p')[1].textContent = `NT$${Number(job.price).toLocaleString('en-US')}｜照片 ${job.photoCount || 0} 張｜${job.groupProfile?.name || '只刊登 Marketplace'}｜${job.autoPublish ? '自動發布' : '停在確認頁'}`;
     card.querySelector('[data-step]').textContent = `${job.currentStep || ''}${job.speedMode === 'slow' ? '｜慢速模式' : ''}｜案件間隔 ${job.queueDelayMinutes || 5} 分鐘`;
     card.querySelector('.works-error').textContent = job.lastError || job.listingUrl || '';
     card.querySelector('[data-edit]').disabled = job.status === 'running';
@@ -355,6 +394,10 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
 }
 
 async function editJob(panel, job) {
+  panel.querySelector('[data-status]').textContent = '正在載入案件照片…';
+  const response = await send({type: 'GET_MARKETPLACE_JOB', id: job.id});
+  if (!response.ok) { panel.querySelector('[data-status]').textContent = response.error; return; }
+  job = response.job;
   editingJobId = job.id;
   folderPhotos = (job.photos || []).map(photo => ({...photo}));
   const set = (selector, value) => { panel.querySelector(selector).value = value ?? ''; };
