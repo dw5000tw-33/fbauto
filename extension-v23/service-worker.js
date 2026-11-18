@@ -2,11 +2,16 @@
 
 const JOB_PREFIX = 'marketplace-job:';
 const JOB_INDEX = 'marketplace-job-index';
+const GROUP_PROFILES_KEY = 'marketplace-group-profiles';
+const ACTIVE_JOB_KEY = 'marketplace-active-job';
 const ALARM_PREFIX = 'marketplace-publish:';
+const QUEUE_ALARM = 'marketplace-queue-next';
 const CREATE_URL = 'https://www.facebook.com/marketplace/create/item';
+const MAX_ACTIVE_JOBS = 10;
 
 const jobKey = id => JOB_PREFIX + id;
 const alarmName = id => ALARM_PREFIX + id;
+const nowIso = () => new Date().toISOString();
 
 async function getJob(id) {
   return (await chrome.storage.local.get(jobKey(id)))[jobKey(id)] || null;
@@ -34,18 +39,21 @@ async function schedule(job) {
 }
 
 async function saveJob(input) {
-  const now = new Date().toISOString();
   const old = input.id ? await getJob(input.id) : null;
+  if (!old) {
+    const count = (await listJobs()).filter(job => ['scheduled', 'queued', 'running'].includes(job.status)).length;
+    if (count >= MAX_ACTIVE_JOBS) throw new Error(`目前最多可同時保留 ${MAX_ACTIVE_JOBS} 個等待或執行中的案件。`);
+  }
   const job = {
-    ...old,
-    ...input,
+    ...old, ...input,
     id: input.id || crypto.randomUUID(),
-    status: 'scheduled',
-    createdAt: old?.createdAt || now,
-    updatedAt: now,
-    lastError: '',
-    listingUrl: old?.listingUrl || ''
+    status: 'scheduled', currentStep: '等待排程',
+    createdAt: old?.createdAt || nowIso(), updatedAt: nowIso(),
+    lastError: '', listingUrl: old?.listingUrl || '',
+    queueDelayMinutes: Math.min(30, Math.max(1, Number(input.queueDelayMinutes) || 5)),
+    speedMode: input.speedMode === 'slow' ? 'slow' : 'normal'
   };
+  await chrome.alarms.clear(alarmName(job.id));
   await putJob(job);
   await schedule(job);
   return job;
@@ -54,7 +62,15 @@ async function saveJob(input) {
 async function updateJob(id, patch) {
   const job = await getJob(id);
   if (!job) throw new Error('找不到排程案件。');
-  return putJob({...job, ...patch, updatedAt: new Date().toISOString()});
+  return putJob({...job, ...patch, updatedAt: nowIso()});
+}
+
+async function cancelJob(id) {
+  const job = await getJob(id);
+  if (!job) throw new Error('找不到排程案件。');
+  await chrome.alarms.clear(alarmName(id));
+  if (await getActiveJobId() === id) throw new Error('案件正在執行，請先關閉正在上架的 Facebook 分頁。');
+  return updateJob(id, {status: 'cancelled', currentStep: '已取消'});
 }
 
 async function removeJob(id) {
@@ -66,45 +82,95 @@ async function removeJob(id) {
 }
 
 async function notify(title, message) {
-  await chrome.notifications.create({
-    type: 'basic',
-    iconUrl: 'icon-128.png',
-    title,
-    message
-  }).catch(() => {});
+  await chrome.notifications.create({type: 'basic', iconUrl: 'icon-128.png', title, message}).catch(() => {});
 }
 
 async function sendWhenReady(tabId, message, attempts = 0) {
-  try {
-    await chrome.tabs.sendMessage(tabId, message);
-  } catch (error) {
-    if (attempts >= 20) throw error;
+  try { await chrome.tabs.sendMessage(tabId, message); }
+  catch (error) {
+    if (attempts >= 60) throw error;
     await new Promise(resolve => setTimeout(resolve, 500));
     return sendWhenReady(tabId, message, attempts + 1);
   }
 }
 
-async function runJob(id) {
+async function getActiveJobId() {
+  return (await chrome.storage.local.get(ACTIVE_JOB_KEY))[ACTIVE_JOB_KEY] || '';
+}
+
+async function queueJob(id) {
   const job = await getJob(id);
-  if (!job || !['scheduled', 'failed', 'pending'].includes(job.status)) return;
-  await updateJob(id, {status: 'running', startedAt: new Date().toISOString(), lastError: ''});
+  if (!job || ['published', 'ready_review', 'cancelled'].includes(job.status)) return;
+  await chrome.alarms.clear(alarmName(id));
+  await updateJob(id, {status: 'queued', currentStep: '等待前一案件完成'});
+}
+
+async function launchJob(id, force = false) {
+  const job = await getJob(id);
+  if (!job || !['scheduled', 'failed', 'pending', 'queued'].includes(job.status)) return;
+  const activeId = await getActiveJobId();
+  if (activeId && activeId !== id) { await queueJob(id); return; }
+  if (!force && job.status === 'scheduled' && new Date(job.scheduledAt).getTime() > Date.now()) return;
+  await chrome.storage.local.set({[ACTIVE_JOB_KEY]: id});
+  await updateJob(id, {status: 'running', currentStep: '正在開啟 Marketplace', startedAt: nowIso(), lastError: ''});
   try {
     const tab = await chrome.tabs.create({url: `${CREATE_URL}?works_job=${encodeURIComponent(id)}`, active: true});
+    const onRemoved = async tabId => {
+      if (tabId !== tab.id) return;
+      chrome.tabs.onRemoved.removeListener(onRemoved);
+      if (await getActiveJobId() === id) await finishFailedJob(id, '上架分頁在完成前被關閉。');
+    };
+    chrome.tabs.onRemoved.addListener(onRemoved);
     const onUpdated = async (tabId, info) => {
       if (tabId !== tab.id || info.status !== 'complete') return;
       chrome.tabs.onUpdated.removeListener(onUpdated);
-      try {
-        await sendWhenReady(tabId, {type: 'RUN_MARKETPLACE_JOB', job: await getJob(id)});
-      } catch (error) {
-        await updateJob(id, {status: 'failed', lastError: '無法啟動 Facebook 自動上架：' + error.message});
-        await notify('Marketplace 上架失敗', job.title);
-      }
+      try { await sendWhenReady(tabId, {type: 'RUN_MARKETPLACE_JOB', job: await getJob(id)}); }
+      catch (error) { await finishFailedJob(id, '無法啟動 Facebook 自動上架：' + error.message); }
     };
     chrome.tabs.onUpdated.addListener(onUpdated);
-  } catch (error) {
-    await updateJob(id, {status: 'failed', lastError: error.message});
-    await notify('Marketplace 上架失敗', job.title);
+  } catch (error) { await finishFailedJob(id, error.message); }
+}
+
+async function finishFailedJob(id, error) {
+  const job = await updateJob(id, {status: 'failed', currentStep: '執行失敗', lastError: error, finishedAt: nowIso()});
+  await releaseQueue(id, job.queueDelayMinutes);
+  await notify('Marketplace 上架失敗', job.title);
+}
+
+async function releaseQueue(id, delayMinutes = 5) {
+  if (await getActiveJobId() === id) await chrome.storage.local.remove(ACTIVE_JOB_KEY);
+  if ((await listJobs()).some(job => job.status === 'queued')) {
+    await chrome.alarms.create(QUEUE_ALARM, {when: Date.now() + Math.max(1, Number(delayMinutes) || 5) * 60000});
   }
+}
+
+async function runNextQueued() {
+  if (await getActiveJobId()) return;
+  const queued = (await listJobs()).filter(job => job.status === 'queued')
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  if (queued[0]) await launchJob(queued[0].id, true);
+}
+
+async function listGroupProfiles() {
+  const value = (await chrome.storage.local.get(GROUP_PROFILES_KEY))[GROUP_PROFILES_KEY];
+  return Array.isArray(value) ? value : [];
+}
+
+async function saveGroupProfile(input) {
+  const groups = [...new Set((input.groups || []).map(value => String(value).trim()).filter(Boolean))].slice(0, 20);
+  if (!input.name?.trim()) throw new Error('請輸入社團組合名稱。');
+  if (!groups.length) throw new Error('目前沒有讀取到已勾選的社團。');
+  const profiles = await listGroupProfiles();
+  const id = input.id || crypto.randomUUID();
+  const profile = {id, name: input.name.trim(), groups, requireAll: input.requireAll !== false, updatedAt: nowIso()};
+  const index = profiles.findIndex(item => item.id === id);
+  if (index >= 0) profiles[index] = profile; else profiles.push(profile);
+  await chrome.storage.local.set({[GROUP_PROFILES_KEY]: profiles});
+  return profile;
+}
+
+async function deleteGroupProfile(id) {
+  await chrome.storage.local.set({[GROUP_PROFILES_KEY]: (await listGroupProfiles()).filter(item => item.id !== id)});
 }
 
 chrome.action.onClicked.addListener(async tab => {
@@ -117,15 +183,21 @@ chrome.action.onClicked.addListener(async tab => {
 });
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name.startsWith(ALARM_PREFIX)) runJob(alarm.name.slice(ALARM_PREFIX.length));
+  if (alarm.name === QUEUE_ALARM) runNextQueued();
+  else if (alarm.name.startsWith(ALARM_PREFIX)) launchJob(alarm.name.slice(ALARM_PREFIX.length));
 });
 
 async function restoreSchedules() {
+  await chrome.storage.local.remove(ACTIVE_JOB_KEY);
   for (const job of await listJobs()) {
+    if (job.status === 'running') await updateJob(job.id, {status: 'pending', currentStep: '瀏覽器中斷，等待重新執行', lastError: '上次執行期間瀏覽器被關閉。'});
     if (job.status !== 'scheduled') continue;
     const when = new Date(job.scheduledAt).getTime();
     if (when > Date.now()) await chrome.alarms.create(alarmName(job.id), {when});
-    else await updateJob(job.id, {status: 'pending', lastError: '排程時間已過，等待你重新執行。'});
+    else await updateJob(job.id, {status: 'pending', currentStep: '排程時間已過', lastError: '排程時間已過，等待你重新執行。'});
+  }
+  if ((await listJobs()).some(job => job.status === 'queued')) {
+    await chrome.alarms.create(QUEUE_ALARM, {when: Date.now() + 60000});
   }
 }
 
@@ -136,17 +208,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     if (message.type === 'SAVE_MARKETPLACE_JOB') sendResponse({ok: true, job: await saveJob(message.job)});
     else if (message.type === 'LIST_MARKETPLACE_JOBS') sendResponse({ok: true, jobs: await listJobs()});
+    else if (message.type === 'CANCEL_MARKETPLACE_JOB') sendResponse({ok: true, job: await cancelJob(message.id)});
     else if (message.type === 'DELETE_MARKETPLACE_JOB') { await removeJob(message.id); sendResponse({ok: true}); }
-    else if (message.type === 'RUN_MARKETPLACE_JOB_NOW') { await runJob(message.id); sendResponse({ok: true}); }
+    else if (message.type === 'RUN_MARKETPLACE_JOB_NOW') { await launchJob(message.id, true); sendResponse({ok: true}); }
+    else if (message.type === 'MARKETPLACE_JOB_PROGRESS') { await updateJob(message.id, {currentStep: message.step || ''}); sendResponse({ok: true}); }
+    else if (message.type === 'LIST_GROUP_PROFILES') sendResponse({ok: true, profiles: await listGroupProfiles()});
+    else if (message.type === 'SAVE_GROUP_PROFILE') sendResponse({ok: true, profile: await saveGroupProfile(message.profile)});
+    else if (message.type === 'DELETE_GROUP_PROFILE') { await deleteGroupProfile(message.id); sendResponse({ok: true}); }
     else if (message.type === 'MARKETPLACE_JOB_RESULT') {
       const status = message.ok ? (message.published ? 'published' : 'ready_review') : 'failed';
       const job = await updateJob(message.id, {
         status,
-        listingUrl: message.listingUrl || '',
-        lastError: message.error || '',
-        finishedAt: new Date().toISOString()
+        currentStep: message.ok ? (message.published ? '發布成功' : '等待人工確認') : '執行失敗',
+        listingUrl: message.listingUrl || '', lastError: message.error || '', finishedAt: nowIso()
       });
-      await notify(message.ok ? 'Marketplace 上架完成' : 'Marketplace 上架失敗', job.title);
+      await releaseQueue(job.id, job.queueDelayMinutes);
+      await notify(message.ok ? (message.published ? 'Marketplace 上架完成' : 'Marketplace 已填妥') : 'Marketplace 上架失敗', job.title);
       sendResponse({ok: true});
     }
   })().catch(error => sendResponse({ok: false, error: error.message}));

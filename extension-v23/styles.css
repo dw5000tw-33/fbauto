@@ -5,12 +5,13 @@
 #works-marketplace-scheduler-v23 header button{margin-left:auto;background:transparent;border:0;color:white;font-size:22px;padding:0 5px}
 #works-marketplace-scheduler-v23 .works-body{padding:14px;overflow:auto;max-height:calc(100vh - 145px)}
 #works-marketplace-scheduler-v23 label{display:block;margin:10px 0 4px;font-weight:650}
-#works-marketplace-scheduler-v23 input,#works-marketplace-scheduler-v23 textarea{width:100%;margin-top:5px;border:1px solid #54789e;border-radius:8px;padding:9px;background:#06101d;color:white;font:inherit}
+#works-marketplace-scheduler-v23 input,#works-marketplace-scheduler-v23 textarea,#works-marketplace-scheduler-v23 select{width:100%;margin-top:5px;border:1px solid #54789e;border-radius:8px;padding:9px;background:#06101d;color:white;font:inherit}
 #works-marketplace-scheduler-v23 input[type=file]{padding:7px}
 #works-marketplace-scheduler-v23 .works-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
 #works-marketplace-scheduler-v23 .works-check{display:flex;align-items:flex-start;gap:8px;background:#14263d;padding:10px;border-radius:8px}
 #works-marketplace-scheduler-v23 .works-check input{width:auto;margin:3px 0 0}
 #works-marketplace-scheduler-v23 button{border:0;border-radius:8px;padding:9px 12px;background:#16a4ef;color:white;font-weight:700;cursor:pointer}
+#works-marketplace-scheduler-v23 button:disabled{opacity:.4;cursor:not-allowed}
 #works-marketplace-scheduler-v23 button.secondary{background:#315b80}
 #works-marketplace-scheduler-v23 button.danger{background:#8d3b45}
 #works-marketplace-scheduler-v23 .works-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
@@ -27,3 +28,8 @@
 #works-marketplace-scheduler-v23 .works-photo-item div{display:flex;gap:4px}
 #works-marketplace-scheduler-v23 .works-photo-item button{font-size:11px;padding:5px 7px}
 #works-marketplace-scheduler-v23 .works-photo-item button:disabled{opacity:.35;cursor:not-allowed}
+#works-marketplace-scheduler-v23 details{margin-top:12px;background:#0d1d31;border:1px solid #315b80;border-radius:10px;padding:10px}
+#works-marketplace-scheduler-v23 summary{cursor:pointer;font-weight:750;color:#d9efff}
+#works-marketplace-scheduler-v23 .works-quick-time{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:7px 0}
+#works-marketplace-scheduler-v23 .works-quick-time button{padding:7px 4px;font-size:12px;background:#315b80}
+#works-marketplace-scheduler-v23 [data-group-summary]{display:block;max-height:72px;overflow:auto;margin-top:6px;line-height:1.45}

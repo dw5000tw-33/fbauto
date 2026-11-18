@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "33 Marketplace 自動上架助手",
-  "version": "2.3.1",
-  "description": "儲存房屋商品、設定時間，並在 Facebook Marketplace 自動上架。",
+  "version": "2.4.0",
+  "description": "管理多個房屋商品排程、固定社團名單，並在 Facebook Marketplace 依序上架。",
   "permissions": [
     "alarms",
     "notifications",
