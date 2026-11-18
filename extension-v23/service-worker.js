@@ -7,6 +7,7 @@ const ACTIVE_JOB_KEY = 'marketplace-active-job';
 const ALARM_PREFIX = 'marketplace-publish:';
 const QUEUE_ALARM = 'marketplace-queue-next';
 const CREATE_URL = 'https://www.facebook.com/marketplace/create/item';
+const SELLING_URL = 'https://www.facebook.com/marketplace/you/selling';
 const MAX_ACTIVE_JOBS = 10;
 
 const jobKey = id => JOB_PREFIX + id;
@@ -190,6 +191,40 @@ async function openMarketplaceListing(id) {
   return {tabId: tab.id, url: url.href};
 }
 
+function marketplaceItemId(url) {
+  const value = String(url || '');
+  try {
+    const parsed = new URL(value);
+    return parsed.pathname.match(/\/marketplace\/item\/(\d+)/)?.[1] || parsed.searchParams.get('target_id') || '';
+  } catch { return ''; }
+}
+
+async function deletePublishedListing(id) {
+  const job = await getJob(id);
+  if (job?.status !== 'published') throw new Error('只有確認發布成功的案件可以刪除。');
+  const itemId = marketplaceItemId(job.listingUrl);
+  if (!itemId) throw new Error('這筆刊登沒有可核對的 Marketplace ID，已停止刪除。');
+  await updateJob(id, {status: 'deleting', currentStep: `準備刪除刊登 ID ${itemId}`, lastError: ''});
+  const tab = await chrome.tabs.create({url: `${SELLING_URL}?works_delete_job=${encodeURIComponent(id)}`, active: true});
+  const onRemoved = async tabId => {
+    if (tabId !== tab.id) return;
+    chrome.tabs.onRemoved.removeListener(onRemoved);
+    const current = await getJob(id);
+    if (current?.status === 'deleting') {
+      await updateJob(id, {status: 'published', currentStep: '刪除中斷，商品仍視為已發布', lastError: '刪除分頁在確認完成前被關閉。'});
+    }
+  };
+  chrome.tabs.onRemoved.addListener(onRemoved);
+  const onUpdated = async (tabId, info) => {
+    if (tabId !== tab.id || info.status !== 'complete') return;
+    chrome.tabs.onUpdated.removeListener(onUpdated);
+    try { await sendWhenReady(tabId, {type: 'RUN_MARKETPLACE_DELETE', job: await getJob(id), itemId}); }
+    catch (error) { await updateJob(id, {status: 'published', currentStep: '刪除失敗', lastError: error.message}); }
+  };
+  chrome.tabs.onUpdated.addListener(onUpdated);
+  return {itemId, tabId: tab.id};
+}
+
 async function importGroupProfiles(input) {
   if (!Array.isArray(input)) throw new Error('備份檔沒有有效的社團組合。');
   const profiles = await listGroupProfiles();
@@ -256,7 +291,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     else if (message.type === 'DELETE_MARKETPLACE_JOB') { await removeJob(message.id); sendResponse({ok: true}); }
     else if (message.type === 'RUN_MARKETPLACE_JOB_NOW') { await launchJob(message.id, true); sendResponse({ok: true}); }
     else if (message.type === 'OPEN_MARKETPLACE_LISTING') sendResponse({ok: true, result: await openMarketplaceListing(message.id)});
+    else if (message.type === 'DELETE_PUBLISHED_MARKETPLACE_LISTING') sendResponse({ok: true, result: await deletePublishedListing(message.id)});
     else if (message.type === 'MARKETPLACE_JOB_PROGRESS') { await updateJob(message.id, {currentStep: message.step || ''}); sendResponse({ok: true}); }
+    else if (message.type === 'MARKETPLACE_DELETE_PROGRESS') { await updateJob(message.id, {currentStep: message.step || ''}); sendResponse({ok: true}); }
+    else if (message.type === 'MARKETPLACE_DELETE_RESULT') {
+      const job = await updateJob(message.id, message.ok ? {
+        status: 'deleted', currentStep: 'Facebook 商品已刪除', deletedAt: nowIso(), deletedItemId: message.itemId || '', lastError: ''
+      } : {
+        status: 'published', currentStep: '刪除失敗，商品仍視為已發布', lastError: message.error || '刪除流程未完成。'
+      });
+      await notify(message.ok ? 'Marketplace 商品已刪除' : 'Marketplace 刪除失敗', job.title);
+      sendResponse({ok: true});
+    }
     else if (message.type === 'LIST_GROUP_PROFILES') sendResponse({ok: true, profiles: await listGroupProfiles()});
     else if (message.type === 'SAVE_GROUP_PROFILE') sendResponse({ok: true, profile: await saveGroupProfile(message.profile)});
     else if (message.type === 'DELETE_GROUP_PROFILE') { await deleteGroupProfile(message.id); sendResponse({ok: true}); }
