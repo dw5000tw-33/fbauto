@@ -178,6 +178,28 @@ async function deleteGroupProfile(id) {
   await chrome.storage.local.set({[GROUP_PROFILES_KEY]: (await listGroupProfiles()).filter(item => item.id !== id)});
 }
 
+async function importGroupProfiles(input) {
+  if (!Array.isArray(input)) throw new Error('備份檔沒有有效的社團組合。');
+  const profiles = await listGroupProfiles();
+  const byName = new Map(profiles.map(profile => [profile.name, profile]));
+  let imported = 0;
+  for (const item of input) {
+    const name = String(item?.name || '').trim();
+    const groups = [...new Set((Array.isArray(item?.groups) ? item.groups : []).map(value => String(value).trim()).filter(Boolean))].slice(0, 20);
+    if (!name || !groups.length) continue;
+    const old = byName.get(name);
+    byName.set(name, {
+      id: old?.id || crypto.randomUUID(), name, groups,
+      requireAll: item.requireAll !== false, updatedAt: nowIso()
+    });
+    imported++;
+  }
+  if (!imported) throw new Error('備份檔中找不到可匯入的社團組合。');
+  const merged = [...byName.values()];
+  await chrome.storage.local.set({[GROUP_PROFILES_KEY]: merged});
+  return {imported, profiles: merged};
+}
+
 chrome.action.onClicked.addListener(async tab => {
   if (!tab.id || !tab.url?.startsWith('https://www.facebook.com/')) {
     const created = await chrome.tabs.create({url: 'https://www.facebook.com/marketplace/', active: true});
@@ -225,6 +247,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     else if (message.type === 'LIST_GROUP_PROFILES') sendResponse({ok: true, profiles: await listGroupProfiles()});
     else if (message.type === 'SAVE_GROUP_PROFILE') sendResponse({ok: true, profile: await saveGroupProfile(message.profile)});
     else if (message.type === 'DELETE_GROUP_PROFILE') { await deleteGroupProfile(message.id); sendResponse({ok: true}); }
+    else if (message.type === 'IMPORT_GROUP_PROFILES') sendResponse({ok: true, result: await importGroupProfiles(message.profiles)});
     else if (message.type === 'MARKETPLACE_JOB_RESULT') {
       const status = message.ok ? (message.published ? 'published' : 'ready_review') : 'failed';
       const job = await updateJob(message.id, {
