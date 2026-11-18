@@ -119,7 +119,8 @@ ${[['code','委託編號'],['title','標題'],['price','價格'],['address','完
       const hasDescription=fields.some(el=>['說明','描述','商品說明','Description'].includes(el.getAttribute('aria-label')||el.getAttribute('placeholder')));
       if(!hasDescription){
         const more=[...scope.querySelectorAll('button,[role="button"]')].filter(el=>!root.contains(el)&&el.getClientRects().length&&/更多詳情|More details/i.test(String(el.innerText||el.getAttribute('aria-label')||'')));
-        if(more.length===1){more[0].click();await new Promise(resolve=>setTimeout(resolve,350));fields=visibleFields();}
+        const toggle=more.find(el=>el.hasAttribute('aria-expanded'))||more[0];
+        if(toggle&&toggle.getAttribute('aria-expanded')!=='true'){toggle.click();await new Promise(resolve=>setTimeout(resolve,500));fields=visibleFields();}
       }
     }
     const plans=[],matchField=(labels,required=true)=>{const matches=fields.filter(el=>{const direct=cleanText(el.getAttribute('aria-label')||el.getAttribute('placeholder'));if(labels.includes(direct))return true;let node=el.parentElement;for(let depth=0;node&&depth<4&&!root.contains(node);depth++,node=node.parentElement){const label=cleanText(node.innerText);if(labels.some(target=>label===target||label.startsWith(target+'\n')))return true;}return false;});if(matches.length===1)return matches[0];if(required||matches.length>1)throw Error('Marketplace 欄位無法唯一辨識：'+labels[0]+'。尚未填入。');return null;};
