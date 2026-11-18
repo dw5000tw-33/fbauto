@@ -76,13 +76,14 @@ ${[['code','委託編號'],['title','標題'],['price','價格'],['address','完
   });};
   async function addPublications(item,channel){return mutate(async()=>{const targets=channel==='marketplace'?[{}]:root.alphaGroups?.selected()||[];if(!targets.length)throw Error('請先在社團整理勾選目標社團。');const ops=[];for(const target of targets){const candidate=model.publication(item.id,channel,target,item.version,uid());if(publications(item.id).some(p=>p.channel===channel&&p.targetUrl===candidate.targetUrl&&p.status!=='已刪除（人工確認）'))continue;ops.push({put:candidate});}if(!ops.length)throw Error('目標已有刊登紀錄，請使用原紀錄修改。');ops.push({put:log(item.id,'建立刊登紀錄',channel)});await repo.batch(ops);say('已建立獨立通路紀錄，尚未發布。');});}
   const safeFacebook=url=>{try{const u=new URL(url);return u.protocol==='https:'&&/(^|\.)facebook\.com$/.test(u.hostname)?u.href:null;}catch{return null;}};
-  const MARKETPLACE_CREATE_URL='https://www.facebook.com/marketplace/create/item';
+  const MARKETPLACE_CREATE_URLS={出售:'https://www.facebook.com/marketplace/create/item',出租:'https://www.facebook.com/marketplace/create/rental'};
   async function openMarketplaceCreate(item){
     if(!authorized())return;
     try{
-      if(repo)await repo.batch([{put:log(item.id,'開啟Marketplace建立頁',MARKETPLACE_CREATE_URL)}]);
-      window.open(MARKETPLACE_CREATE_URL,'_blank','noopener,noreferrer');
-      say('已開啟Marketplace建立頁。請在新分頁重新點Alpha書籤、選擇同一案件，再按「準備Marketplace文字與照片」；最後發布仍由你確認。');
+      const url=item.transaction==='出租'?MARKETPLACE_CREATE_URLS.出租:MARKETPLACE_CREATE_URLS.出售;
+      if(repo)await repo.batch([{put:log(item.id,'開啟Marketplace建立頁',url)}]);
+      window.open(url,'_blank','noopener,noreferrer');
+      say('已開啟'+(item.transaction==='出租'?'Facebook 房屋租賃':'Marketplace 一般出售商品')+'建立頁。請在新分頁重新點Alpha書籤、選擇同一案件，再按「準備Marketplace文字與照片」；最後發布仍由你確認。');
     }catch(e){say(e.message,true);}
   }
   async function openNative(item,p){if(!authorized())return;const url=safeFacebook(p.url||p.targetUrl);if(!url){say('沒有可確認的Facebook網址。',true);return;}try{await repo.batch([{put:log(item.id,'開啟原生頁面',url)}]);window.open(url,'_blank','noopener,noreferrer');say('已開啟原生頁面。跨頁後重開Alpha，選同一案件準備填入；發布／儲存由你手動確認。');}catch(e){say(e.message,true);}}
@@ -109,12 +110,33 @@ ${[['code','委託編號'],['title','標題'],['price','價格'],['address','完
     const history=records.filter(r=>r.kind==='log'&&r.caseId===id).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,20);const details=document.createElement('details');details.append(text('summary','最近操作紀錄'));history.forEach(l=>details.append(text('p',new Date(l.at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})+'｜'+l.action+'｜'+l.detail)));box.append(details);
   }
   async function prepareNative(item){if(!authorized())return;try{
-    const onMarket=/^\/marketplace\/(create|edit)/.test(location.pathname),onGroup=/^\/groups\//.test(location.pathname);if(!onMarket&&!onGroup)throw Error('請先到Marketplace建立／編輯頁，或手動開啟目標社團的發文框。');
+    const onMarket=/^\/marketplace\/(create|edit)/.test(location.pathname),onRental=/^\/marketplace\/create\/rental/.test(location.pathname),onGroup=/^\/groups\//.test(location.pathname);if(!onMarket&&!onGroup)throw Error('請先到Marketplace建立／編輯頁，或手動開啟目標社團的發文框。');
     const dialogs=[...document.querySelectorAll('[role="dialog"]')].filter(el=>!root.contains(el)&&el.getClientRects().length),scope=dialogs.length===1?dialogs[0]:onMarket?document.querySelector('[role="main"]'):null;
     if(!scope)throw Error('原生表單無法唯一確認，請手動填入。');
-    const fields=[...scope.querySelectorAll('input,textarea,[contenteditable="true"]')].filter(el=>!root.contains(el)&&el.getClientRects().length),plans=[];
-    if(onMarket)for(const [labels,value]of [[['標題','Title'],item.title],[['價格','Price'],item.unit==='萬元'&&item.price!==null?String(item.price*10000):String(item.price??'')],[['說明','描述','Description'],item.description]]){const matches=fields.filter(el=>labels.includes(el.getAttribute('aria-label')||el.getAttribute('placeholder')));if(matches.length!==1)throw Error('標題、價格或說明欄位無法唯一辨識，尚未填入。');plans.push([matches[0],value]);}
-    else{const editors=fields.filter(el=>el.getAttribute('contenteditable')==='true'&&el.getAttribute('role')==='textbox');if(editors.length!==1)throw Error('請先手動開啟唯一的社團發文框。');plans.push([editors[0],[item.title,`${item.price??''}${item.unit}`,item.description].filter(Boolean).join('\n')]);}
+    const visibleFields=()=>[...scope.querySelectorAll('input,textarea,[contenteditable="true"]')].filter(el=>!root.contains(el)&&el.getClientRects().length);
+    let fields=visibleFields();
+    if(onMarket&&/^\/marketplace\/create\/item/.test(location.pathname)){
+      const hasDescription=fields.some(el=>['說明','描述','商品說明','Description'].includes(el.getAttribute('aria-label')||el.getAttribute('placeholder')));
+      if(!hasDescription){
+        const more=[...scope.querySelectorAll('button,[role="button"]')].filter(el=>!root.contains(el)&&el.getClientRects().length&&/更多詳情|More details/i.test(String(el.innerText||el.getAttribute('aria-label')||'')));
+        if(more.length===1){more[0].click();await new Promise(resolve=>setTimeout(resolve,350));fields=visibleFields();}
+      }
+    }
+    const plans=[],matchField=(labels,required=true)=>{const matches=fields.filter(el=>labels.includes(el.getAttribute('aria-label')||el.getAttribute('placeholder')));if(matches.length===1)return matches[0];if(required||matches.length>1)throw Error('Marketplace 欄位無法唯一辨識：'+labels[0]+'。尚未填入。');return null;};
+    if(onMarket){
+      if(onRental){
+        const room=String(item.layout||'').match(/(\d+)\s*房/),bath=String(item.layout||'').match(/(\d+)\s*衛/),area=Number(item.area),description=[item.title,item.description].filter(Boolean).join('\n\n');
+        const rentalPlans=[
+          [['價格（每月）','Price per month'],String(item.price??''),true],
+          [['出租說明','Rental description'],description,true],
+          [['地址','Address'],item.address||'',false],
+          [['臥房數量','Number of bedrooms'],room?.[1]||'',false],
+          [['衛浴數量','Number of bathrooms'],bath?.[1]||'',false],
+          [['房屋平方英尺','Property square feet'],Number.isFinite(area)&&area>0?String(Math.round(area*35.583)):'',false]
+        ];
+        for(const [labels,value,required]of rentalPlans){if(!value)continue;const field=matchField(labels,required);if(field)plans.push([field,value]);}
+      }else for(const [labels,value]of [[['標題','Title'],item.title],[['價格','Price'],item.unit==='萬元'&&item.price!==null?String(item.price*10000):String(item.price??'')],[['說明','描述','商品說明','Description'],item.description]]){plans.push([matchField(labels,true),value]);}
+    }else{const editors=fields.filter(el=>el.getAttribute('contenteditable')==='true'&&el.getAttribute('role')==='textbox');if(editors.length!==1)throw Error('請先手動開啟唯一的社團發文框。');plans.push([editors[0],[item.title,`${item.price??''}${item.unit}`,item.description].filter(Boolean).join('\n')]);}
     for(const [el,value]of plans){const old=el.getAttribute('contenteditable')==='true'?el.textContent:el.value;if(cleanText(old)&&cleanText(old)!==cleanText(value))throw Error('原生框已有不同草稿，未覆蓋。');}
     for(const [el,value]of plans){el.focus();if(el.getAttribute('contenteditable')==='true'){el.textContent=value;el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:value}));}else{Object.getOwnPropertyDescriptor(el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));}}
     let photoMessage='';
@@ -129,7 +151,7 @@ ${[['code','委託編號'],['title','標題'],['price','價格'],['address','完
         uploaders[0].files=transfer.files;uploaders[0].dispatchEvent(new Event('change',{bubbles:true}));photoMessage=`；已加入 ${media.length} 張照片`;
       }catch{photoMessage='；照片無法自動加入，請使用「下載本案照片」後手動加入';}
     }
-    say('已準備文字'+photoMessage+'。請核對分類、刊登類型、地點、價格單位與全部欄位，再由你手動發布／儲存。');
+    say('已準備文字'+photoMessage+'。'+(onRental?'請選擇出租類型並從地址建議選單確認地點；':'房屋出售使用一般商品，請核對類別與商品狀況；')+'最後再由你手動發布／儲存。');
   }catch(e){say(e.message,true);}}
   const cleanText=v=>String(v||'').trim();
   function download(name,blob){const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
