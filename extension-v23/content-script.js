@@ -36,8 +36,8 @@ function quickTime(panel, minutes = 0, days = 0) {
 
 function timing(job) {
   return job.speedMode === 'slow'
-    ? {page: 90000, photo: 180000, groups: 120000, pause: 1800}
-    : {page: 45000, photo: 60000, groups: 60000, pause: 800};
+    ? {page: 120000, photo: 240000, photoSettle: 20000, groups: 150000, pause: 1800}
+    : {page: 60000, photo: 90000, photoSettle: 7000, groups: 75000, pause: 800};
 }
 
 async function progress(job, step) {
@@ -75,7 +75,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.1</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.4.2</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -460,6 +460,11 @@ async function uploadPhotos(job, limits = timing(job)) {
     const match = document.body.innerText.match(/相片\s*·\s*(\d+)\s*[／/]\s*10/);
     return match && Number(match[1]) >= job.photos.length;
   }, limits.photo);
+  await sleep(limits.photoSettle);
+  await waitFor(() => {
+    const match = document.body.innerText.match(/相片\s*·\s*(\d+)\s*[／/]\s*10/);
+    return match && Number(match[1]) >= job.photos.length;
+  }, limits.photo);
 }
 
 function clickButton(names) {
@@ -524,7 +529,7 @@ async function runMarketplaceJob(job) {
     const stageErrors = [];
     await progress(job, `正在上傳 ${job.photos.length} 張照片`);
     try { await uploadPhotos(job, limits); } catch (error) { stageErrors.push('照片：' + error.message); }
-    await progress(job, '正在設定類別、狀況、庫存與地點');
+    await progress(job, `照片已到齊並穩定等待 ${Math.round(limits.photoSettle / 1000)} 秒，正在設定其他欄位`);
     try { await selectCombo('類別', job.category || '其他商品', limits); } catch (error) { stageErrors.push('類別：' + error.message); }
     try { await selectCombo('狀況', job.condition || '二手 - 良好', limits); } catch (error) { stageErrors.push('狀況：' + error.message); }
     try { await selectCombo('存貨狀況', job.stock || '列為有存貨', limits); } catch (error) { stageErrors.push('存貨：' + error.message); }
