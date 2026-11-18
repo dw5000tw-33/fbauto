@@ -43,14 +43,6 @@ function fileToDataUrl(file) {
   });
 }
 
-function dataUrlToFile(dataUrl, name) {
-  const [head, body] = dataUrl.split(',');
-  const type = head.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
-  const binary = atob(body);
-  const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
-  return new File([bytes], name, {type});
-}
-
 function buildPanel() {
   if (document.getElementById(PANEL_ID)) return document.getElementById(PANEL_ID);
   const panel = document.createElement('aside');
@@ -61,6 +53,7 @@ function buildPanel() {
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
       <small data-folder-summary>尚未選擇資料夾</small>
+      <div class="works-photo-preview" data-photo-preview></div>
       <label>商品標題<input data-title maxlength="200"></label>
       <label>售價（完整元）<input data-price inputmode="numeric" placeholder="例如 15980000"></label>
       <label>Marketplace 文案<textarea data-description rows="9"></textarea></label>
@@ -87,7 +80,7 @@ function buildPanel() {
 async function loadFolder(fileList, panel) {
   const files = [...fileList];
   const textFile = files.find(file => /\.(txt|md)$/i.test(file.name));
-  const images = files.filter(file => /^image\//.test(file.type)).slice(0, MAX_PHOTOS);
+  const images = files.filter(file => /^image\//.test(file.type)).sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant', {numeric: true})).slice(0, MAX_PHOTOS);
   const videos = files.filter(file => /^video\//.test(file.type));
   folderPhotos = await Promise.all(images.map(async file => ({name: file.name, dataUrl: await fileToDataUrl(file)})));
   if (textFile) {
@@ -97,6 +90,26 @@ async function loadFolder(fileList, panel) {
     panel.querySelector('[data-price]').value = inferPrice(text);
   }
   panel.querySelector('[data-folder-summary]').textContent = `文稿 ${textFile ? 1 : 0} 份、照片 ${images.length} 張、影片 ${videos.length} 支（Marketplace 此頁只使用照片）`;
+  renderPhotoPreview(panel);
+}
+
+function renderPhotoPreview(panel) {
+  const box = panel.querySelector('[data-photo-preview]');
+  box.replaceChildren();
+  folderPhotos.forEach((photo, index) => {
+    const item = document.createElement('div');
+    item.className = 'works-photo-item';
+    item.innerHTML = `<img alt=""><span></span><div><button type="button" data-left>←</button><button type="button" data-right>→</button><button type="button" data-remove>移除</button></div>`;
+    item.querySelector('img').src = photo.dataUrl;
+    item.querySelector('img').alt = photo.name;
+    item.querySelector('span').textContent = `${index === 0 ? '封面｜' : ''}${index + 1}. ${photo.name}`;
+    item.querySelector('[data-left]').disabled = index === 0;
+    item.querySelector('[data-right]').disabled = index === folderPhotos.length - 1;
+    item.querySelector('[data-left]').onclick = () => { [folderPhotos[index - 1], folderPhotos[index]] = [folderPhotos[index], folderPhotos[index - 1]]; renderPhotoPreview(panel); };
+    item.querySelector('[data-right]').onclick = () => { [folderPhotos[index + 1], folderPhotos[index]] = [folderPhotos[index], folderPhotos[index + 1]]; renderPhotoPreview(panel); };
+    item.querySelector('[data-remove]').onclick = () => { folderPhotos.splice(index, 1); renderPhotoPreview(panel); panel.querySelector('[data-folder-summary]').textContent = `目前保留照片 ${folderPhotos.length} 張`; };
+    box.append(item);
+  });
 }
 
 async function saveFromPanel(panel) {
@@ -190,21 +203,38 @@ async function selectCombo(label, option) {
   if (!combo) throw new Error(`找不到「${label}」選單。`);
   if (clean(combo.innerText).includes(option)) return;
   combo.click();
-  const choice = await waitFor(() => [...document.querySelectorAll('[role="option"]')].find(element => visible(element) && clean(element.innerText) === option));
+  const choice = await waitFor(() => {
+    const roleChoice = [...document.querySelectorAll('[role="option"],[role="menuitem"],[role="radio"]')]
+      .find(element => visible(element) && clean(element.innerText) === option);
+    if (roleChoice) return roleChoice;
+    const textChoice = [...document.querySelectorAll('div,span')].find(element => {
+      if (!visible(element) || clean(element.innerText) !== option) return false;
+      return ![...element.children].some(child => clean(child.innerText) === option);
+    });
+    return textChoice?.closest('[role="option"],[role="menuitem"],[role="radio"],[role="button"]') || textChoice;
+  }, 10000);
   choice.click();
-  await sleep(300);
+  await waitFor(() => clean(combo.innerText).includes(option), 5000);
 }
 
 async function uploadPhotos(job) {
-  const scope = document.querySelector('[role="main"]') || document;
-  const inputs = [...scope.querySelectorAll('input[type="file"]')].filter(element => String(element.accept || '').toLowerCase().includes('image'));
-  const input = inputs.find(element => element.multiple) || inputs[0] || [...scope.querySelectorAll('input[type="file"]')].find(element => element.multiple);
-  if (!input) throw new Error('找不到照片上傳欄。');
-  const transfer = new DataTransfer();
-  for (const photo of job.photos.slice(0, MAX_PHOTOS)) transfer.items.add(dataUrlToFile(photo.dataUrl, photo.name));
-  input.files = transfer.files;
-  input.dispatchEvent(new Event('change', {bubbles: true}));
-  await sleep(1200);
+  const requestId = crypto.randomUUID();
+  const result = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { window.removeEventListener('message', receive); reject(new Error('Facebook 照片上傳回應逾時。')); }, 15000);
+    function receive(event) {
+      if (event.source !== window || event.data?.source !== '33works-marketplace-page' || event.data.requestId !== requestId) return;
+      clearTimeout(timer);
+      window.removeEventListener('message', receive);
+      event.data.ok ? resolve(event.data) : reject(new Error(event.data.error || '照片上傳失敗。'));
+    }
+    window.addEventListener('message', receive);
+    window.postMessage({source: '33works-marketplace-extension', type: 'UPLOAD_PHOTOS', requestId, photos: job.photos.slice(0, MAX_PHOTOS)}, '*');
+  });
+  if (result.assigned !== job.photos.length) throw new Error(`照片只交付 ${result.assigned}/${job.photos.length} 張。`);
+  await waitFor(() => {
+    const match = document.body.innerText.match(/相片\s*·\s*(\d+)\s*[／/]\s*10/);
+    return match && Number(match[1]) >= job.photos.length;
+  }, 30000);
 }
 
 function clickButton(names) {
@@ -230,16 +260,18 @@ async function runMarketplaceJob(job) {
     nativeSetter(findField(['標題', 'Title']), job.title);
     nativeSetter(findField(['價格', 'Price']), String(job.price));
     nativeSetter(findField(['說明', '描述', '商品說明', 'Description']), job.description);
-    await selectCombo('類別', job.category || '其他商品');
-    await selectCombo('狀況', job.condition || '二手 - 良好');
-    await selectCombo('存貨狀況', job.stock || '列為有存貨');
+    const stageErrors = [];
+    try { await uploadPhotos(job); } catch (error) { stageErrors.push('照片：' + error.message); }
+    try { await selectCombo('類別', job.category || '其他商品'); } catch (error) { stageErrors.push('類別：' + error.message); }
+    try { await selectCombo('狀況', job.condition || '二手 - 良好'); } catch (error) { stageErrors.push('狀況：' + error.message); }
+    try { await selectCombo('存貨狀況', job.stock || '列為有存貨'); } catch (error) { stageErrors.push('存貨：' + error.message); }
     const locationField = findField(['地點', 'Location'], false);
     if (locationField && clean(locationField.value) !== clean(job.location)) nativeSetter(locationField, job.location);
     for (const label of ['發佈後推廣商品資訊', '對朋友隱藏']) {
       const checkbox = document.querySelector(`input[aria-label="${label}"]`);
       if (checkbox?.getAttribute('aria-checked') === 'true') checkbox.click();
     }
-    await uploadPhotos(job);
+    if (stageErrors.length) throw new Error('部分欄位未完成｜' + stageErrors.join('｜'));
     if (!job.autoPublish) {
       await send({type: 'MARKETPLACE_JOB_RESULT', id: job.id, ok: true, published: false});
       buildPanel().querySelector('[data-status]').textContent = '案件已填入，依設定停在確認頁。';

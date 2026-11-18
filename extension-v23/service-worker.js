@@ -120,14 +120,17 @@ chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name.startsWith(ALARM_PREFIX)) runJob(alarm.name.slice(ALARM_PREFIX.length));
 });
 
-chrome.runtime.onStartup.addListener(async () => {
+async function restoreSchedules() {
   for (const job of await listJobs()) {
     if (job.status !== 'scheduled') continue;
     const when = new Date(job.scheduledAt).getTime();
     if (when > Date.now()) await chrome.alarms.create(alarmName(job.id), {when});
     else await updateJob(job.id, {status: 'pending', lastError: '排程時間已過，等待你重新執行。'});
   }
-});
+}
+
+chrome.runtime.onStartup.addListener(restoreSchedules);
+chrome.runtime.onInstalled.addListener(restoreSchedules);
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
