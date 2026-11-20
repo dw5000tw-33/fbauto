@@ -230,21 +230,26 @@ async function importGroupProfiles(input) {
   const profiles = await listGroupProfiles();
   const byName = new Map(profiles.map(profile => [profile.name, profile]));
   let imported = 0;
+  let selectedId = '';
+  let groupCount = 0;
   for (const item of input) {
     const name = String(item?.name || '').trim();
     const groups = [...new Set((Array.isArray(item?.groups) ? item.groups : []).map(value => String(value).trim()).filter(Boolean))].slice(0, 20);
     if (!name || !groups.length) continue;
     const old = byName.get(name);
-    byName.set(name, {
+    const profile = {
       id: old?.id || crypto.randomUUID(), name, groups,
       requireAll: item.requireAll !== false, updatedAt: nowIso()
-    });
+    };
+    byName.set(name, profile);
+    if (!selectedId) selectedId = profile.id;
+    groupCount += groups.length;
     imported++;
   }
   if (!imported) throw new Error('備份檔中找不到可匯入的社團組合。');
   const merged = [...byName.values()];
   await chrome.storage.local.set({[GROUP_PROFILES_KEY]: merged});
-  return {imported, profiles: merged};
+  return {imported, groupCount, selectedId, profiles: merged};
 }
 
 chrome.action.onClicked.addListener(async tab => {
