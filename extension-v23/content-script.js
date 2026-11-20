@@ -76,7 +76,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.0</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.1</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -97,7 +97,7 @@ function buildPanel() {
         <small data-group-summary>尚未建立固定社團名單。</small>
         <label>新組合名稱<input data-profile-name placeholder="例如：台中買賣固定社團"></label>
         <label class="works-check"><input data-require-all type="checkbox" checked> 固定社團全部勾選成功才允許發布</label>
-        <div class="works-actions"><button type="button" data-capture-groups class="secondary">讀取目前已勾選社團</button><button type="button" data-export-groups class="secondary">匯出社團</button><button type="button" data-import-groups class="secondary">匯入社團</button><button type="button" data-delete-profile class="danger">刪除組合</button></div>
+        <div class="works-actions"><button type="button" data-capture-groups class="secondary">讀取目前已勾選社團</button><button type="button" data-capture-published class="secondary">讀取已發布社團</button><button type="button" data-export-groups class="secondary">匯出社團</button><button type="button" data-import-groups class="secondary">匯入社團</button><button type="button" data-delete-profile class="danger">刪除組合</button></div>
         <input data-import-file type="file" accept="application/json,.json" hidden>
       </details>
       <div class="works-grid">
@@ -123,6 +123,7 @@ function buildPanel() {
   panel.querySelectorAll('[data-after]').forEach(button => button.onclick = () => quickTime(panel, Number(button.dataset.after)));
   panel.querySelector('[data-tomorrow]').onclick = () => quickTime(panel, 0, 1);
   panel.querySelector('[data-capture-groups]').onclick = () => captureGroupProfile(panel);
+  panel.querySelector('[data-capture-published]').onclick = () => capturePublishedGroupProfile(panel);
   panel.querySelector('[data-export-groups]').onclick = () => exportGroupProfiles(panel);
   panel.querySelector('[data-import-groups]').onclick = () => panel.querySelector('[data-import-file]').click();
   panel.querySelector('[data-import-file]').onchange = event => importGroupProfilesFile(panel, event.target.files?.[0]);
@@ -323,6 +324,49 @@ async function captureGroupProfile(panel) {
   } catch (error) { panel.querySelector('[data-status]').textContent = '社團名單未儲存：' + error.message; }
 }
 
+function publishedGroupNames() {
+  if (!/已在\s*\d+\s*個地方上架|Listed in\s*\d+\s*places/i.test(document.body.innerText)) {
+    throw new Error('請先在「你的商品」打開已發布商品的社團清單。');
+  }
+  const commentPattern = /^\d+\s*(?:則留言|comments?)$/i;
+  const commentNodes = [...document.querySelectorAll('div,span')].filter(element => {
+    if (!visible(element) || !commentPattern.test(clean(element.innerText))) return false;
+    return ![...element.children].some(child => commentPattern.test(clean(child.innerText)));
+  });
+  const groups = [];
+  for (const commentNode of commentNodes) {
+    let row = commentNode.parentElement;
+    for (let depth = 0; row && depth < 6; depth++, row = row.parentElement) {
+      const text = clean(String(row.innerText || '').replace(commentNode.innerText, ''));
+      if (!text || text.length > 180) continue;
+      const nestedComments = [...row.querySelectorAll('div,span')].filter(node => commentPattern.test(clean(node.innerText)));
+      if (nestedComments.length > 3) continue;
+      groups.push(text);
+      break;
+    }
+  }
+  return [...new Set(groups.map(clean).filter(name => name && !/^Marketplace$/i.test(name)))].slice(0, 20);
+}
+
+async function capturePublishedGroupProfile(panel) {
+  try {
+    panel.querySelector('[data-status]').textContent = '正在讀取已發布商品的社團清單…';
+    const groups = publishedGroupNames();
+    if (!groups.length) throw new Error('畫面中沒有讀取到社團；請確認社團清單已打開並載入完成。');
+    const current = selectedProfile(panel);
+    const name = panel.querySelector('[data-profile-name]').value.trim() || current?.name;
+    if (!name) throw new Error('請先在「新組合名稱」輸入名稱，例如：台中主打。');
+    const result = await send({type: 'SAVE_GROUP_PROFILE', profile: {
+      id: current?.id, name, groups, requireAll: panel.querySelector('[data-require-all]').checked
+    }});
+    if (!result.ok) throw new Error(result.error);
+    await loadGroupProfiles(panel, result.profile.id);
+    panel.querySelector('[data-status]').textContent = `已從已發布商品儲存「${result.profile.name}」，共 ${result.profile.groups.length} 個社團。`;
+  } catch (error) {
+    panel.querySelector('[data-status]').textContent = '已發布社團未儲存：' + error.message;
+  }
+}
+
 async function deleteSelectedProfile(panel) {
   const profile = selectedProfile(panel);
   if (!profile) { panel.querySelector('[data-status]').textContent = '目前沒有選擇社團組合。'; return; }
@@ -361,8 +405,8 @@ async function importGroupProfilesFile(panel, file) {
     if (payload?.format !== '33-marketplace-group-profiles' || payload?.version !== 1) throw new Error('這不是 33 Marketplace 社團備份檔。');
     const result = await send({type: 'IMPORT_GROUP_PROFILES', profiles: payload.profiles});
     if (!result.ok) throw new Error(result.error);
-    await loadGroupProfiles(panel);
-    panel.querySelector('[data-status]').textContent = `已匯入 ${result.result.imported} 個社團組合。`;
+    await loadGroupProfiles(panel, result.result.selectedId || '');
+    panel.querySelector('[data-status]').textContent = `已匯入 ${result.result.imported} 個社團組合，共 ${result.result.groupCount} 個社團。`;
   } catch (error) {
     panel.querySelector('[data-status]').textContent = '匯入失敗：' + error.message;
   } finally { input.value = ''; }

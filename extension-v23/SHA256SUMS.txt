@@ -7,3 +7,4 @@ fce24d7e86ceb05b7d6eecc2be7e8f5a2f641392e41b8c94c19ecf48a32f9a90  33-marketplace
 6ecfc4f33e27a5dc4268a0bead33d52b3d37cf53a76f505c8e66a48fcc0a4835  33-marketplace-scheduler-v2.4.5-alpha.zip
 f6040b69a8f645f8659fcc103eccc0b655c29faf2cc629dac7bae4795d9388f4  33-marketplace-scheduler-v2.4.6-alpha.zip
 455552fc1e042fba05b8f688023d4ee0a6bfc15988fbb3567f6e2f08fe3f8274  33-marketplace-scheduler-v2.5.0-alpha.zip
+64117f58dcee9b1628f203b243a70179ee50f0c54bfb915a6e36c284ccf5064a  33-marketplace-scheduler-v2.5.1-alpha.zip
