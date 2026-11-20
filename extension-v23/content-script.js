@@ -76,7 +76,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.1</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.2</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -348,10 +348,41 @@ function publishedGroupNames() {
   return [...new Set(groups.map(clean).filter(name => name && !/^Marketplace$/i.test(name)))].slice(0, 20);
 }
 
+function publishedGroupScrollContainer() {
+  const commentNode = [...document.querySelectorAll('div,span')].find(element => visible(element) && /^\d+\s*(?:則留言|comments?)$/i.test(clean(element.innerText)));
+  let node = commentNode?.parentElement;
+  while (node && node !== document.body) {
+    if (node.scrollHeight > node.clientHeight + 80 && node.clientHeight > 180) return node;
+    node = node.parentElement;
+  }
+  return null;
+}
+
+async function scanPublishedGroups(timeout = 45000) {
+  const scroller = publishedGroupScrollContainer();
+  if (!scroller) return publishedGroupNames();
+  const original = scroller.scrollTop;
+  const groups = new Set();
+  scroller.scrollTop = 0;
+  await sleep(400);
+  const end = Date.now() + timeout;
+  let previous = -1;
+  while (Date.now() < end) {
+    publishedGroupNames().forEach(name => groups.add(name));
+    if (scroller.scrollTop === previous || scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4) break;
+    previous = scroller.scrollTop;
+    scroller.scrollTop = Math.min(scroller.scrollTop + Math.max(160, scroller.clientHeight * .7), scroller.scrollHeight);
+    await sleep(500);
+  }
+  publishedGroupNames().forEach(name => groups.add(name));
+  scroller.scrollTop = original;
+  return [...groups].slice(0, 20);
+}
+
 async function capturePublishedGroupProfile(panel) {
   try {
     panel.querySelector('[data-status]').textContent = '正在讀取已發布商品的社團清單…';
-    const groups = publishedGroupNames();
+    const groups = await scanPublishedGroups();
     if (!groups.length) throw new Error('畫面中沒有讀取到社團；請確認社團清單已打開並載入完成。');
     const current = selectedProfile(panel);
     const name = panel.querySelector('[data-profile-name]').value.trim() || current?.name;
