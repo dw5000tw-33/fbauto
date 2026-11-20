@@ -17,7 +17,8 @@ function send(message) {
 function statusText(status) {
   return ({
     scheduled: '已排程', running: '執行中', published: '已發布', ready_review: '已填入，等待確認',
-    submitted_review: '已送出，Facebook 審閱中',
+    publishing: '已按發布，正在確認結果', submitted_review: '已送出，Facebook 審閱中',
+    needs_attention: '結果待確認',
     failed: '失敗', pending: '待補發', queued: '排隊中', cancelled: '已取消',
     deleting: '刪除中', deleted: '已刪除'
   })[status] || status;
@@ -77,7 +78,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.3</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.4</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -110,6 +111,7 @@ function buildPanel() {
         <label>電腦速度<select data-speed><option value="normal">一般</option><option value="slow">慢速電腦</option></select></label>
         <label>案件間隔（分鐘）<input data-delay type="number" min="1" max="30" value="5"></label>
       </div>
+      <label class="works-check"><input data-background type="checkbox" checked> 背景執行，不切換目前使用的分頁</label>
       <label class="works-check"><input data-auto type="checkbox"> 到時間允許助手直接按下「發布」</label>
       <div class="works-actions"><button data-save>儲存排程</button><button data-reset class="secondary">清除表單</button><button data-refresh class="secondary">重新整理</button></div>
       <section><h3>排程案件</h3><div data-jobs></div></section>
@@ -217,6 +219,7 @@ function resetForm(panel) {
   panel.querySelector('[data-folder]').value = '';
   panel.querySelector('[data-folder-summary]').textContent = '尚未選擇資料夾';
   panel.querySelector('[data-auto]').checked = false;
+  panel.querySelector('[data-background]').checked = true;
   panel.querySelector('[data-save]').textContent = '儲存排程';
   panel.querySelector('[data-status]').textContent = '可以建立下一個案件。';
   quickTime(panel, 10);
@@ -456,6 +459,7 @@ async function saveFromPanel(panel) {
     category: value('[data-category]') || '其他商品', condition: value('[data-condition]') || '二手 - 良好',
     stock: value('[data-stock]') || '列為有存貨', location: value('[data-location]') || '台中市',
     scheduledAt: `${scheduleDate}T${scheduleClock}`, autoPublish: panel.querySelector('[data-auto]').checked,
+    backgroundMode: panel.querySelector('[data-background]').checked,
     speedMode: panel.querySelector('[data-speed]').value,
     queueDelayMinutes: Number(panel.querySelector('[data-delay]').value) || 5,
     groupProfile: profile ? {id: profile.id, name: profile.name, groups: [...profile.groups], requireAll: profile.requireAll !== false} : null
@@ -492,19 +496,39 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
   box.replaceChildren();
   for (const job of result.jobs || []) {
     const card = document.createElement('article');
-    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-confirm-publish>確認完成並發布</button><button data-open-listing class="secondary">開啟剛上架商品</button><button data-delete-listing class="danger">刪除剛上架商品</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除排程</button></div>`;
+    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-focus-review class="secondary">前往確認頁</button><button data-confirm-publish>確認完成並發布</button><button data-stop class="danger">停止並釋放隊列</button><button data-mark-failed class="secondary">確認未上架，允許重試</button><button data-open-listing class="secondary">開啟剛上架商品</button><button data-delete-listing class="danger">刪除剛上架商品</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除排程</button></div>`;
     card.querySelector('b').textContent = job.title;
     card.querySelectorAll('p')[0].textContent = `${localDateTime(job.scheduledAt)}｜${statusText(job.status)}`;
-    card.querySelectorAll('p')[1].textContent = `NT$${Number(job.price).toLocaleString('en-US')}｜照片 ${job.photoCount || 0} 張｜${job.groupProfile?.name || '只刊登 Marketplace'}｜${job.autoPublish ? '自動發布' : '停在確認頁'}`;
+    card.querySelectorAll('p')[1].textContent = `NT$${Number(job.price).toLocaleString('en-US')}｜照片 ${job.photoCount || 0} 張｜${job.groupProfile?.name || '只刊登 Marketplace'}｜${job.autoPublish ? '自動發布' : '停在確認頁'}｜${job.backgroundMode ? '背景執行' : '前景執行'}`;
     card.querySelector('[data-step]').textContent = `${job.currentStep || ''}${job.speedMode === 'slow' ? '｜慢速模式' : ''}｜案件間隔 ${job.queueDelayMinutes || 5} 分鐘`;
     card.querySelector('.works-error').textContent = job.lastError || job.listingUrl || '';
     card.querySelector('[data-edit]').disabled = job.status === 'running';
     card.querySelector('[data-run]').disabled = !['scheduled', 'failed', 'pending', 'queued'].includes(job.status);
     card.querySelector('[data-edit]').onclick = () => editJob(panel, job);
     card.querySelector('[data-run]').onclick = async () => { const response = await send({type: 'RUN_MARKETPLACE_JOB_NOW', id: job.id}); panel.querySelector('[data-status]').textContent = response.ok ? '案件已送入執行佇列。' : response.error; await renderJobs(panel); };
+    card.querySelector('[data-focus-review]').hidden = job.status !== 'ready_review';
+    card.querySelector('[data-focus-review]').onclick = async () => {
+      const response = await send({type: 'FOCUS_MARKETPLACE_JOB', id: job.id});
+      panel.querySelector('[data-status]').textContent = response.ok ? '已切換到這筆案件的確認頁。' : response.error;
+    };
     card.querySelector('[data-confirm-publish]').hidden = job.status !== 'ready_review';
     card.querySelector('[data-confirm-publish]').onclick = async () => {
-      await continueReviewedPublish(job);
+      const response = await send({type: 'CONTINUE_MARKETPLACE_JOB', id: job.id});
+      panel.querySelector('[data-status]').textContent = response.ok ? '已通知原確認頁繼續發布，正在追蹤 Facebook 結果。' : response.error;
+      await renderJobs(panel);
+    };
+    card.querySelector('[data-stop]').hidden = !['running', 'publishing', 'queued', 'ready_review'].includes(job.status);
+    card.querySelector('[data-stop]').onclick = async () => {
+      if (!confirm(`停止「${job.title}」並讓下一筆排程繼續？\n\n這只停止助手，不會刪除 Facebook 上已存在的商品。`)) return;
+      const response = await send({type: 'STOP_MARKETPLACE_JOB', id: job.id});
+      panel.querySelector('[data-status]').textContent = response.ok ? '已停止此案件並釋放後續隊列。' : response.error;
+      await renderJobs(panel);
+    };
+    card.querySelector('[data-mark-failed]').hidden = job.status !== 'needs_attention';
+    card.querySelector('[data-mark-failed]').onclick = async () => {
+      if (!confirm('請先確認 Facebook「你的商品」中沒有這次的新刊登。\n\n確定標記為未上架，讓此案件可以重新執行嗎？')) return;
+      const response = await send({type: 'MARKETPLACE_JOB_NOT_PUBLISHED', id: job.id});
+      panel.querySelector('[data-status]').textContent = response.ok ? '已標記為未上架，可以修改時間或立即重試。' : response.error;
       await renderJobs(panel);
     };
     card.querySelector('[data-open-listing]').hidden = job.status !== 'published' || !job.listingUrl;
@@ -540,6 +564,7 @@ async function editJob(panel, job) {
   const [jobDate, jobClock] = dateTimeInputValue(new Date(job.scheduledAt)).split('T');
   set('[data-date]', jobDate); set('[data-clock]', jobClock); set('[data-speed]', job.speedMode || 'normal'); set('[data-delay]', job.queueDelayMinutes || 5);
   panel.querySelector('[data-auto]').checked = Boolean(job.autoPublish);
+  panel.querySelector('[data-background]').checked = job.backgroundMode !== false;
   if (job.groupProfile?.id) await loadGroupProfiles(panel, job.groupProfile.id);
   panel.querySelector('[data-folder-summary]').textContent = `已載入排程照片 ${folderPhotos.length} 張；若不需更換，不必重新選擇資料夾。`;
   panel.querySelector('[data-save]').textContent = '儲存修改';
@@ -660,6 +685,10 @@ function readyButton(names) {
 }
 
 function listingOutcome(job) {
+  const pageText = clean(document.body.innerText);
+  if (/重複刊登|刊登商品重複|重複的刊登|duplicate listing|looks like another item/i.test(pageText)) {
+    return {failed: true, error: 'Facebook 判定這次為重複刊登，商品沒有成功建立。'};
+  }
   const currentId = marketplaceItemId(location.href);
   if (currentId) return {published: true, submitted: false, listingUrl: location.href};
   const title = clean(job.title);
@@ -672,24 +701,37 @@ function listingOutcome(job) {
       return {published: !review, submitted: review, listingUrl: link.href};
     }
   }
-  const pageText = clean(document.body.innerText);
   if (pageText.includes(title) && /正在檢閱中|審閱中|in review/i.test(pageText)) {
     return {published: false, submitted: true, listingUrl: location.href};
   }
   return null;
 }
 
+async function watchPublishOutcome(job, limits = timing(job)) {
+  try {
+    const outcome = await waitFor(() => listingOutcome(job), Math.max(limits.page, 120000), 500);
+    if (outcome.failed) {
+      await send({type: 'MARKETPLACE_JOB_RESULT', id: job.id, ok: false, error: outcome.error, listingUrl: location.href});
+      return;
+    }
+    await send({type: 'MARKETPLACE_JOB_RESULT', id: job.id, ok: true, ...outcome});
+    const panel = document.getElementById(PANEL_ID);
+    if (panel) panel.querySelector('[data-status]').textContent = outcome.submitted
+      ? 'Facebook 已收到刊登，目前正在審閱；不會再次重發。'
+      : 'Marketplace 上架完成。';
+  } catch {
+    await send({type: 'MARKETPLACE_JOB_UNCERTAIN', id: job.id, url: location.href}).catch(() => {});
+  }
+}
+
 async function finishPublishClick(job, limits) {
   await progress(job, '已確認，正在按下發布');
   const button = readyButton(['發佈', '發布', 'Publish']);
   if (!button) throw new Error('目前畫面找不到可按的「發布」，請確認仍停在這筆案件的發布前頁面。');
+  const started = await send({type: 'MARKETPLACE_PUBLISH_CLICKED', id: job.id});
+  if (!started.ok) throw new Error(started.error || '無法開始追蹤發布結果。');
   button.click();
-  const outcome = await waitFor(() => listingOutcome(job), Math.max(limits.page, 120000), 500);
-  await send({type: 'MARKETPLACE_JOB_RESULT', id: job.id, ok: true, ...outcome});
-  const panel = document.getElementById(PANEL_ID);
-  if (panel) panel.querySelector('[data-status]').textContent = outcome.submitted
-    ? 'Facebook 已收到刊登，目前正在審閱；不會再次重發。'
-    : 'Marketplace 上架完成。';
+  await watchPublishOutcome(job, limits);
 }
 
 async function continueReviewedPublish(job) {
@@ -876,5 +918,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'RUN_MARKETPLACE_DELETE') {
     runMarketplaceDelete(message.job, message.itemId);
     sendResponse({ok: true});
+  } else if (message.type === 'CONTINUE_MARKETPLACE_JOB') {
+    continueReviewedPublish(message.job);
+    sendResponse({ok: true});
   }
 });
+
+send({type: 'GET_CURRENT_TAB_MARKETPLACE_JOB'}).then(response => {
+  if (response?.ok && response.job?.status === 'publishing') {
+    watchPublishOutcome(response.job).catch(() => {});
+  }
+}).catch(() => {});
