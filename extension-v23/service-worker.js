@@ -323,22 +323,23 @@ chrome.alarms.onAlarm.addListener(alarm => {
   else if (alarm.name.startsWith(ALARM_PREFIX)) launchJob(alarm.name.slice(ALARM_PREFIX.length));
 });
 
-async function restoreSchedules() {
+async function restoreSchedules(resumeQueued = false) {
   await chrome.storage.local.remove(ACTIVE_JOB_KEY);
   for (const job of await listJobs()) {
     if (['running', 'publishing'].includes(job.status)) await updateJob(job.id, {status: 'needs_attention', currentStep: '更新後需人工確認前次結果', lastError: '前次流程中斷；請先確認 Facebook 是否已有商品，再決定是否重試。'});
+    if (!resumeQueued && job.status === 'queued') await updateJob(job.id, {status: 'pending', currentStep: '版本更新後暫停，等待人工重新執行', lastError: '為避免重複刊登，舊排隊案件不會在更新後自動恢復。'});
     if (job.status !== 'scheduled') continue;
     const when = new Date(job.scheduledAt).getTime();
     if (when > Date.now()) await chrome.alarms.create(alarmName(job.id), {when});
     else await updateJob(job.id, {status: 'pending', currentStep: '排程時間已過', lastError: '排程時間已過，等待你重新執行。'});
   }
-  if ((await listJobs()).some(job => job.status === 'queued')) {
+  if (resumeQueued && (await listJobs()).some(job => job.status === 'queued')) {
     await chrome.alarms.create(QUEUE_ALARM, {when: Date.now() + 60000});
   }
 }
 
-chrome.runtime.onStartup.addListener(restoreSchedules);
-chrome.runtime.onInstalled.addListener(restoreSchedules);
+chrome.runtime.onStartup.addListener(() => restoreSchedules(true));
+chrome.runtime.onInstalled.addListener(() => restoreSchedules(false));
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
