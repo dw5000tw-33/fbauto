@@ -5,6 +5,7 @@ const JOB_INDEX = 'marketplace-job-index';
 const GROUP_PROFILES_KEY = 'marketplace-group-profiles';
 const ACTIVE_JOB_KEY = 'marketplace-active-job';
 const ALARM_PREFIX = 'marketplace-publish:';
+const WATCHDOG_PREFIX = 'marketplace-watchdog:';
 const QUEUE_ALARM = 'marketplace-queue-next';
 const CREATE_URL = 'https://www.facebook.com/marketplace/create/item';
 const SELLING_URL = 'https://www.facebook.com/marketplace/you/selling';
@@ -12,6 +13,7 @@ const MAX_ACTIVE_JOBS = 10;
 
 const jobKey = id => JOB_PREFIX + id;
 const alarmName = id => ALARM_PREFIX + id;
+const watchdogName = id => WATCHDOG_PREFIX + id;
 const nowIso = () => new Date().toISOString();
 
 async function getJob(id) {
@@ -57,7 +59,8 @@ async function saveJob(input) {
     createdAt: old?.createdAt || nowIso(), updatedAt: nowIso(),
     lastError: '', listingUrl: old?.listingUrl || '',
     queueDelayMinutes: Math.min(30, Math.max(1, Number(input.queueDelayMinutes) || 5)),
-    speedMode: input.speedMode === 'slow' ? 'slow' : 'normal'
+    speedMode: input.speedMode === 'slow' ? 'slow' : 'normal',
+    backgroundMode: input.backgroundMode !== false
   };
   await chrome.alarms.clear(alarmName(job.id));
   await putJob(job);
@@ -81,6 +84,8 @@ async function cancelJob(id) {
 
 async function removeJob(id) {
   await chrome.alarms.clear(alarmName(id));
+  await chrome.alarms.clear(watchdogName(id));
+  if (await getActiveJobId() === id) await chrome.storage.local.remove(ACTIVE_JOB_KEY);
   const current = await chrome.storage.local.get(JOB_INDEX);
   const ids = (current[JOB_INDEX] || []).filter(value => value !== id);
   await chrome.storage.local.remove(jobKey(id));
@@ -118,9 +123,10 @@ async function launchJob(id, force = false) {
   if (activeId && activeId !== id) { await queueJob(id); return; }
   if (!force && job.status === 'scheduled' && new Date(job.scheduledAt).getTime() > Date.now()) return;
   await chrome.storage.local.set({[ACTIVE_JOB_KEY]: id});
-  await updateJob(id, {status: 'running', currentStep: '正在開啟 Marketplace', startedAt: nowIso(), lastError: ''});
+  await updateJob(id, {status: 'running', currentStep: job.backgroundMode === false ? '正在前景開啟 Marketplace' : '正在背景開啟 Marketplace', startedAt: nowIso(), lastError: '', executionTabId: null});
   try {
-    const tab = await chrome.tabs.create({url: `${CREATE_URL}?works_job=${encodeURIComponent(id)}`, active: true});
+    const tab = await chrome.tabs.create({url: `${CREATE_URL}?works_job=${encodeURIComponent(id)}`, active: job.backgroundMode === false});
+    await updateJob(id, {executionTabId: tab.id});
     const onRemoved = async tabId => {
       if (tabId !== tab.id) return;
       chrome.tabs.onRemoved.removeListener(onRemoved);
@@ -138,12 +144,14 @@ async function launchJob(id, force = false) {
 }
 
 async function finishFailedJob(id, error) {
+  await chrome.alarms.clear(watchdogName(id));
   const job = await updateJob(id, {status: 'failed', currentStep: '執行失敗', lastError: error, finishedAt: nowIso()});
   await releaseQueue(id, job.queueDelayMinutes);
   await notify('Marketplace 上架失敗', job.title);
 }
 
 async function releaseQueue(id, delayMinutes = 5) {
+  await chrome.alarms.clear(watchdogName(id));
   if (await getActiveJobId() === id) await chrome.storage.local.remove(ACTIVE_JOB_KEY);
   if ((await listJobs()).some(job => job.status === 'queued')) {
     await chrome.alarms.create(QUEUE_ALARM, {when: Date.now() + Math.max(1, Number(delayMinutes) || 5) * 60000});
@@ -151,10 +159,58 @@ async function releaseQueue(id, delayMinutes = 5) {
 }
 
 async function runNextQueued() {
-  if (await getActiveJobId()) return;
+  const activeId = await getActiveJobId();
+  if (activeId) {
+    const active = await getJob(activeId);
+    if (active && ['running', 'publishing', 'ready_review'].includes(active.status)) return;
+    await chrome.storage.local.remove(ACTIVE_JOB_KEY);
+  }
   const queued = (await listJobs()).filter(job => job.status === 'queued')
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
   if (queued[0]) await launchJob(queued[0].id, true);
+}
+
+async function focusMarketplaceJob(id) {
+  const job = await getJob(id);
+  if (!job?.executionTabId) throw new Error('找不到這筆案件原本的 Facebook 分頁。');
+  const tab = await chrome.tabs.get(job.executionTabId).catch(() => null);
+  if (!tab) throw new Error('原本的 Facebook 確認頁已被關閉。');
+  await chrome.tabs.update(tab.id, {active: true});
+  if (tab.windowId) await chrome.windows.update(tab.windowId, {focused: true}).catch(() => {});
+  return {tabId: tab.id};
+}
+
+async function continueMarketplaceJob(id) {
+  const job = await getJob(id);
+  if (job?.status !== 'ready_review') throw new Error('這筆案件目前不是等待人工確認狀態。');
+  if (!job.executionTabId) throw new Error('找不到原本的 Facebook 確認頁。');
+  const tab = await chrome.tabs.get(job.executionTabId).catch(() => null);
+  if (!tab) throw new Error('原本的 Facebook 確認頁已被關閉，請停止此案件後重新排程。');
+  await sendWhenReady(tab.id, {type: 'CONTINUE_MARKETPLACE_JOB', job});
+  return {tabId: tab.id};
+}
+
+async function stopMarketplaceJob(id) {
+  const job = await getJob(id);
+  if (!job) throw new Error('找不到排程案件。');
+  if (!['running', 'publishing', 'queued', 'ready_review'].includes(job.status)) throw new Error('這筆案件目前不需要停止。');
+  await chrome.alarms.clear(alarmName(id));
+  await chrome.alarms.clear(watchdogName(id));
+  const stopped = await updateJob(id, {status: 'failed', currentStep: '已人工停止並釋放隊列', lastError: '助手已停止；Facebook 上已存在的商品不會被刪除。', finishedAt: nowIso()});
+  await releaseQueue(id, 1);
+  if (job.executionTabId) await chrome.tabs.remove(job.executionTabId).catch(() => {});
+  return stopped;
+}
+
+async function publishWatchdog(id) {
+  const job = await getJob(id);
+  if (!job || job.status !== 'publishing') return;
+  await updateJob(id, {
+    status: 'needs_attention', currentStep: '無法自動確認 Facebook 最終結果',
+    lastError: '已停止等待並釋放後續隊列。請到「你的商品」人工確認是否成功，勿直接重發。', finishedAt: nowIso()
+  });
+  await releaseQueue(id, job.queueDelayMinutes);
+  await notify('Marketplace 結果待確認', job.title);
 }
 
 async function listGroupProfiles() {
@@ -263,13 +319,14 @@ chrome.action.onClicked.addListener(async tab => {
 
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === QUEUE_ALARM) runNextQueued();
+  else if (alarm.name.startsWith(WATCHDOG_PREFIX)) publishWatchdog(alarm.name.slice(WATCHDOG_PREFIX.length));
   else if (alarm.name.startsWith(ALARM_PREFIX)) launchJob(alarm.name.slice(ALARM_PREFIX.length));
 });
 
 async function restoreSchedules() {
   await chrome.storage.local.remove(ACTIVE_JOB_KEY);
   for (const job of await listJobs()) {
-    if (job.status === 'running') await updateJob(job.id, {status: 'pending', currentStep: '瀏覽器中斷，等待重新執行', lastError: '上次執行期間瀏覽器被關閉。'});
+    if (['running', 'publishing'].includes(job.status)) await updateJob(job.id, {status: 'needs_attention', currentStep: '更新後需人工確認前次結果', lastError: '前次流程中斷；請先確認 Facebook 是否已有商品，再決定是否重試。'});
     if (job.status !== 'scheduled') continue;
     const when = new Date(job.scheduledAt).getTime();
     if (when > Date.now()) await chrome.alarms.create(alarmName(job.id), {when});
@@ -295,9 +352,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     else if (message.type === 'CANCEL_MARKETPLACE_JOB') sendResponse({ok: true, job: await cancelJob(message.id)});
     else if (message.type === 'DELETE_MARKETPLACE_JOB') { await removeJob(message.id); sendResponse({ok: true}); }
     else if (message.type === 'RUN_MARKETPLACE_JOB_NOW') { await launchJob(message.id, true); sendResponse({ok: true}); }
+    else if (message.type === 'FOCUS_MARKETPLACE_JOB') sendResponse({ok: true, result: await focusMarketplaceJob(message.id)});
+    else if (message.type === 'CONTINUE_MARKETPLACE_JOB') sendResponse({ok: true, result: await continueMarketplaceJob(message.id)});
+    else if (message.type === 'STOP_MARKETPLACE_JOB') sendResponse({ok: true, job: await stopMarketplaceJob(message.id)});
+    else if (message.type === 'MARKETPLACE_JOB_NOT_PUBLISHED') {
+      const current = await getJob(message.id);
+      if (current?.status !== 'needs_attention') throw new Error('只有結果待確認的案件可以標記為未上架。');
+      const job = await updateJob(message.id, {status: 'failed', currentStep: '已人工確認未上架，可重新執行', lastError: '', listingUrl: ''});
+      sendResponse({ok: true, job});
+    }
+    else if (message.type === 'GET_CURRENT_TAB_MARKETPLACE_JOB') {
+      const tabId = sender.tab?.id;
+      const job = (await listJobs()).find(item => item.executionTabId === tabId) || null;
+      sendResponse({ok: true, job});
+    }
     else if (message.type === 'OPEN_MARKETPLACE_LISTING') sendResponse({ok: true, result: await openMarketplaceListing(message.id)});
     else if (message.type === 'DELETE_PUBLISHED_MARKETPLACE_LISTING') sendResponse({ok: true, result: await deletePublishedListing(message.id)});
     else if (message.type === 'MARKETPLACE_JOB_PROGRESS') { await updateJob(message.id, {currentStep: message.step || ''}); sendResponse({ok: true}); }
+    else if (message.type === 'MARKETPLACE_PUBLISH_CLICKED') {
+      const current = await getJob(message.id);
+      if (!current || !['running', 'ready_review'].includes(current.status)) throw new Error('案件狀態已改變，停止重複按下發布。');
+      const activeId = await getActiveJobId();
+      if (activeId && activeId !== current.id) throw new Error('另一筆案件正在執行，請先等待或停止該案件。');
+      await chrome.storage.local.set({[ACTIVE_JOB_KEY]: current.id});
+      const job = await updateJob(message.id, {status: 'publishing', currentStep: '已按下發布，正在確認 Facebook 結果', publishClickedAt: nowIso(), lastError: ''});
+      await chrome.alarms.create(watchdogName(job.id), {when: Date.now() + (job.speedMode === 'slow' ? 12 : 7) * 60000});
+      sendResponse({ok: true});
+    }
+    else if (message.type === 'MARKETPLACE_JOB_UNCERTAIN') {
+      const current = await getJob(message.id);
+      if (current?.status === 'publishing') {
+        const job = await updateJob(message.id, {status: 'needs_attention', currentStep: '發布後結果無法精確確認', listingUrl: message.url || '', lastError: '請到「你的商品」確認是否成功；已釋放後續隊列，請勿直接重發。', finishedAt: nowIso()});
+        await releaseQueue(job.id, job.queueDelayMinutes);
+        await notify('Marketplace 結果待確認', job.title);
+      }
+      sendResponse({ok: true});
+    }
     else if (message.type === 'MARKETPLACE_DELETE_PROGRESS') { await updateJob(message.id, {currentStep: message.step || ''}); sendResponse({ok: true}); }
     else if (message.type === 'MARKETPLACE_DELETE_RESULT') {
       const job = await updateJob(message.id, message.ok ? {
@@ -313,13 +403,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     else if (message.type === 'DELETE_GROUP_PROFILE') { await deleteGroupProfile(message.id); sendResponse({ok: true}); }
     else if (message.type === 'IMPORT_GROUP_PROFILES') sendResponse({ok: true, result: await importGroupProfiles(message.profiles)});
     else if (message.type === 'MARKETPLACE_JOB_RESULT') {
+      const current = await getJob(message.id);
+      if (!current) throw new Error('找不到排程案件。');
+      if (['published', 'submitted_review', 'failed', 'needs_attention', 'cancelled', 'deleted'].includes(current.status)) {
+        sendResponse({ok: true, ignored: true});
+        return;
+      }
       const status = message.ok ? (message.published ? 'published' : (message.submitted ? 'submitted_review' : 'ready_review')) : 'failed';
       const job = await updateJob(message.id, {
         status,
         currentStep: message.ok ? (message.published ? '發布成功' : (message.submitted ? '已送出，等待 Facebook 審閱' : '等待人工確認')) : '執行失敗',
         listingUrl: message.listingUrl || '', lastError: message.error || '', finishedAt: nowIso()
       });
-      await releaseQueue(job.id, job.queueDelayMinutes);
+      if (status !== 'ready_review') await releaseQueue(job.id, job.queueDelayMinutes);
       await notify(message.ok ? (message.published ? 'Marketplace 上架完成' : (message.submitted ? 'Marketplace 已送出審閱' : 'Marketplace 已填妥')) : 'Marketplace 上架失敗', job.title);
       sendResponse({ok: true});
     }
