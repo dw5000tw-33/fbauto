@@ -106,7 +106,7 @@ async function getActiveJobId() {
 
 async function queueJob(id) {
   const job = await getJob(id);
-  if (!job || ['published', 'ready_review', 'cancelled'].includes(job.status)) return;
+  if (!job || ['published', 'submitted_review', 'ready_review', 'cancelled'].includes(job.status)) return;
   await chrome.alarms.clear(alarmName(id));
   await updateJob(id, {status: 'queued', currentStep: '等待前一案件完成'});
 }
@@ -313,14 +313,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     else if (message.type === 'DELETE_GROUP_PROFILE') { await deleteGroupProfile(message.id); sendResponse({ok: true}); }
     else if (message.type === 'IMPORT_GROUP_PROFILES') sendResponse({ok: true, result: await importGroupProfiles(message.profiles)});
     else if (message.type === 'MARKETPLACE_JOB_RESULT') {
-      const status = message.ok ? (message.published ? 'published' : 'ready_review') : 'failed';
+      const status = message.ok ? (message.published ? 'published' : (message.submitted ? 'submitted_review' : 'ready_review')) : 'failed';
       const job = await updateJob(message.id, {
         status,
-        currentStep: message.ok ? (message.published ? '發布成功' : '等待人工確認') : '執行失敗',
+        currentStep: message.ok ? (message.published ? '發布成功' : (message.submitted ? '已送出，等待 Facebook 審閱' : '等待人工確認')) : '執行失敗',
         listingUrl: message.listingUrl || '', lastError: message.error || '', finishedAt: nowIso()
       });
       await releaseQueue(job.id, job.queueDelayMinutes);
-      await notify(message.ok ? (message.published ? 'Marketplace 上架完成' : 'Marketplace 已填妥') : 'Marketplace 上架失敗', job.title);
+      await notify(message.ok ? (message.published ? 'Marketplace 上架完成' : (message.submitted ? 'Marketplace 已送出審閱' : 'Marketplace 已填妥')) : 'Marketplace 上架失敗', job.title);
       sendResponse({ok: true});
     }
   })().catch(error => sendResponse({ok: false, error: error.message}));
