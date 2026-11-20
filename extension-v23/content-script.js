@@ -17,6 +17,7 @@ function send(message) {
 function statusText(status) {
   return ({
     scheduled: '已排程', running: '執行中', published: '已發布', ready_review: '已填入，等待確認',
+    submitted_review: '已送出，Facebook 審閱中',
     failed: '失敗', pending: '待補發', queued: '排隊中', cancelled: '已取消',
     deleting: '刪除中', deleted: '已刪除'
   })[status] || status;
@@ -76,7 +77,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.2</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.3</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -491,16 +492,21 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
   box.replaceChildren();
   for (const job of result.jobs || []) {
     const card = document.createElement('article');
-    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-open-listing class="secondary">開啟剛上架商品</button><button data-delete-listing class="danger">刪除剛上架商品</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除排程</button></div>`;
+    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-confirm-publish>確認完成並發布</button><button data-open-listing class="secondary">開啟剛上架商品</button><button data-delete-listing class="danger">刪除剛上架商品</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除排程</button></div>`;
     card.querySelector('b').textContent = job.title;
     card.querySelectorAll('p')[0].textContent = `${localDateTime(job.scheduledAt)}｜${statusText(job.status)}`;
     card.querySelectorAll('p')[1].textContent = `NT$${Number(job.price).toLocaleString('en-US')}｜照片 ${job.photoCount || 0} 張｜${job.groupProfile?.name || '只刊登 Marketplace'}｜${job.autoPublish ? '自動發布' : '停在確認頁'}`;
     card.querySelector('[data-step]').textContent = `${job.currentStep || ''}${job.speedMode === 'slow' ? '｜慢速模式' : ''}｜案件間隔 ${job.queueDelayMinutes || 5} 分鐘`;
     card.querySelector('.works-error').textContent = job.lastError || job.listingUrl || '';
     card.querySelector('[data-edit]').disabled = job.status === 'running';
-    card.querySelector('[data-run]').disabled = job.status === 'running';
+    card.querySelector('[data-run]').disabled = !['scheduled', 'failed', 'pending', 'queued'].includes(job.status);
     card.querySelector('[data-edit]').onclick = () => editJob(panel, job);
     card.querySelector('[data-run]').onclick = async () => { const response = await send({type: 'RUN_MARKETPLACE_JOB_NOW', id: job.id}); panel.querySelector('[data-status]').textContent = response.ok ? '案件已送入執行佇列。' : response.error; await renderJobs(panel); };
+    card.querySelector('[data-confirm-publish]').hidden = job.status !== 'ready_review';
+    card.querySelector('[data-confirm-publish]').onclick = async () => {
+      await continueReviewedPublish(job);
+      await renderJobs(panel);
+    };
     card.querySelector('[data-open-listing]').hidden = job.status !== 'published' || !job.listingUrl;
     card.querySelector('[data-open-listing]').onclick = async () => {
       const response = await send({type: 'OPEN_MARKETPLACE_LISTING', id: job.id});
@@ -513,7 +519,7 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
       panel.querySelector('[data-status]').textContent = response.ok ? '正在開啟 Marketplace 並刪除這次的確切刊登…' : response.error;
       await renderJobs(panel);
     };
-    card.querySelector('[data-cancel]').disabled = ['running', 'published', 'ready_review', 'cancelled'].includes(job.status);
+    card.querySelector('[data-cancel]').disabled = ['running', 'published', 'submitted_review', 'ready_review', 'cancelled'].includes(job.status);
     card.querySelector('[data-cancel]').onclick = async () => { const response = await send({type: 'CANCEL_MARKETPLACE_JOB', id: job.id}); panel.querySelector('[data-status]').textContent = response.ok ? '排程已取消。' : response.error; await renderJobs(panel); };
     card.querySelector('[data-delete]').onclick = async () => { if (confirm(`刪除排程「${job.title}」？`)) { await send({type: 'DELETE_MARKETPLACE_JOB', id: job.id}); renderJobs(panel); } };
     card.querySelector('[data-delete]').disabled = job.status === 'running';
@@ -653,6 +659,59 @@ function readyButton(names) {
   });
 }
 
+function listingOutcome(job) {
+  const currentId = marketplaceItemId(location.href);
+  if (currentId) return {published: true, submitted: false, listingUrl: location.href};
+  const title = clean(job.title);
+  for (const link of document.querySelectorAll('a[href*="/marketplace/item/"]')) {
+    let node = link;
+    for (let depth = 0; node && depth < 9; depth++, node = node.parentElement) {
+      const text = clean(node.innerText);
+      if (!text.includes(title)) continue;
+      const review = /正在檢閱中|審閱中|in review/i.test(text);
+      return {published: !review, submitted: review, listingUrl: link.href};
+    }
+  }
+  const pageText = clean(document.body.innerText);
+  if (pageText.includes(title) && /正在檢閱中|審閱中|in review/i.test(pageText)) {
+    return {published: false, submitted: true, listingUrl: location.href};
+  }
+  return null;
+}
+
+async function finishPublishClick(job, limits) {
+  await progress(job, '已確認，正在按下發布');
+  const button = readyButton(['發佈', '發布', 'Publish']);
+  if (!button) throw new Error('目前畫面找不到可按的「發布」，請確認仍停在這筆案件的發布前頁面。');
+  button.click();
+  const outcome = await waitFor(() => listingOutcome(job), Math.max(limits.page, 120000), 500);
+  await send({type: 'MARKETPLACE_JOB_RESULT', id: job.id, ok: true, ...outcome});
+  const panel = document.getElementById(PANEL_ID);
+  if (panel) panel.querySelector('[data-status]').textContent = outcome.submitted
+    ? 'Facebook 已收到刊登，目前正在審閱；不會再次重發。'
+    : 'Marketplace 上架完成。';
+}
+
+async function continueReviewedPublish(job) {
+  const panel = document.getElementById(PANEL_ID);
+  try {
+    if (!location.pathname.startsWith('/marketplace/create/item')) {
+      throw new Error('請回到這筆案件原本的 Facebook 發布前確認頁，再按此按鈕。');
+    }
+    const limits = timing(job);
+    const continueButton = readyButton(['繼續', 'Continue']);
+    if (continueButton) {
+      await progress(job, '人工確認完成，正在進入發布頁');
+      continueButton.click();
+      await sleep(limits.pause);
+    }
+    await waitFor(() => readyButton(['發佈', '發布', 'Publish']), limits.page);
+    await finishPublishClick(job, limits);
+  } catch (error) {
+    if (panel) panel.querySelector('[data-status]').textContent = '無法繼續發布：' + error.message;
+  }
+}
+
 async function selectConfiguredGroups(job, limits) {
   const profile = job.groupProfile;
   if (!profile?.groups?.length) return {selected: [], missing: []};
@@ -732,10 +791,7 @@ async function runMarketplaceJob(job) {
       buildPanel().querySelector('[data-status]').textContent = '商品與固定社團已選好，停在發布前確認頁。';
       return;
     }
-    await progress(job, '正在按下發布');
-    clickButton(['發佈', '發布', 'Publish']);
-    await waitFor(() => /\/marketplace\/item\//.test(location.pathname) || /listing/.test(location.pathname), limits.page);
-    await send({type: 'MARKETPLACE_JOB_RESULT', id: job.id, ok: true, published: true, listingUrl: location.href});
+    await finishPublishClick(job, limits);
   } catch (error) {
     await send({type: 'MARKETPLACE_JOB_RESULT', id: job.id, ok: false, error: error.message, listingUrl: location.href});
     const panel = buildPanel();
