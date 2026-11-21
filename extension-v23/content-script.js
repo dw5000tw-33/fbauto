@@ -78,7 +78,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.4</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.5</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -618,30 +618,68 @@ async function ensureMoreDetails() {
   }
 }
 
-async function selectCombo(label, option, limits = {page: 45000, pause: 800}) {
-  const findCombo = () => [...document.querySelectorAll('[role="combobox"]')]
+function choiceKey(value) {
+  return clean(value)
+    .normalize('NFKC')
+    .replace(/[\s\-‐‑‒–—―﹘﹣－·•・:：_]/g, '')
+    .toLowerCase();
+}
+
+function comboForLabel(label) {
+  const key = choiceKey(label);
+  return [...document.querySelectorAll('[role="combobox"]')]
     .filter(visible)
-    .find(element => clean(element.innerText).startsWith(label));
-  const combo = findCombo();
-  if (!combo) throw new Error(`找不到「${label}」選單。`);
-  if (clean(combo.innerText).includes(option)) return;
-  combo.click();
-  const choice = await waitFor(() => {
-    const roleChoice = [...document.querySelectorAll('[role="option"],[role="menuitem"],[role="radio"]')]
-      .find(element => visible(element) && clean(element.innerText) === option);
-    if (roleChoice) return roleChoice;
-    const textChoice = [...document.querySelectorAll('div,span')].find(element => {
-      if (!visible(element) || clean(element.innerText) !== option) return false;
-      return ![...element.children].some(child => clean(child.innerText) === option);
+    .find(element => {
+      const text = `${element.getAttribute('aria-label') || ''} ${element.innerText || ''}`;
+      return choiceKey(text).startsWith(key) || choiceKey(fieldLabel(element)).startsWith(key);
     });
-    return textChoice?.closest('[role="option"],[role="menuitem"],[role="radio"],[role="button"]') || textChoice;
-  }, limits.page);
-  choice.click();
-  await sleep(limits.pause);
-  await waitFor(() => {
-    const current = findCombo();
-    return current && clean(current.innerText).includes(option);
-  }, limits.page);
+}
+
+function comboHasOption(combo, option) {
+  const selected = `${combo?.getAttribute('aria-label') || ''} ${combo?.innerText || ''}`;
+  return Boolean(combo && choiceKey(selected).includes(choiceKey(option)));
+}
+
+async function selectCombo(label, option, limits = {page: 45000, pause: 800}) {
+  const optionKey = choiceKey(option);
+  const attemptTimeout = Math.min(limits.page, limits.page >= 100000 ? 30000 : 20000);
+  let lastReason = '';
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const combo = comboForLabel(label);
+    if (!combo) {
+      lastReason = '找不到選單';
+      await sleep(limits.pause * attempt);
+      continue;
+    }
+    if (comboHasOption(combo, option)) return;
+    combo.scrollIntoView({block: 'center'});
+    combo.click();
+    try {
+      const choice = await waitFor(() => {
+        const roleChoice = [...document.querySelectorAll('[role="option"],[role="menuitem"],[role="radio"]')]
+          .find(element => visible(element) && choiceKey(element.innerText || element.getAttribute('aria-label')) === optionKey);
+        if (roleChoice) return roleChoice;
+        const textChoice = [...document.querySelectorAll('div,span')].find(element => {
+          if (!visible(element) || choiceKey(element.innerText) !== optionKey) return false;
+          return ![...element.children].some(child => choiceKey(child.innerText) === optionKey);
+        });
+        return textChoice?.closest('[role="option"],[role="menuitem"],[role="radio"],[role="button"]') || textChoice;
+      }, attemptTimeout);
+      choice.scrollIntoView({block: 'center'});
+      choice.click();
+      await sleep(limits.pause * attempt);
+      await waitFor(() => {
+        const current = comboForLabel(label);
+        return current && comboHasOption(current, option);
+      }, attemptTimeout);
+      return;
+    } catch {
+      lastReason = `第 ${attempt} 次選取後 Facebook 尚未回寫`;
+      document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', code: 'Escape', bubbles: true}));
+      await sleep(limits.pause * attempt);
+    }
+  }
+  throw new Error(`${lastReason || 'Facebook 沒有回應'}；已重試 3 次`);
 }
 
 async function uploadPhotos(job, limits = timing(job)) {
@@ -811,7 +849,13 @@ async function runMarketplaceJob(job) {
       const checkbox = document.querySelector(`input[aria-label="${label}"]`);
       if (checkbox?.getAttribute('aria-checked') === 'true') checkbox.click();
     }
-    if (stageErrors.length) throw new Error('部分欄位未完成｜' + stageErrors.join('｜'));
+    if (stageErrors.length) {
+      const warning = '部分欄位需人工確認｜' + stageErrors.join('｜');
+      await send({type: 'MARKETPLACE_JOB_RESULT', id: job.id, ok: true, published: false, warning, listingUrl: location.href});
+      const panel = buildPanel();
+      panel.querySelector('[data-status]').textContent = `${warning}。原分頁已保留，補選後可按「確認完成並發布」。`;
+      return;
+    }
     if (!job.groupProfile?.groups?.length && !job.autoPublish) {
       await send({type: 'MARKETPLACE_JOB_RESULT', id: job.id, ok: true, published: false});
       buildPanel().querySelector('[data-status]').textContent = '案件已填入，依設定停在確認頁。';
