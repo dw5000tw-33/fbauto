@@ -413,11 +413,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const status = message.ok ? (message.published ? 'published' : (message.submitted ? 'submitted_review' : 'ready_review')) : 'failed';
       const job = await updateJob(message.id, {
         status,
-        currentStep: message.ok ? (message.published ? '發布成功' : (message.submitted ? '已送出，等待 Facebook 審閱' : '等待人工確認')) : '執行失敗',
-        listingUrl: message.listingUrl || '', lastError: message.error || '', finishedAt: nowIso()
+        currentStep: message.ok ? (message.published ? '發布成功' : (message.submitted ? '已送出，等待 Facebook 審閱' : (message.warning ? '部分欄位需人工確認' : '等待人工確認'))) : '執行失敗',
+        listingUrl: message.listingUrl || '', lastError: message.warning || message.error || '', finishedAt: nowIso()
       });
       if (status !== 'ready_review') await releaseQueue(job.id, job.queueDelayMinutes);
-      await notify(message.ok ? (message.published ? 'Marketplace 上架完成' : (message.submitted ? 'Marketplace 已送出審閱' : 'Marketplace 已填妥')) : 'Marketplace 上架失敗', job.title);
+      await notify(message.ok ? (message.published ? 'Marketplace 上架完成' : (message.submitted ? 'Marketplace 已送出審閱' : (message.warning ? 'Marketplace 需要人工補選欄位' : 'Marketplace 已填妥'))) : 'Marketplace 上架失敗', job.title);
       sendResponse({ok: true});
     }
   })().catch(error => sendResponse({ok: false, error: error.message}));
