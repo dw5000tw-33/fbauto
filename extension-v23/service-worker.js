@@ -362,6 +362,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const job = await updateJob(message.id, {status: 'failed', currentStep: '已人工確認未上架，可重新執行', lastError: '', listingUrl: ''});
       sendResponse({ok: true, job});
     }
+    else if (message.type === 'MARKETPLACE_JOB_RECONCILE') {
+      const current = await getJob(message.id);
+      if (!current || !['needs_attention', 'submitted_review'].includes(current.status)) throw new Error('這筆案件目前不需要重新同步。');
+      if (!message.published && !message.submitted) throw new Error('目前頁面沒有明確的刊登結果。');
+      const status = message.published ? 'published' : 'submitted_review';
+      const job = await updateJob(message.id, {
+        status,
+        currentStep: message.published ? '已從 Facebook 頁面確認上架成功' : '已從 Facebook 頁面確認仍在審閱',
+        listingUrl: message.listingUrl || current.listingUrl || '', lastError: '', finishedAt: nowIso()
+      });
+      await releaseQueue(job.id, job.queueDelayMinutes);
+      sendResponse({ok: true, job});
+    }
+    else if (message.type === 'MARKETPLACE_JOB_CONFIRM_STATUS') {
+      const current = await getJob(message.id);
+      if (!current || !['needs_attention', 'submitted_review'].includes(current.status)) throw new Error('這筆案件目前不需要人工確認狀態。');
+      if (!['published', 'submitted_review'].includes(message.status)) throw new Error('不支援的人工確認狀態。');
+      const job = await updateJob(message.id, {
+        status: message.status,
+        currentStep: message.status === 'published' ? '已人工確認上架成功' : '已人工確認 Facebook 審閱中',
+        listingUrl: message.listingUrl || current.listingUrl || '', lastError: '', finishedAt: nowIso()
+      });
+      await releaseQueue(job.id, job.queueDelayMinutes);
+      sendResponse({ok: true, job});
+    }
     else if (message.type === 'GET_CURRENT_TAB_MARKETPLACE_JOB') {
       const tabId = sender.tab?.id;
       const job = (await listJobs()).find(item => item.executionTabId === tabId) || null;
