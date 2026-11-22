@@ -88,7 +88,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.6.1</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.6.2</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -129,7 +129,7 @@ function buildPanel() {
         <summary>刪除排程中心 v2.6</summary>
         <small>刪除流程不依賴上架紀錄，可依完整標題或關鍵字搜尋「你的商品」。</small>
         <label>刪除排程名稱<input data-delete-name placeholder="例如：南屯物件晚間下架"></label>
-        <label>比對方式<select data-delete-mode><option value="exact">完整標題符合</option><option value="all">包含全部關鍵字</option><option value="any">包含任一關鍵字</option></select></label>
+        <label>比對方式<select data-delete-mode><option value="any" selected>包含任一關鍵字（推薦）</option><option value="all">包含全部關鍵字</option><option value="exact">完整標題完全相同（需貼完整名稱）</option></select></label>
         <label>標題／關鍵字<textarea data-delete-keywords rows="3" placeholder="每行一個關鍵字；例如：&#10;南屯&#10;平車"></textarea></label>
         <div class="works-actions"><button type="button" data-use-title class="secondary">帶入上方商品標題</button></div>
         <div class="works-grid">
@@ -633,7 +633,7 @@ function deleteKeywordsFromPanel(panel) {
 function resetDeleteRuleForm(panel) {
   editingDeleteRuleId = '';
   panel.querySelector('[data-delete-name]').value = '';
-  panel.querySelector('[data-delete-mode]').value = 'exact';
+  panel.querySelector('[data-delete-mode]').value = 'any';
   panel.querySelector('[data-delete-keywords]').value = '';
   panel.querySelector('[data-delete-speed]').value = 'normal';
   panel.querySelector('[data-delete-delay]').value = '3';
@@ -1305,6 +1305,12 @@ async function runKeywordDeleteRule(rule, approvedItemIds = null) {
     await waitFor(() => location.pathname.startsWith('/marketplace/you/selling'), 60000);
     await send({type: 'KEYWORD_DELETE_PROGRESS', id: rule.id, step: '正在掃描 Facebook「你的商品」'});
     const candidates = await scanKeywordDeleteCandidates(rule);
+    if (!candidates.length && rule.matchMode === 'exact') {
+      const error = `沒有找到與「${rule.keywords?.[0] || ''}」完全相同的商品標題。若輸入的是「平車」或「南屯」這類關鍵字，請將比對方式改為「包含任一關鍵字」。`;
+      await send({type: 'KEYWORD_DELETE_RESULT', id: rule.id, deleted: [], failed: [{title: rule.name, error}]});
+      buildPanel().querySelector('[data-status]').textContent = error;
+      return;
+    }
     if (!approvedItemIds && !rule.autoDelete) {
       await send({type: 'KEYWORD_DELETE_PREVIEW_RESULT', id: rule.id, candidates});
       buildPanel().querySelector('[data-status]').textContent = candidates.length
