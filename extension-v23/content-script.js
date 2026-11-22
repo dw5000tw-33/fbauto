@@ -4,6 +4,7 @@ const PANEL_ID = 'works-marketplace-scheduler-v23';
 const MAX_PHOTOS = 10;
 let folderPhotos = [];
 let editingJobId = '';
+let editingDeleteRuleId = '';
 let groupProfiles = [];
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -16,11 +17,12 @@ function send(message) {
 
 function statusText(status) {
   return ({
-    scheduled: '已排程', running: '執行中', published: '已發布', ready_review: '已填入，等待確認',
+    scheduled: '已排程', running: '執行中', submitted: '已送出 Facebook', published: '已發布', ready_review: '已填入，等待確認',
     publishing: '已按發布，正在確認結果', submitted_review: '已送出，Facebook 審閱中',
     needs_attention: '結果待確認',
     failed: '失敗', pending: '待補發', queued: '排隊中', cancelled: '已取消',
-    deleting: '刪除中', deleted: '已刪除'
+    scanning: '掃描中', awaiting_confirmation: '等待確認刪除', deleting: '刪除中', deleted: '已刪除',
+    completed: '已完成', partial: '部分完成'
   })[status] || status;
 }
 
@@ -35,6 +37,14 @@ function quickTime(panel, minutes = 0, days = 0) {
   const [day, clock] = dateTimeInputValue(date).split('T');
   panel.querySelector('[data-date]').value = day;
   panel.querySelector('[data-clock]').value = clock;
+}
+
+function quickDeleteTime(panel, minutes = 0, days = 0) {
+  const date = new Date(Date.now() + minutes * 60000 + days * 86400000);
+  if (!days) date.setMinutes(Math.ceil(date.getMinutes() / 5) * 5, 0, 0);
+  const [day, clock] = dateTimeInputValue(date).split('T');
+  panel.querySelector('[data-delete-date]').value = day;
+  panel.querySelector('[data-delete-clock]').value = clock;
 }
 
 function timing(job) {
@@ -78,7 +88,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.5.6</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.6.0</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -114,7 +124,28 @@ function buildPanel() {
       <label class="works-check"><input data-background type="checkbox" checked> 背景執行，不切換目前使用的分頁</label>
       <label class="works-check"><input data-auto type="checkbox"> 到時間允許助手直接按下「發布」</label>
       <div class="works-actions"><button data-save>儲存排程</button><button data-reset class="secondary">清除表單</button><button data-refresh class="secondary">重新整理</button></div>
-      <section><h3>排程案件</h3><div data-jobs></div></section>
+      <section><h3>上架排程</h3><div data-jobs></div></section>
+      <details class="works-delete-center" open>
+        <summary>刪除排程中心 v2.6</summary>
+        <small>刪除流程不依賴上架紀錄，可依完整標題或關鍵字搜尋「你的商品」。</small>
+        <label>刪除排程名稱<input data-delete-name placeholder="例如：南屯物件晚間下架"></label>
+        <label>比對方式<select data-delete-mode><option value="exact">完整標題符合</option><option value="all">包含全部關鍵字</option><option value="any">包含任一關鍵字</option></select></label>
+        <label>標題／關鍵字<textarea data-delete-keywords rows="3" placeholder="每行一個關鍵字；例如：&#10;南屯&#10;平車"></textarea></label>
+        <div class="works-actions"><button type="button" data-use-title class="secondary">帶入上方商品標題</button></div>
+        <div class="works-grid">
+          <label>刪除日期（台灣時間）<input data-delete-date type="date"></label>
+          <label>刪除時間<input data-delete-clock type="time" step="300"></label>
+        </div>
+        <div class="works-quick-time"><button type="button" data-delete-after="5">5 分鐘後</button><button type="button" data-delete-after="10">10 分鐘後</button><button type="button" data-delete-after="30">30 分鐘後</button><button type="button" data-delete-tomorrow>明天同時間</button></div>
+        <div class="works-grid">
+          <label>電腦速度<select data-delete-speed><option value="normal">一般</option><option value="slow">慢速電腦</option></select></label>
+          <label>刪除規則間隔（分鐘）<input data-delete-delay type="number" min="1" max="30" value="3"></label>
+        </div>
+        <label class="works-check"><input data-delete-background type="checkbox" checked> 背景掃描，不切換目前使用的分頁</label>
+        <label class="works-check works-danger-check"><input data-delete-auto type="checkbox"> 到時間直接刪除所有符合商品（未勾選則先列出清單）</label>
+        <div class="works-actions"><button type="button" data-save-delete>儲存刪除排程</button><button type="button" data-reset-delete class="secondary">清除刪除表單</button></div>
+        <section><h3>刪除排程</h3><div data-delete-rules></div></section>
+      </details>
     </div>`;
   document.body.append(panel);
   enablePanelDrag(panel);
@@ -125,6 +156,14 @@ function buildPanel() {
   panel.querySelector('[data-refresh]').onclick = () => renderJobs(panel);
   panel.querySelectorAll('[data-after]').forEach(button => button.onclick = () => quickTime(panel, Number(button.dataset.after)));
   panel.querySelector('[data-tomorrow]').onclick = () => quickTime(panel, 0, 1);
+  panel.querySelectorAll('[data-delete-after]').forEach(button => button.onclick = () => quickDeleteTime(panel, Number(button.dataset.deleteAfter)));
+  panel.querySelector('[data-delete-tomorrow]').onclick = () => quickDeleteTime(panel, 0, 1);
+  panel.querySelector('[data-use-title]').onclick = () => {
+    panel.querySelector('[data-delete-mode]').value = 'exact';
+    panel.querySelector('[data-delete-keywords]').value = panel.querySelector('[data-title]').value.trim();
+  };
+  panel.querySelector('[data-save-delete]').onclick = () => saveDeleteRuleFromPanel(panel);
+  panel.querySelector('[data-reset-delete]').onclick = () => resetDeleteRuleForm(panel);
   panel.querySelector('[data-capture-groups]').onclick = () => captureGroupProfile(panel);
   panel.querySelector('[data-capture-published]').onclick = () => capturePublishedGroupProfile(panel);
   panel.querySelector('[data-export-groups]').onclick = () => exportGroupProfiles(panel);
@@ -133,11 +172,13 @@ function buildPanel() {
   panel.querySelector('[data-delete-profile]').onclick = () => deleteSelectedProfile(panel);
   panel.querySelector('[data-group-profile]').onchange = () => renderSelectedProfile(panel);
   quickTime(panel, 10);
+  quickDeleteTime(panel, 30);
   loadGroupProfiles(panel);
   renderJobs(panel);
+  renderDeleteRules(panel);
   panel._jobsTimer = setInterval(() => {
     if (!panel.isConnected) clearInterval(panel._jobsTimer);
-    else if (!editingJobId && !panel.matches(':hover')) renderJobs(panel);
+    else if (!editingJobId && !editingDeleteRuleId && !panel.matches(':hover')) { renderJobs(panel); renderDeleteRules(panel); }
   }, 15000);
   return panel;
 }
@@ -496,7 +537,7 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
   box.replaceChildren();
   for (const job of result.jobs || []) {
     const card = document.createElement('article');
-    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-focus-review class="secondary">前往確認頁</button><button data-confirm-publish>確認完成並發布</button><button data-stop class="danger">停止並釋放隊列</button><button data-recheck class="secondary">重新檢查目前頁面</button><button data-confirm-review class="secondary">確認仍在審閱</button><button data-confirm-published>確認已上架</button><button data-mark-failed class="secondary">確認未上架，允許重試</button><button data-open-listing class="secondary">開啟剛上架商品</button><button data-delete-listing class="danger">刪除剛上架商品</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除排程</button></div>`;
+    card.innerHTML = `<b></b><p></p><p></p><p data-step></p><p class="works-error"></p><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即執行</button><button data-focus-review class="secondary">前往確認頁</button><button data-confirm-publish>確認完成並發布</button><button data-mark-sent>人工確認已送出</button><button data-stop class="danger">停止並釋放隊列</button><button data-recheck class="secondary">重新檢查目前頁面</button><button data-confirm-review class="secondary">確認仍在審閱</button><button data-confirm-published>確認已上架</button><button data-mark-failed class="secondary">確認未上架，允許重試</button><button data-open-listing class="secondary">開啟剛上架商品</button><button data-delete-listing class="danger">刪除剛上架商品</button><button data-cancel class="secondary">取消</button><button data-delete class="danger">刪除紀錄</button></div>`;
     card.querySelector('b').textContent = job.title;
     card.querySelectorAll('p')[0].textContent = `${localDateTime(job.scheduledAt)}｜${statusText(job.status)}`;
     card.querySelectorAll('p')[1].textContent = `NT$${Number(job.price).toLocaleString('en-US')}｜照片 ${job.photoCount || 0} 張｜${job.groupProfile?.name || '只刊登 Marketplace'}｜${job.autoPublish ? '自動發布' : '停在確認頁'}｜${job.backgroundMode ? '背景執行' : '前景執行'}`;
@@ -515,6 +556,13 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
     card.querySelector('[data-confirm-publish]').onclick = async () => {
       const response = await send({type: 'CONTINUE_MARKETPLACE_JOB', id: job.id});
       panel.querySelector('[data-status]').textContent = response.ok ? '已通知原確認頁繼續發布，正在追蹤 Facebook 結果。' : response.error;
+      await renderJobs(panel);
+    };
+    card.querySelector('[data-mark-sent]').hidden = !['ready_review', 'needs_attention', 'submitted_review'].includes(job.status);
+    card.querySelector('[data-mark-sent]').onclick = async () => {
+      if (!confirm('已在 Facebook 看見商品、審閱紀錄，或確認發布動作已送出？\n\n這只更新歷程，不會重新刊登。')) return;
+      const response = await send({type: 'MARKETPLACE_JOB_MARK_SUBMITTED', id: job.id});
+      panel.querySelector('[data-status]').textContent = response.ok ? '已標記為「已送出 Facebook」。' : response.error;
       await renderJobs(panel);
     };
     card.querySelector('[data-stop]').hidden = !['running', 'publishing', 'queued', 'ready_review'].includes(job.status);
@@ -573,6 +621,138 @@ async function renderJobs(panel = document.getElementById(PANEL_ID)) {
     card.querySelector('[data-cancel]').onclick = async () => { const response = await send({type: 'CANCEL_MARKETPLACE_JOB', id: job.id}); panel.querySelector('[data-status]').textContent = response.ok ? '排程已取消。' : response.error; await renderJobs(panel); };
     card.querySelector('[data-delete]').onclick = async () => { if (confirm(`刪除排程「${job.title}」？`)) { await send({type: 'DELETE_MARKETPLACE_JOB', id: job.id}); renderJobs(panel); } };
     card.querySelector('[data-delete]').disabled = job.status === 'running';
+    box.append(card);
+  }
+}
+
+function deleteKeywordsFromPanel(panel) {
+  return [...new Set(panel.querySelector('[data-delete-keywords]').value
+    .split(/[\n,，]+/).map(value => clean(value)).filter(Boolean))];
+}
+
+function resetDeleteRuleForm(panel) {
+  editingDeleteRuleId = '';
+  panel.querySelector('[data-delete-name]').value = '';
+  panel.querySelector('[data-delete-mode]').value = 'exact';
+  panel.querySelector('[data-delete-keywords]').value = '';
+  panel.querySelector('[data-delete-speed]').value = 'normal';
+  panel.querySelector('[data-delete-delay]').value = '3';
+  panel.querySelector('[data-delete-background]').checked = true;
+  panel.querySelector('[data-delete-auto]').checked = false;
+  panel.querySelector('[data-save-delete]').textContent = '儲存刪除排程';
+  quickDeleteTime(panel, 30);
+}
+
+async function saveDeleteRuleFromPanel(panel) {
+  const scheduledDate = panel.querySelector('[data-delete-date]').value;
+  const scheduledClock = panel.querySelector('[data-delete-clock]').value;
+  const keywords = deleteKeywordsFromPanel(panel);
+  const matchMode = panel.querySelector('[data-delete-mode]').value;
+  if (!panel.querySelector('[data-delete-name]').value.trim() || !keywords.length || !scheduledDate || !scheduledClock) {
+    panel.querySelector('[data-status]').textContent = '請填寫刪除排程名稱、關鍵字與刪除時間。';
+    return;
+  }
+  if (matchMode === 'exact' && keywords.length !== 1) {
+    panel.querySelector('[data-status]').textContent = '完整標題符合模式只能輸入一個完整標題。';
+    return;
+  }
+  const autoDelete = panel.querySelector('[data-delete-auto]').checked;
+  if (autoDelete) {
+    const description = matchMode === 'exact' ? `完整標題「${keywords[0]}」` : `${matchMode === 'all' ? '全部' : '任一'}關鍵字：${keywords.join('、')}`;
+    if (!confirm(`到時間將直接刪除所有符合 ${description} 的商品。\n\n刪除原因固定選「否，未售出」。確定儲存嗎？`)) return;
+  }
+  const response = await send({type: 'SAVE_DELETE_RULE', rule: {
+    id: editingDeleteRuleId || undefined,
+    name: panel.querySelector('[data-delete-name]').value.trim(),
+    matchMode, keywords,
+    scheduledAt: `${scheduledDate}T${scheduledClock}`,
+    autoDelete,
+    backgroundMode: panel.querySelector('[data-delete-background]').checked,
+    speedMode: panel.querySelector('[data-delete-speed]').value,
+    queueDelayMinutes: Number(panel.querySelector('[data-delete-delay]').value) || 3
+  }});
+  if (!response.ok) {
+    panel.querySelector('[data-status]').textContent = response.error;
+    return;
+  }
+  resetDeleteRuleForm(panel);
+  panel.querySelector('[data-status]').textContent = '刪除排程已儲存。';
+  await renderDeleteRules(panel);
+}
+
+async function editDeleteRule(panel, summary) {
+  const response = await send({type: 'GET_DELETE_RULE', id: summary.id});
+  if (!response.ok) { panel.querySelector('[data-status]').textContent = response.error; return; }
+  const rule = response.rule;
+  editingDeleteRuleId = rule.id;
+  panel.querySelector('[data-delete-name]').value = rule.name || '';
+  panel.querySelector('[data-delete-mode]').value = rule.matchMode || 'exact';
+  panel.querySelector('[data-delete-keywords]').value = (rule.keywords || []).join('\n');
+  const [day, clock] = dateTimeInputValue(new Date(rule.scheduledAt)).split('T');
+  panel.querySelector('[data-delete-date]').value = day;
+  panel.querySelector('[data-delete-clock]').value = clock;
+  panel.querySelector('[data-delete-speed]').value = rule.speedMode || 'normal';
+  panel.querySelector('[data-delete-delay]').value = rule.queueDelayMinutes || 3;
+  panel.querySelector('[data-delete-background]').checked = rule.backgroundMode !== false;
+  panel.querySelector('[data-delete-auto]').checked = rule.autoDelete === true;
+  panel.querySelector('[data-save-delete]').textContent = '儲存刪除修改';
+  panel.querySelector('[data-status]').textContent = `正在修改刪除排程「${rule.name}」。`;
+  panel.querySelector('.works-delete-center').open = true;
+  panel.querySelector('.works-delete-center').scrollIntoView({block: 'start'});
+}
+
+async function renderDeleteRules(panel = document.getElementById(PANEL_ID)) {
+  if (!panel) return;
+  const response = await send({type: 'LIST_DELETE_RULES'});
+  const box = panel.querySelector('[data-delete-rules]');
+  box.replaceChildren();
+  for (const rule of response.rules || []) {
+    const card = document.createElement('article');
+    card.className = 'works-delete-rule';
+    card.innerHTML = `<b></b><p data-meta></p><p data-match></p><p data-step></p><p class="works-error"></p><div data-candidates></div><div class="works-actions"><button data-edit>修改</button><button data-run class="secondary">立即掃描／執行</button><button data-confirm>確認刪除清單</button><button data-cancel class="secondary">取消</button><button data-remove class="danger">刪除紀錄</button></div>`;
+    card.querySelector('b').textContent = rule.name;
+    card.querySelector('[data-meta]').textContent = `${localDateTime(rule.scheduledAt)}｜${statusText(rule.status)}｜${rule.autoDelete ? '到時直接刪除' : '先預覽確認'}`;
+    const modeName = rule.matchMode === 'exact' ? '完整標題' : (rule.matchMode === 'all' ? '包含全部' : '包含任一');
+    card.querySelector('[data-match]').textContent = `${modeName}：${(rule.keywords || []).join('、')}`;
+    card.querySelector('[data-step]').textContent = `${rule.currentStep || ''}｜規則間隔 ${rule.queueDelayMinutes || 3} 分鐘`;
+    card.querySelector('.works-error').textContent = rule.lastError || '';
+    const candidates = card.querySelector('[data-candidates]');
+    if (rule.candidates?.length) {
+      const title = document.createElement('small');
+      title.textContent = `即將刪除 ${rule.candidates.length} 筆：`;
+      candidates.append(title);
+      const list = document.createElement('ul');
+      rule.candidates.forEach(item => { const li = document.createElement('li'); li.textContent = item.title || item.itemId; list.append(li); });
+      candidates.append(list);
+    }
+    card.querySelector('[data-edit]').disabled = ['scanning', 'deleting'].includes(rule.status);
+    card.querySelector('[data-edit]').onclick = () => editDeleteRule(panel, rule);
+    card.querySelector('[data-run]').disabled = !['scheduled', 'failed', 'pending', 'queued', 'completed', 'partial'].includes(rule.status);
+    card.querySelector('[data-run]').onclick = async () => {
+      const result = await send({type: 'RUN_DELETE_RULE_NOW', id: rule.id});
+      panel.querySelector('[data-status]').textContent = result.ok ? '刪除規則已送入執行佇列。' : result.error;
+      await renderDeleteRules(panel);
+    };
+    card.querySelector('[data-confirm]').hidden = rule.status !== 'awaiting_confirmation';
+    card.querySelector('[data-confirm]').onclick = async () => {
+      const names = (rule.candidates || []).map(item => item.title || item.itemId).join('\n');
+      if (!confirm(`確定刪除以下 ${rule.candidates?.length || 0} 筆 Facebook 商品？\n\n${names}\n\n刪除原因將選擇「否，未售出」。`)) return;
+      const result = await send({type: 'CONFIRM_DELETE_RULE', id: rule.id});
+      panel.querySelector('[data-status]').textContent = result.ok ? '已確認清單，正在逐筆刪除。' : result.error;
+      await renderDeleteRules(panel);
+    };
+    card.querySelector('[data-cancel]').disabled = ['completed', 'cancelled'].includes(rule.status);
+    card.querySelector('[data-cancel]').onclick = async () => {
+      const result = await send({type: 'CANCEL_DELETE_RULE', id: rule.id});
+      panel.querySelector('[data-status]').textContent = result.ok ? '刪除排程已取消。' : result.error;
+      await renderDeleteRules(panel);
+    };
+    card.querySelector('[data-remove]').disabled = ['scanning', 'deleting'].includes(rule.status);
+    card.querySelector('[data-remove]').onclick = async () => {
+      if (!confirm(`刪除排程紀錄「${rule.name}」？\n\n這不會刪除 Facebook 商品。`)) return;
+      await send({type: 'DELETE_DELETE_RULE', id: rule.id});
+      await renderDeleteRules(panel);
+    };
     box.append(card);
   }
 }
@@ -795,7 +975,8 @@ async function finishPublishClick(job, limits) {
   const started = await send({type: 'MARKETPLACE_PUBLISH_CLICKED', id: job.id});
   if (!started.ok) throw new Error(started.error || '無法開始追蹤發布結果。');
   button.click();
-  await watchPublishOutcome(job, limits);
+  const panel = document.getElementById(PANEL_ID);
+  if (panel) panel.querySelector('[data-status]').textContent = '已送出 Facebook；平台審閱不會阻塞下一個案件。';
 }
 
 async function continueReviewedPublish(job) {
@@ -939,6 +1120,177 @@ function clickExactText(scope, role, names) {
   return target;
 }
 
+function deleteRuleMatches(rule, text) {
+  const haystack = clean(text).toLocaleLowerCase('zh-Hant');
+  const keys = (rule.keywords || []).map(value => clean(value).toLocaleLowerCase('zh-Hant')).filter(Boolean);
+  if (!keys.length) return false;
+  if (rule.matchMode === 'exact') return haystack === keys[0];
+  if (rule.matchMode === 'all') return keys.every(key => haystack.includes(key));
+  return keys.some(key => haystack.includes(key));
+}
+
+function listingCandidateTitle(card, link, itemId) {
+  const lines = String(card?.innerText || '').split(/\n+/).map(clean).filter(Boolean);
+  const priceIndex = lines.findIndex(line => /^(?:NT\$|\$)\s*[\d,]+/i.test(line));
+  if (priceIndex > 0 && lines[priceIndex - 1].length <= 220) return lines[priceIndex - 1];
+  const linkTitles = [...(card?.querySelectorAll?.('a[href]') || [])]
+    .filter(item => marketplaceItemId(item.href) === itemId)
+    .map(item => clean(item.innerText || item.getAttribute('aria-label')))
+    .filter(text => text.length >= 3 && text.length <= 220 && !/^(?:NT\$|\$)/i.test(text));
+  const direct = clean(link?.innerText || link?.getAttribute('aria-label'));
+  if (direct.length >= 3 && direct.length <= 220 && !/^(?:NT\$|\$)/i.test(direct)) linkTitles.push(direct);
+  return linkTitles.sort((a, b) => b.length - a.length)[0] || '';
+}
+
+function visibleListingCandidates(rule) {
+  const found = new Map();
+  for (const link of document.querySelectorAll('a[href*="/marketplace/item/"]')) {
+    const itemId = marketplaceItemId(link.href);
+    if (!itemId || found.has(itemId)) continue;
+    let card = link;
+    let more = null;
+    for (let depth = 0; card && depth < 12; depth++, card = card.parentElement) {
+      more = [...(card.querySelectorAll?.('button,[role="button"]') || [])]
+        .find(button => /更多選項|More options/i.test(button.getAttribute('aria-label') || ''));
+      if (more) break;
+    }
+    if (!card || !more) continue;
+    const title = listingCandidateTitle(card, link, itemId);
+    if (!title || !deleteRuleMatches(rule, title)) continue;
+    found.set(itemId, {itemId, title, url: link.href});
+  }
+  return [...found.values()];
+}
+
+async function scanKeywordDeleteCandidates(rule) {
+  if (!location.pathname.startsWith('/marketplace/you/selling')) throw new Error('目前不是 Facebook「你的商品」頁面。');
+  const found = new Map();
+  const scroller = document.scrollingElement || document.documentElement;
+  const original = scroller.scrollTop;
+  scroller.scrollTop = 0;
+  await sleep(800);
+  const timeout = rule.speedMode === 'slow' ? 150000 : 90000;
+  const pause = rule.speedMode === 'slow' ? 1800 : 900;
+  const end = Date.now() + timeout;
+  let previousTop = -1;
+  let unchanged = 0;
+  while (Date.now() < end) {
+    visibleListingCandidates(rule).forEach(item => found.set(item.itemId, item));
+    const atEnd = scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 8;
+    if (atEnd) {
+      unchanged++;
+      if (unchanged >= 3) break;
+    } else unchanged = 0;
+    if (scroller.scrollTop === previousTop && atEnd) break;
+    previousTop = scroller.scrollTop;
+    scroller.scrollTop = Math.min(scroller.scrollTop + Math.max(500, window.innerHeight * .75), scroller.scrollHeight);
+    await sleep(pause);
+  }
+  scroller.scrollTop = original;
+  return [...found.values()];
+}
+
+async function findListingByItemId(itemId, timeout = 60000) {
+  const scroller = document.scrollingElement || document.documentElement;
+  scroller.scrollTop = 0;
+  const end = Date.now() + timeout;
+  let previous = -1;
+  while (Date.now() < end) {
+    for (const link of document.querySelectorAll('a[href]')) {
+      if (marketplaceItemId(link.href) !== itemId) continue;
+      let card = link;
+      for (let depth = 0; card && depth < 12; depth++, card = card.parentElement) {
+        const more = [...(card.querySelectorAll?.('button,[role="button"]') || [])]
+          .find(button => /更多選項|More options/i.test(button.getAttribute('aria-label') || ''));
+        if (more) return {card, more};
+      }
+    }
+    if (scroller.scrollTop === previous || scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 8) break;
+    previous = scroller.scrollTop;
+    scroller.scrollTop = Math.min(scroller.scrollTop + Math.max(500, window.innerHeight * .75), scroller.scrollHeight);
+    await sleep(700);
+  }
+  return null;
+}
+
+async function deleteMarketplaceCandidate(candidate, slow = false) {
+  const pause = slow ? 1800 : 900;
+  const target = await findListingByItemId(candidate.itemId, slow ? 120000 : 60000);
+  if (!target) throw new Error('找不到商品卡片，可能已被刪除或清單尚未載入。');
+  target.more.click();
+  const menu = await waitFor(() => [...document.querySelectorAll('[role="menu"]')].find(visible), 20000);
+  clickExactText(menu, 'menuitem', ['刪除商品', 'Delete listing']);
+  let handledUnsold = false;
+  for (let step = 0; step < 5; step++) {
+    const dialog = await waitFor(() => [...document.querySelectorAll('[role="dialog"]')].find(visible), 20000);
+    const dialogText = clean(dialog.innerText);
+    const unsold = [...dialog.querySelectorAll('[role="radio"]')].find(element => {
+      let node = element;
+      for (let depth = 0; node && depth < 6; depth++, node = node.parentElement) {
+        if (/否，?未售出|未售出|No,? not sold/i.test(clean(node.innerText || node.getAttribute?.('aria-label')))) return true;
+      }
+      return false;
+    });
+    if (unsold) {
+      unsold.click();
+      handledUnsold = true;
+      await sleep(pause);
+    }
+    const actionNames = unsold
+      ? ['繼續', 'Continue', '下一步', 'Next']
+      : ['刪除', 'Delete', '確認', 'Confirm', '繼續', 'Continue'];
+    const action = [...dialog.querySelectorAll('button,[role="button"]')]
+      .find(element => actionNames.includes(clean(element.innerText)) && elementEnabled(element));
+    if (!action) throw new Error(`無法辨識 Facebook 刪除確認按鈕：${dialogText.slice(0, 80)}`);
+    action.click();
+    await sleep(pause * 2);
+    const stillVisible = [...document.querySelectorAll('[role="dialog"]')].some(element => visible(element));
+    if (!stillVisible) break;
+  }
+  if (!handledUnsold) throw new Error('刪除流程中沒有出現「否，未售出」，已停止以避免選錯原因。');
+  await waitFor(() => ![...document.querySelectorAll('a[href]')]
+    .some(link => marketplaceItemId(link.href) === candidate.itemId), slow ? 45000 : 25000, 500);
+}
+
+async function runKeywordDeleteRule(rule, approvedItemIds = null) {
+  try {
+    await waitFor(() => location.pathname.startsWith('/marketplace/you/selling'), 60000);
+    await send({type: 'KEYWORD_DELETE_PROGRESS', id: rule.id, step: '正在掃描 Facebook「你的商品」'});
+    const candidates = await scanKeywordDeleteCandidates(rule);
+    if (!approvedItemIds && !rule.autoDelete) {
+      await send({type: 'KEYWORD_DELETE_PREVIEW_RESULT', id: rule.id, candidates});
+      buildPanel().querySelector('[data-status]').textContent = candidates.length
+        ? `找到 ${candidates.length} 筆符合商品，請在刪除排程卡確認。`
+        : '掃描完成，沒有符合商品。';
+      return;
+    }
+    const approved = approvedItemIds ? new Set(approvedItemIds) : null;
+    const targets = approved ? candidates.filter(item => approved.has(item.itemId)) : candidates;
+    const deleted = [];
+    const failed = [];
+    for (let index = 0; index < targets.length; index++) {
+      const candidate = targets[index];
+      await send({type: 'KEYWORD_DELETE_PROGRESS', id: rule.id, step: `正在刪除 ${index + 1}/${targets.length}：${candidate.title}`});
+      try {
+        await deleteMarketplaceCandidate(candidate, rule.speedMode === 'slow');
+        deleted.push(candidate);
+      } catch (error) {
+        failed.push({...candidate, error: error.message});
+      }
+    }
+    if (approved) {
+      for (const itemId of approved) {
+        if (!targets.some(item => item.itemId === itemId)) failed.push({itemId, title: itemId, error: '已確認的商品目前未在清單中找到。'});
+      }
+    }
+    await send({type: 'KEYWORD_DELETE_RESULT', id: rule.id, deleted, failed});
+    buildPanel().querySelector('[data-status]').textContent = `刪除完成 ${deleted.length} 筆${failed.length ? `，失敗 ${failed.length} 筆` : ''}。`;
+  } catch (error) {
+    await send({type: 'KEYWORD_DELETE_RESULT', id: rule.id, deleted: [], failed: [{title: rule.name, error: error.message}]});
+    buildPanel().querySelector('[data-status]').textContent = '關鍵字刪除停止：' + error.message;
+  }
+}
+
 async function runMarketplaceDelete(job, expectedItemId) {
   try {
     const savedItemId = marketplaceItemId(job.listingUrl);
@@ -990,6 +1342,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ok: true});
   } else if (message.type === 'CONTINUE_MARKETPLACE_JOB') {
     continueReviewedPublish(message.job);
+    sendResponse({ok: true});
+  } else if (message.type === 'RUN_KEYWORD_DELETE_RULE') {
+    runKeywordDeleteRule(message.rule, message.approvedItemIds);
     sendResponse({ok: true});
   }
 });
