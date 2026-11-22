@@ -7,6 +7,11 @@ const ACTIVE_JOB_KEY = 'marketplace-active-job';
 const ALARM_PREFIX = 'marketplace-publish:';
 const WATCHDOG_PREFIX = 'marketplace-watchdog:';
 const QUEUE_ALARM = 'marketplace-queue-next';
+const DELETE_RULE_PREFIX = 'marketplace-delete-rule:';
+const DELETE_RULE_INDEX = 'marketplace-delete-rule-index';
+const DELETE_ALARM_PREFIX = 'marketplace-keyword-delete:';
+const DELETE_QUEUE_ALARM = 'marketplace-delete-queue-next';
+const ACTIVE_DELETE_RULE_KEY = 'marketplace-active-delete-rule';
 const CREATE_URL = 'https://www.facebook.com/marketplace/create/item';
 const SELLING_URL = 'https://www.facebook.com/marketplace/you/selling';
 const MAX_ACTIVE_JOBS = 10;
@@ -14,6 +19,8 @@ const MAX_ACTIVE_JOBS = 10;
 const jobKey = id => JOB_PREFIX + id;
 const alarmName = id => ALARM_PREFIX + id;
 const watchdogName = id => WATCHDOG_PREFIX + id;
+const deleteRuleKey = id => DELETE_RULE_PREFIX + id;
+const deleteAlarmName = id => DELETE_ALARM_PREFIX + id;
 const nowIso = () => new Date().toISOString();
 
 async function getJob(id) {
@@ -33,6 +40,131 @@ async function listJobs() {
   const ids = Array.isArray(current[JOB_INDEX]) ? current[JOB_INDEX] : [];
   const stored = await chrome.storage.local.get(ids.map(jobKey));
   return ids.map(id => stored[jobKey(id)]).filter(Boolean);
+}
+
+async function getDeleteRule(id) {
+  return (await chrome.storage.local.get(deleteRuleKey(id)))[deleteRuleKey(id)] || null;
+}
+
+async function putDeleteRule(rule) {
+  const current = await chrome.storage.local.get(DELETE_RULE_INDEX);
+  const ids = Array.isArray(current[DELETE_RULE_INDEX]) ? current[DELETE_RULE_INDEX] : [];
+  if (!ids.includes(rule.id)) ids.unshift(rule.id);
+  await chrome.storage.local.set({[deleteRuleKey(rule.id)]: rule, [DELETE_RULE_INDEX]: ids});
+  return rule;
+}
+
+async function listDeleteRules() {
+  const current = await chrome.storage.local.get(DELETE_RULE_INDEX);
+  const ids = Array.isArray(current[DELETE_RULE_INDEX]) ? current[DELETE_RULE_INDEX] : [];
+  const stored = await chrome.storage.local.get(ids.map(deleteRuleKey));
+  return ids.map(id => stored[deleteRuleKey(id)]).filter(Boolean);
+}
+
+async function updateDeleteRule(id, patch) {
+  const rule = await getDeleteRule(id);
+  if (!rule) throw new Error('找不到刪除排程。');
+  return putDeleteRule({...rule, ...patch, updatedAt: nowIso()});
+}
+
+async function saveDeleteRule(input) {
+  const old = input.id ? await getDeleteRule(input.id) : null;
+  const keywords = [...new Set((input.keywords || []).map(value => String(value).trim()).filter(Boolean))].slice(0, 20);
+  if (!input.name?.trim()) throw new Error('請輸入刪除排程名稱。');
+  if (!keywords.length) throw new Error('請至少輸入一個刪除關鍵字。');
+  const scheduledAt = new Date(input.scheduledAt).getTime();
+  if (!Number.isFinite(scheduledAt) || scheduledAt <= Date.now()) throw new Error('刪除時間必須晚於現在。');
+  const rule = {
+    ...old, ...input,
+    id: input.id || crypto.randomUUID(), name: input.name.trim(), keywords,
+    matchMode: ['exact', 'all', 'any'].includes(input.matchMode) ? input.matchMode : 'exact',
+    status: 'scheduled', currentStep: '等待刪除排程', lastError: '', candidates: [],
+    autoDelete: input.autoDelete === true, backgroundMode: input.backgroundMode !== false,
+    speedMode: input.speedMode === 'slow' ? 'slow' : 'normal',
+    queueDelayMinutes: Math.min(30, Math.max(1, Number(input.queueDelayMinutes) || 3)),
+    createdAt: old?.createdAt || nowIso(), updatedAt: nowIso()
+  };
+  await chrome.alarms.clear(deleteAlarmName(rule.id));
+  await putDeleteRule(rule);
+  await chrome.alarms.create(deleteAlarmName(rule.id), {when: scheduledAt});
+  return rule;
+}
+
+async function removeDeleteRule(id) {
+  await chrome.alarms.clear(deleteAlarmName(id));
+  if ((await chrome.storage.local.get(ACTIVE_DELETE_RULE_KEY))[ACTIVE_DELETE_RULE_KEY] === id) {
+    await chrome.storage.local.remove(ACTIVE_DELETE_RULE_KEY);
+  }
+  const current = await chrome.storage.local.get(DELETE_RULE_INDEX);
+  const ids = (current[DELETE_RULE_INDEX] || []).filter(value => value !== id);
+  await chrome.storage.local.remove(deleteRuleKey(id));
+  await chrome.storage.local.set({[DELETE_RULE_INDEX]: ids});
+}
+
+async function releaseDeleteQueue(id, delayMinutes = 3) {
+  if ((await chrome.storage.local.get(ACTIVE_DELETE_RULE_KEY))[ACTIVE_DELETE_RULE_KEY] === id) {
+    await chrome.storage.local.remove(ACTIVE_DELETE_RULE_KEY);
+  }
+  if ((await listDeleteRules()).some(rule => rule.status === 'queued')) {
+    await chrome.alarms.create(DELETE_QUEUE_ALARM, {when: Date.now() + Math.max(1, Number(delayMinutes) || 3) * 60000});
+  }
+}
+
+async function launchDeleteRule(id, force = false, approvedItemIds = null) {
+  const rule = await getDeleteRule(id);
+  if (!rule || (!approvedItemIds && !['scheduled', 'failed', 'pending', 'queued', 'awaiting_confirmation', 'completed', 'partial'].includes(rule.status))) return;
+  const activeId = (await chrome.storage.local.get(ACTIVE_DELETE_RULE_KEY))[ACTIVE_DELETE_RULE_KEY] || '';
+  if (activeId && activeId !== id) {
+    await updateDeleteRule(id, {status: 'queued', currentStep: '等待前一個刪除排程完成'});
+    return;
+  }
+  if (!force && rule.status === 'scheduled' && new Date(rule.scheduledAt).getTime() > Date.now()) return;
+  await chrome.storage.local.set({[ACTIVE_DELETE_RULE_KEY]: id});
+  const running = await updateDeleteRule(id, {
+    status: approvedItemIds ? 'deleting' : 'scanning',
+    currentStep: approvedItemIds ? `正在刪除已確認的 ${approvedItemIds.length} 筆商品` : '正在掃描「你的商品」',
+    lastError: '', executionTabId: null
+  });
+  try {
+    const tab = await chrome.tabs.create({url: `${SELLING_URL}?works_keyword_delete=${encodeURIComponent(id)}`, active: running.backgroundMode === false});
+    await updateDeleteRule(id, {executionTabId: tab.id});
+    const onRemoved = async tabId => {
+      if (tabId !== tab.id) return;
+      chrome.tabs.onRemoved.removeListener(onRemoved);
+      const current = await getDeleteRule(id);
+      if (current && ['scanning', 'deleting'].includes(current.status)) {
+        await updateDeleteRule(id, {status: 'failed', currentStep: '刪除流程中斷', lastError: 'Facebook 刪除分頁在完成前被關閉。'});
+        await releaseDeleteQueue(id, current.queueDelayMinutes);
+      }
+    };
+    chrome.tabs.onRemoved.addListener(onRemoved);
+    const onUpdated = async (tabId, info) => {
+      if (tabId !== tab.id || info.status !== 'complete') return;
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      try {
+        await sendWhenReady(tabId, {type: 'RUN_KEYWORD_DELETE_RULE', rule: await getDeleteRule(id), approvedItemIds});
+      } catch (error) {
+        await updateDeleteRule(id, {status: 'failed', currentStep: '無法啟動刪除流程', lastError: error.message});
+        await releaseDeleteQueue(id, rule.queueDelayMinutes);
+      }
+    };
+    chrome.tabs.onUpdated.addListener(onUpdated);
+  } catch (error) {
+    await updateDeleteRule(id, {status: 'failed', currentStep: '無法開啟 Facebook 商品頁', lastError: error.message});
+    await releaseDeleteQueue(id, rule.queueDelayMinutes);
+  }
+}
+
+async function runNextDeleteRule() {
+  const activeId = (await chrome.storage.local.get(ACTIVE_DELETE_RULE_KEY))[ACTIVE_DELETE_RULE_KEY] || '';
+  if (activeId) {
+    const active = await getDeleteRule(activeId);
+    if (active && ['scanning', 'deleting'].includes(active.status)) return;
+    await chrome.storage.local.remove(ACTIVE_DELETE_RULE_KEY);
+  }
+  const queued = (await listDeleteRules()).filter(rule => rule.status === 'queued')
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  if (queued[0]) await launchDeleteRule(queued[0].id, true);
 }
 
 function jobSummary(job) {
@@ -111,7 +243,7 @@ async function getActiveJobId() {
 
 async function queueJob(id) {
   const job = await getJob(id);
-  if (!job || ['published', 'submitted_review', 'ready_review', 'cancelled'].includes(job.status)) return;
+  if (!job || ['submitted', 'published', 'submitted_review', 'ready_review', 'cancelled'].includes(job.status)) return;
   await chrome.alarms.clear(alarmName(id));
   await updateJob(id, {status: 'queued', currentStep: '等待前一案件完成'});
 }
@@ -319,12 +451,15 @@ chrome.action.onClicked.addListener(async tab => {
 
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === QUEUE_ALARM) runNextQueued();
+  else if (alarm.name === DELETE_QUEUE_ALARM) runNextDeleteRule();
+  else if (alarm.name.startsWith(DELETE_ALARM_PREFIX)) launchDeleteRule(alarm.name.slice(DELETE_ALARM_PREFIX.length));
   else if (alarm.name.startsWith(WATCHDOG_PREFIX)) publishWatchdog(alarm.name.slice(WATCHDOG_PREFIX.length));
   else if (alarm.name.startsWith(ALARM_PREFIX)) launchJob(alarm.name.slice(ALARM_PREFIX.length));
 });
 
 async function restoreSchedules(resumeQueued = false) {
   await chrome.storage.local.remove(ACTIVE_JOB_KEY);
+  await chrome.storage.local.remove(ACTIVE_DELETE_RULE_KEY);
   for (const job of await listJobs()) {
     if (['running', 'publishing'].includes(job.status)) await updateJob(job.id, {status: 'needs_attention', currentStep: '更新後需人工確認前次結果', lastError: '前次流程中斷；請先確認 Facebook 是否已有商品，再決定是否重試。'});
     if (!resumeQueued && job.status === 'queued') await updateJob(job.id, {status: 'pending', currentStep: '版本更新後暫停，等待人工重新執行', lastError: '為避免重複刊登，舊排隊案件不會在更新後自動恢復。'});
@@ -335,6 +470,23 @@ async function restoreSchedules(resumeQueued = false) {
   }
   if (resumeQueued && (await listJobs()).some(job => job.status === 'queued')) {
     await chrome.alarms.create(QUEUE_ALARM, {when: Date.now() + 60000});
+  }
+  for (const rule of await listDeleteRules()) {
+    if (['scanning', 'deleting'].includes(rule.status)) {
+      await updateDeleteRule(rule.id, {status: 'pending', currentStep: '上次刪除流程中斷，等待人工重新執行', lastError: '為避免重複操作，更新或重新啟動後不會自行續刪。'});
+      continue;
+    }
+    if (!resumeQueued && rule.status === 'queued') {
+      await updateDeleteRule(rule.id, {status: 'pending', currentStep: '版本更新後暫停，等待人工重新執行'});
+      continue;
+    }
+    if (rule.status !== 'scheduled') continue;
+    const when = new Date(rule.scheduledAt).getTime();
+    if (when > Date.now()) await chrome.alarms.create(deleteAlarmName(rule.id), {when});
+    else await updateDeleteRule(rule.id, {status: 'pending', currentStep: '刪除排程時間已過，等待人工重新執行'});
+  }
+  if (resumeQueued && (await listDeleteRules()).some(rule => rule.status === 'queued')) {
+    await chrome.alarms.create(DELETE_QUEUE_ALARM, {when: Date.now() + 60000});
   }
 }
 
@@ -353,9 +505,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     else if (message.type === 'CANCEL_MARKETPLACE_JOB') sendResponse({ok: true, job: await cancelJob(message.id)});
     else if (message.type === 'DELETE_MARKETPLACE_JOB') { await removeJob(message.id); sendResponse({ok: true}); }
     else if (message.type === 'RUN_MARKETPLACE_JOB_NOW') { await launchJob(message.id, true); sendResponse({ok: true}); }
+    else if (message.type === 'SAVE_DELETE_RULE') sendResponse({ok: true, rule: await saveDeleteRule(message.rule)});
+    else if (message.type === 'LIST_DELETE_RULES') sendResponse({ok: true, rules: await listDeleteRules()});
+    else if (message.type === 'GET_DELETE_RULE') {
+      const rule = await getDeleteRule(message.id);
+      if (!rule) throw new Error('找不到刪除排程。');
+      sendResponse({ok: true, rule});
+    }
+    else if (message.type === 'RUN_DELETE_RULE_NOW') { await launchDeleteRule(message.id, true); sendResponse({ok: true}); }
+    else if (message.type === 'CONFIRM_DELETE_RULE') {
+      const rule = await getDeleteRule(message.id);
+      if (!rule || rule.status !== 'awaiting_confirmation') throw new Error('這筆刪除排程目前沒有等待確認的商品。');
+      const ids = (rule.candidates || []).map(item => item.itemId).filter(Boolean);
+      if (!ids.length) throw new Error('沒有可刪除的 Marketplace 商品 ID。');
+      await launchDeleteRule(rule.id, true, ids);
+      sendResponse({ok: true});
+    }
+    else if (message.type === 'CANCEL_DELETE_RULE') {
+      const rule = await getDeleteRule(message.id);
+      if (!rule) throw new Error('找不到刪除排程。');
+      await chrome.alarms.clear(deleteAlarmName(rule.id));
+      await updateDeleteRule(rule.id, {status: 'cancelled', currentStep: '已取消刪除排程'});
+      await releaseDeleteQueue(rule.id, 1);
+      sendResponse({ok: true});
+    }
+    else if (message.type === 'DELETE_DELETE_RULE') { await removeDeleteRule(message.id); sendResponse({ok: true}); }
     else if (message.type === 'FOCUS_MARKETPLACE_JOB') sendResponse({ok: true, result: await focusMarketplaceJob(message.id)});
     else if (message.type === 'CONTINUE_MARKETPLACE_JOB') sendResponse({ok: true, result: await continueMarketplaceJob(message.id)});
     else if (message.type === 'STOP_MARKETPLACE_JOB') sendResponse({ok: true, job: await stopMarketplaceJob(message.id)});
+    else if (message.type === 'MARKETPLACE_JOB_MARK_SUBMITTED') {
+      const current = await getJob(message.id);
+      if (!current || !['ready_review', 'needs_attention', 'submitted_review'].includes(current.status)) throw new Error('這筆案件目前不能標記為已送出。');
+      const job = await updateJob(current.id, {status: 'submitted', currentStep: '已人工確認送出 Facebook', lastError: '', finishedAt: nowIso()});
+      await releaseQueue(job.id, job.queueDelayMinutes);
+      sendResponse({ok: true, job});
+    }
     else if (message.type === 'MARKETPLACE_JOB_NOT_PUBLISHED') {
       const current = await getJob(message.id);
       if (current?.status !== 'needs_attention') throw new Error('只有結果待確認的案件可以標記為未上架。');
@@ -401,8 +585,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const activeId = await getActiveJobId();
       if (activeId && activeId !== current.id) throw new Error('另一筆案件正在執行，請先等待或停止該案件。');
       await chrome.storage.local.set({[ACTIVE_JOB_KEY]: current.id});
-      const job = await updateJob(message.id, {status: 'publishing', currentStep: '已按下發布，正在確認 Facebook 結果', publishClickedAt: nowIso(), lastError: ''});
-      await chrome.alarms.create(watchdogName(job.id), {when: Date.now() + (job.speedMode === 'slow' ? 12 : 7) * 60000});
+      const job = await updateJob(message.id, {status: 'submitted', currentStep: '已送出 Facebook，等待平台處理', publishClickedAt: nowIso(), finishedAt: nowIso(), lastError: ''});
+      await releaseQueue(job.id, job.queueDelayMinutes);
+      await notify('Marketplace 已送出 Facebook', job.title);
       sendResponse({ok: true});
     }
     else if (message.type === 'MARKETPLACE_JOB_UNCERTAIN') {
@@ -415,6 +600,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ok: true});
     }
     else if (message.type === 'MARKETPLACE_DELETE_PROGRESS') { await updateJob(message.id, {currentStep: message.step || ''}); sendResponse({ok: true}); }
+    else if (message.type === 'KEYWORD_DELETE_PROGRESS') {
+      await updateDeleteRule(message.id, {currentStep: message.step || ''});
+      sendResponse({ok: true});
+    }
+    else if (message.type === 'KEYWORD_DELETE_PREVIEW_RESULT') {
+      const rule = await getDeleteRule(message.id);
+      if (!rule) throw new Error('找不到刪除排程。');
+      const candidates = Array.isArray(message.candidates) ? message.candidates.slice(0, 100) : [];
+      const updated = await updateDeleteRule(rule.id, candidates.length ? {
+        status: 'awaiting_confirmation', currentStep: `找到 ${candidates.length} 筆符合商品，等待確認刪除`, candidates, lastError: ''
+      } : {
+        status: 'completed', currentStep: '掃描完成，沒有符合商品', candidates: [], lastError: ''
+      });
+      await releaseDeleteQueue(rule.id, rule.queueDelayMinutes);
+      await notify(candidates.length ? 'Marketplace 刪除清單待確認' : 'Marketplace 沒有符合商品', rule.name);
+      sendResponse({ok: true, rule: updated});
+    }
+    else if (message.type === 'KEYWORD_DELETE_RESULT') {
+      const rule = await getDeleteRule(message.id);
+      if (!rule) throw new Error('找不到刪除排程。');
+      const deleted = Array.isArray(message.deleted) ? message.deleted : [];
+      const failed = Array.isArray(message.failed) ? message.failed : [];
+      const status = failed.length ? (deleted.length ? 'partial' : 'failed') : 'completed';
+      const updated = await updateDeleteRule(rule.id, {
+        status,
+        currentStep: `刪除完成 ${deleted.length} 筆${failed.length ? `，失敗 ${failed.length} 筆` : ''}`,
+        deleted, failed, finishedAt: nowIso(), lastError: failed.map(item => `${item.title || item.itemId}：${item.error}`).join('｜')
+      });
+      await releaseDeleteQueue(rule.id, rule.queueDelayMinutes);
+      await notify(status === 'completed' ? 'Marketplace 關鍵字刪除完成' : 'Marketplace 關鍵字刪除需確認', rule.name);
+      sendResponse({ok: true, rule: updated});
+    }
     else if (message.type === 'MARKETPLACE_DELETE_RESULT') {
       const job = await updateJob(message.id, message.ok ? {
         status: 'deleted', currentStep: 'Facebook 商品已刪除', deletedAt: nowIso(), deletedItemId: message.itemId || '', lastError: ''
@@ -431,7 +648,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     else if (message.type === 'MARKETPLACE_JOB_RESULT') {
       const current = await getJob(message.id);
       if (!current) throw new Error('找不到排程案件。');
-      if (['published', 'submitted_review', 'failed', 'needs_attention', 'cancelled', 'deleted'].includes(current.status)) {
+      if (['submitted', 'published', 'submitted_review', 'failed', 'needs_attention', 'cancelled', 'deleted'].includes(current.status)) {
         sendResponse({ok: true, ignored: true});
         return;
       }
