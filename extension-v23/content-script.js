@@ -88,7 +88,7 @@ function buildPanel() {
   const panel = document.createElement('aside');
   panel.id = PANEL_ID;
   panel.innerHTML = `
-    <header><b>33 Marketplace 自動上架助手</b><span>v2.6.0</span><button data-close aria-label="關閉">×</button></header>
+    <header><b>33 Marketplace 自動上架助手</b><span>v2.6.1</span><button data-close aria-label="關閉">×</button></header>
     <div class="works-body">
       <div class="works-status" data-status>建立案件後設定時間；到點由擴充功能自動上架。</div>
       <label>選擇案件資料夾<input data-folder type="file" webkitdirectory multiple></label>
@@ -1094,18 +1094,18 @@ async function runMarketplaceJob(job) {
 
 function marketplaceItemId(url) {
   const value = String(url || '');
-  return value.match(/\/marketplace\/item\/(\d+)/)?.[1] || new URL(value, location.origin).searchParams.get('target_id') || '';
+  const direct = value.match(/\/marketplace\/item\/(\d+)/)?.[1];
+  if (direct) return direct;
+  const params = new URL(value, location.origin).searchParams;
+  return params.get('target_id') || params.get('item_id') || params.get('listing_id') || '';
 }
 
 function exactListingCard(itemId, title) {
-  const links = [...document.querySelectorAll('a[href]')].filter(link => {
-    const href = link.href || '';
-    return href.includes(`/marketplace/item/${itemId}`) || new URL(href, location.origin).searchParams.get('target_id') === itemId;
-  });
+  const links = [...document.querySelectorAll('a[href]')].filter(link => marketplaceItemId(link.href) === itemId);
   for (const link of links) {
     let node = link;
     for (let depth = 0; node && depth < 10; depth++, node = node.parentElement) {
-      const more = [...node.querySelectorAll('button')].find(button => /更多選項|More options/i.test(button.getAttribute('aria-label') || ''));
+      const more = moreOptionsButton(node);
       if (more && clean(node.innerText).includes(clean(title))) return {card: node, more};
     }
   }
@@ -1142,52 +1142,103 @@ function listingCandidateTitle(card, link, itemId) {
   return linkTitles.sort((a, b) => b.length - a.length)[0] || '';
 }
 
+function listingCardForLink(link) {
+  let node = link;
+  for (let depth = 0; node && depth < 12; depth++, node = node.parentElement) {
+    const text = clean(node.innerText);
+    if (!/(?:NT\$|\$)\s*[\d,]+/i.test(text)) continue;
+    const hasListingAction = [...(node.querySelectorAll?.('button,[role="button"]') || [])].some(button =>
+      /標示為缺貨|立即推廣|分享|Mark as pending|Boost|Share/i.test(clean(button.innerText || button.getAttribute('aria-label')))
+    );
+    if (hasListingAction) return node;
+  }
+  return null;
+}
+
+function listingLinks() {
+  return [...document.querySelectorAll('a[href]')].filter(link => marketplaceItemId(link.href));
+}
+
+function moreOptionsButton(card) {
+  const buttons = [...(card?.querySelectorAll?.('button,[role="button"]') || [])].filter(visible);
+  return buttons.find(button => /更多(?:選項|動作)?|More (?:options|actions)/i.test(
+    clean(button.innerText || button.getAttribute('aria-label') || button.getAttribute('title'))
+  )) || buttons.find(button => button.getAttribute('aria-haspopup') === 'menu' &&
+    !/分享|Share|推廣|Boost/i.test(clean(button.innerText || button.getAttribute('aria-label'))));
+}
+
 function visibleListingCandidates(rule) {
   const found = new Map();
-  for (const link of document.querySelectorAll('a[href*="/marketplace/item/"]')) {
+  let detectedCount = 0;
+  for (const link of listingLinks()) {
     const itemId = marketplaceItemId(link.href);
     if (!itemId || found.has(itemId)) continue;
-    let card = link;
-    let more = null;
-    for (let depth = 0; card && depth < 12; depth++, card = card.parentElement) {
-      more = [...(card.querySelectorAll?.('button,[role="button"]') || [])]
-        .find(button => /更多選項|More options/i.test(button.getAttribute('aria-label') || ''));
-      if (more) break;
-    }
-    if (!card || !more) continue;
+    const card = listingCardForLink(link);
+    if (!card) continue;
+    detectedCount++;
     const title = listingCandidateTitle(card, link, itemId);
     if (!title || !deleteRuleMatches(rule, title)) continue;
     found.set(itemId, {itemId, title, url: link.href});
   }
-  return [...found.values()];
+  return {candidates: [...found.values()], detectedCount};
 }
 
 async function scanKeywordDeleteCandidates(rule) {
   if (!location.pathname.startsWith('/marketplace/you/selling')) throw new Error('目前不是 Facebook「你的商品」頁面。');
-  const found = new Map();
+  const loadTimeout = rule.speedMode === 'slow' ? 90000 : 45000;
+  await waitFor(() => listingLinks().length > 0, loadTimeout, 500).catch(() => {
+    throw new Error('Facebook 商品清單尚未載入，沒有讀取到任何商品連結。');
+  });
   const scroller = document.scrollingElement || document.documentElement;
   const original = scroller.scrollTop;
-  scroller.scrollTop = 0;
-  await sleep(800);
   const timeout = rule.speedMode === 'slow' ? 150000 : 90000;
   const pause = rule.speedMode === 'slow' ? 1800 : 900;
-  const end = Date.now() + timeout;
-  let previousTop = -1;
-  let unchanged = 0;
-  while (Date.now() < end) {
-    visibleListingCandidates(rule).forEach(item => found.set(item.itemId, item));
-    const atEnd = scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 8;
-    if (atEnd) {
-      unchanged++;
-      if (unchanged >= 3) break;
-    } else unchanged = 0;
-    if (scroller.scrollTop === previousTop && atEnd) break;
-    previousTop = scroller.scrollTop;
-    scroller.scrollTop = Math.min(scroller.scrollTop + Math.max(500, window.innerHeight * .75), scroller.scrollHeight);
+  const scanCurrentList = async () => {
+    const found = new Map();
+    const end = Date.now() + timeout;
+    let previousTop = -1;
+    let unchanged = 0;
+    let detectedCount = 0;
+    scroller.scrollTop = 0;
     await sleep(pause);
+    while (Date.now() < end) {
+      const current = visibleListingCandidates(rule);
+      detectedCount = Math.max(detectedCount, current.detectedCount);
+      current.candidates.forEach(item => found.set(item.itemId, item));
+      const atEnd = scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 8;
+      if (atEnd) {
+        unchanged++;
+        if (unchanged >= 3) break;
+      } else unchanged = 0;
+      if (scroller.scrollTop === previousTop && atEnd) break;
+      previousTop = scroller.scrollTop;
+      scroller.scrollTop = Math.min(scroller.scrollTop + Math.max(500, window.innerHeight * .75), scroller.scrollHeight);
+      await sleep(pause);
+    }
+    return {candidates: [...found.values()], detectedCount};
+  };
+  const search = [...document.querySelectorAll('input')].find(input => visible(input) &&
+    /搜尋你的商品|Search your listings/i.test(clean(input.getAttribute('placeholder') || input.getAttribute('aria-label'))));
+  let result;
+  if (search) {
+    const searchTerm = clean(rule.keywords?.[0]);
+    nativeSetter(search, searchTerm);
+    search.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', code: 'Enter', bubbles: true}));
+    search.dispatchEvent(new KeyboardEvent('keyup', {key: 'Enter', code: 'Enter', bubbles: true}));
+    await sleep(pause * 3);
+    result = await scanCurrentList();
+    if (!result.detectedCount) {
+      nativeSetter(search, '');
+      await sleep(pause * 3);
+      result = await scanCurrentList();
+    }
+    nativeSetter(search, '');
+  } else {
+    result = await scanCurrentList();
   }
   scroller.scrollTop = original;
-  return [...found.values()];
+  if (!result.detectedCount) throw new Error('已開啟「你的商品」，但無法辨識任何商品卡片；Facebook 版面可能已更新。');
+  return result.candidates;
 }
 
 async function findListingByItemId(itemId, timeout = 60000) {
@@ -1196,14 +1247,11 @@ async function findListingByItemId(itemId, timeout = 60000) {
   const end = Date.now() + timeout;
   let previous = -1;
   while (Date.now() < end) {
-    for (const link of document.querySelectorAll('a[href]')) {
+    for (const link of listingLinks()) {
       if (marketplaceItemId(link.href) !== itemId) continue;
-      let card = link;
-      for (let depth = 0; card && depth < 12; depth++, card = card.parentElement) {
-        const more = [...(card.querySelectorAll?.('button,[role="button"]') || [])]
-          .find(button => /更多選項|More options/i.test(button.getAttribute('aria-label') || ''));
-        if (more) return {card, more};
-      }
+      const card = listingCardForLink(link);
+      const more = moreOptionsButton(card);
+      if (card && more) return {card, more};
     }
     if (scroller.scrollTop === previous || scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 8) break;
     previous = scroller.scrollTop;
